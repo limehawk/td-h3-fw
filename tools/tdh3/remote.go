@@ -203,6 +203,11 @@ func rgb(v uint16) color.RGBA {
 // remoteBauds are REMOTE's speeds, newest first: 1 Mbaud, then 115200 and 38400 for older td-h3-fw.
 var remoteBauds = []int{1000000, 115200, 38400}
 
+// keyHold and keyGap time a press. Older td-h3-fw keeps one byte and loses one sent while it's
+// busy, so a press is held 150 ms and the next waits 250 ms. At 1 Mbaud (v0.61 on) the radio keeps
+// 16 and reads no release before it has registered the press, so a short press does.
+var keyHold, keyGap = 150 * time.Millisecond, 250 * time.Millisecond
+
 // openRemote opens the port at REMOTE's speed. A sync ('S', answered on every screen) picks the
 // one the radio answers; at the wrong speed a byte reads as noise there, which is no key. None:
 // 1 Mbaud, and the command says no answer.
@@ -214,6 +219,9 @@ func openRemote(name string) (serial.Port, error) {
 		}
 		p.Write([]byte("S"))
 		if readUntil(p, sync, 400*time.Millisecond) {
+			if baud == remoteBauds[0] {
+				keyHold, keyGap = 40*time.Millisecond, 60*time.Millisecond
+			}
 			return p, nil
 		}
 		p.Close()
@@ -288,7 +296,7 @@ func press(p port, keys []string) error {
 		if !ok {
 			return fmt.Errorf("unknown key %q (0-9 MENU UP DOWN VM * # TORCH; PTT is never sent)", k)
 		}
-		hold := 150 * time.Millisecond
+		hold := keyHold
 		if long {
 			hold = 1200 * time.Millisecond
 		}
@@ -300,9 +308,9 @@ func press(p port, keys []string) error {
 			}
 		}
 		p.Write([]byte{0x80})
-		time.Sleep(40 * time.Millisecond)
+		time.Sleep(keyGap / 6)
 		p.Write([]byte{0x80}) // twice: a lost release is a held key
-		time.Sleep(210 * time.Millisecond)
+		time.Sleep(keyGap - keyGap/6)
 	}
 	return nil
 }
@@ -370,9 +378,10 @@ func (r *rig) look() (sc *screen, err error) {
 	return sc, err
 }
 
-// settle reads the draws a key set off until the radio has been quiet for 60 ms; a screen that
-// never goes quiet (a moving S-meter, the scope) is kept up to date regardless, so 600 ms caps it.
-func (r *rig) settle() (*screen, error) {
+// settle reads the draws a key set off until ok holds on the kept screen or the radio has been
+// quiet for 60 ms; a screen that never goes quiet (the S-meter redraws every 100 ms, the scope)
+// is kept up to date regardless, so 600 ms caps it.
+func (r *rig) settle(ok func(*screen) bool) (*screen, error) {
 	for end := time.Now().Add(600 * time.Millisecond); time.Now().Before(end); {
 		b := readN(r.p, 1<<16, 60*time.Millisecond)
 		if len(b) == 0 {
@@ -384,11 +393,15 @@ func (r *rig) settle() (*screen, error) {
 			return r.look() // lost track of the stream: read it whole
 		}
 		r.rest = b[n:]
+		if ok(r.sc) {
+			break
+		}
 	}
 	return r.sc, nil
 }
 
-func (r *rig) key(k string) (*screen, error) {
+// key presses k and settles on ok, the check the caller makes next.
+func (r *rig) key(k string, ok func(*screen) bool) (*screen, error) {
 	if r.sc == nil {
 		if _, err := r.look(); err != nil {
 			return nil, err
@@ -397,7 +410,7 @@ func (r *rig) key(k string) (*screen, error) {
 	if err := press(r.p, []string{k}); err != nil {
 		return nil, err
 	}
-	return r.settle()
+	return r.settle(ok)
 }
 
 // sure is sc if ok passes on it, else the whole screen read again.
@@ -469,7 +482,7 @@ func (r *rig) home() (*screen, error) {
 		if at(sc) {
 			return sc, nil
 		}
-		if sc, err = r.key("VM"); err == nil {
+		if sc, err = r.key("VM", at); err == nil {
 			sc, err = r.sure(sc, at)
 		}
 	}
@@ -482,8 +495,9 @@ func (r *rig) mode(memory bool) (*screen, error) {
 	if err != nil || (sc.mem() != "") == memory {
 		return sc, err
 	}
-	if sc, err = r.key("VM"); err == nil {
-		sc, err = r.sure(sc, func(sc *screen) bool { return (sc.mem() != "") == memory })
+	is := func(sc *screen) bool { return (sc.mem() != "") == memory }
+	if sc, err = r.key("VM", is); err == nil {
+		sc, err = r.sure(sc, is)
 	}
 	if err == nil && (sc.mem() != "") != memory {
 		err = errors.New("V/M did not switch between frequency and memory mode")
@@ -497,7 +511,13 @@ func (r *rig) typeIn(digits, prompt string) (sc *screen, err error) {
 		shows := func(sc *screen) bool {
 			return i == len(digits)-1 || strings.ReplaceAll(strings.TrimPrefix(sc.bottom(), prompt), ".", "") == digits[:i+1]
 		}
-		if sc, err = r.key(digits[i : i+1]); err == nil {
+		// the last digit takes the entry: the prompt leaves the bottom line
+		took := func(sc *screen) bool { return !strings.HasPrefix(sc.bottom(), strings.TrimSpace(prompt)) }
+		settled := shows
+		if i == len(digits)-1 {
+			settled = took
+		}
+		if sc, err = r.key(digits[i:i+1], settled); err == nil {
 			sc, err = r.sure(sc, shows)
 		}
 		if err != nil {
@@ -551,8 +571,9 @@ func (r *rig) channel(n int) (*screen, error) {
 func (r *rig) slot(which string) (*screen, error) {
 	sc, err := r.home()
 	if err == nil && slotOf(sc) != which {
-		if sc, err = r.key("#"); err == nil {
-			sc, err = r.sure(sc, func(sc *screen) bool { return slotOf(sc) == which })
+		is := func(sc *screen) bool { return slotOf(sc) == which }
+		if sc, err = r.key("#", is); err == nil {
+			sc, err = r.sure(sc, is)
 		}
 	}
 	if err == nil && slotOf(sc) != which {
@@ -569,7 +590,7 @@ func (r *rig) settings() ([]string, error) {
 	if _, err := r.home(); err != nil {
 		return nil, err
 	}
-	sc, err := r.key("MENU")
+	sc, err := r.key("MENU", func(sc *screen) bool { t, _ := sc.at(0, 0); return strings.Contains(t, "/") })
 	if err != nil {
 		return nil, err
 	}
