@@ -169,19 +169,32 @@ func groupList(m byte) string {
 	return strings.Join(g, ",")
 }
 
-// highPower: "High", or a wattage of 4 W or more; "Low", blank and anything under 4 W are low.
-func highPower(s string) (bool, error) {
-	switch p := strings.ToLower(s); p {
+// power is the Power column as byte 14's bits 5:4: Low (blank too), Mid, High, ULow (or "Ultra Low"),
+// or a wattage, which picks the level nearest under it as measured (Transmitting.md): 0.5 W and less
+// ultra-low, under 2.5 W low, under 4 W mid, 4 W and more high. CHIRP's 1.0W and 5.0W are Low and High.
+func power(s string) (byte, error) {
+	switch p := strings.ReplaceAll(strings.ToLower(s), " ", ""); p {
 	case "", "low":
-		return false, nil
+		return powerLow, nil
+	case "mid":
+		return powerMid, nil
 	case "high":
-		return true, nil
+		return powerHigh, nil
+	case "ulow", "ultralow":
+		return powerULow, nil
 	default:
 		w, err := strconv.ParseFloat(strings.TrimSuffix(p, "w"), 64)
-		if err != nil {
-			return false, fmt.Errorf("power %q is not High, Low or a wattage like 5.0W", s)
+		switch {
+		case err != nil:
+			return powerLow, fmt.Errorf("power %q is not ULow, Low, Mid, High or a wattage like 5.0W", s)
+		case w <= 0.5:
+			return powerULow, nil
+		case w < 2.5:
+			return powerLow, nil
+		case w < 4:
+			return powerMid, nil
 		}
-		return w >= 4, nil
+		return powerHigh, nil
 	}
 }
 
@@ -206,7 +219,8 @@ type channel struct {
 	name           string
 	rx, tx         uint32 // 10 Hz units
 	rxTone, txTone tone
-	narrow, high   bool
+	narrow         bool
+	power          byte // byte 14 bits 5:4 (powerLow ...)
 	mode           byte // td-h3-fw's: 0 FM (AM on the air band), 1 AM, 2 USB
 	scan           bool
 	groups         byte
@@ -225,9 +239,7 @@ func (c channel) record() (r [16]byte) {
 	if c.narrow {
 		r[14] |= 1 << 3
 	}
-	if c.high {
-		r[14] |= powerHigh << 4
-	}
+	r[14] |= c.power << 4
 	r[13] = 1                // bits 1:0 01, td-h3-fw's mark: byte 15 is its scan groups, FF all eight (a blank channel's FF is none)
 	r[13] |= c.mode & 2 << 2 // td-h3-fw's mode: bit 1 in byte 13 bit 3, bit 0 in byte 14 bit 2 (with the mark only)
 	r[14] |= c.mode & 1 << 2
@@ -237,7 +249,12 @@ func (c channel) record() (r [16]byte) {
 
 // Byte 14 bits 5:4, the TX power, as stock and CHIRP (tdh8 TDH3) store it; 2 is td-h3-fw's mid, 3 its
 // ultra-low. Copies keep all four as they are.
-const powerHigh = 1
+const (
+	powerLow byte = iota
+	powerHigh
+	powerMid
+	powerULow
+)
 
 // tones reads the Tone column and its helpers. Byte order in the EEPROM is RX then TX.
 func tones(get func(string) string) (rx, tx tone, warn string, err error) {
@@ -351,11 +368,11 @@ func parseRow(loc int, get func(string) string) (c channel, warns []string, err 
 	default:
 		warn("mode %s is not supported: stored as FM", m)
 	}
-	h, perr := highPower(get("Power"))
+	pw, perr := power(get("Power"))
 	if perr != nil {
 		warn("%v: stored as low", perr)
 	}
-	c.high = h
+	c.power = pw
 	c.scan = !strings.EqualFold(get("Skip"), "S")
 	c.groups = parseGroups(get("Comment"))
 	return c, warns, nil
@@ -570,10 +587,7 @@ func printTable(chans []channel) {
 	t := table.New().Border(lipgloss.NormalBorder()).
 		Headers("Loc", "Name", "RX MHz", "TX MHz", "RX tone", "TX tone", "Pwr", "BW", "Scan", "Groups")
 	for _, c := range chans {
-		pwr, bw, scan := "L", "W", "-"
-		if c.high {
-			pwr = "H"
-		}
+		pwr, bw, scan := "LHMU"[c.power:c.power+1], "W", "-"
 		if c.narrow {
 			bw = "N"
 		}

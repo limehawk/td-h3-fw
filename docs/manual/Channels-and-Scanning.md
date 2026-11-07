@@ -42,7 +42,9 @@ Your channels and settings are kept through firmware updates.
 **Power** is stored the way TIDRADIO's own firmware stores it, so a channel set to High in CHIRP
 transmits on high. To change a channel's power on the radio, go to the channel and hold **2**: each
 hold steps low → mid → high → ultra-low, shows on the screen at once, and is saved with the channel.
-CHIRP and `tdh3` know only Low and High, and show MID and ULTRA LOW as Low.
+CHIRP knows only Low and High, and shows MID and ULTRA LOW as Low. `tdh3 channels import` takes all
+four in the Power column: `ULow`, `Low`, `Mid`, `High`, or a wattage, which picks the level at or
+under it (0.5W ultra-low, 1.0W or 2.0W low, 3.0W mid, 5.0W high).
 
 **Mode**: `tdh3 channels import` reads the CSV's Mode column: FM, NFM (narrow FM), AM, or USB for
 [SSB](Home-Screen#listening-to-ssb). CHIRP's own Upload stores every channel as FM (the air band

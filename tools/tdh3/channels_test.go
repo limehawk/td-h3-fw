@@ -113,14 +113,15 @@ func TestNameBytes(t *testing.T) {
 }
 
 func TestPower(t *testing.T) {
-	for in, want := range map[string]bool{"": false, "Low": false, "high": true, "HIGH": true, "5.0W": true,
-		"4W": true, "4.0W": true, "3.9W": false, "1.0W": false, "0.5W": false} {
-		if got, err := highPower(in); err != nil || got != want {
-			t.Errorf("highPower(%q) = %v, %v; want %v", in, got, err, want)
+	for in, want := range map[string]byte{"": powerLow, "Low": powerLow, "high": powerHigh, "HIGH": powerHigh,
+		"Mid": powerMid, "ULow": powerULow, "Ultra Low": powerULow, "5.0W": powerHigh, "4W": powerHigh,
+		"3.9W": powerMid, "3.0W": powerMid, "2.4W": powerLow, "1.0W": powerLow, "0.5W": powerULow, "0.24W": powerULow} {
+		if got, err := power(in); err != nil || got != want {
+			t.Errorf("power(%q) = %v, %v; want %v", in, got, err, want)
 		}
 	}
-	if _, err := highPower("loud"); err == nil {
-		t.Error("highPower(loud) accepted")
+	if _, err := power("loud"); err == nil {
+		t.Error("power(loud) accepted")
 	}
 }
 
