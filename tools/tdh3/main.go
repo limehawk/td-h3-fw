@@ -2,6 +2,7 @@
 //
 //	tdh3 eeprom backup  -p /dev/ttyUSB1 backups/td-h3-eeprom.bin
 //	tdh3 flash
+//	tdh3 update
 //	tdh3 firmware flash -p /dev/ttyUSB1 fw/build/td-h3-rx.bin
 //	tdh3 channels import -p /dev/ttyUSB1 list.csv
 //	tdh3 channels copy -p /dev/ttyUSB1 radio1.bin
@@ -368,7 +369,7 @@ func main() {
 	ez.Flags().BoolVarP(&yes, "yes", "y", false, "for scripts: wait for the radio as long as it takes (several cables need -p)")
 	ez.Flags().BoolVar(&force, "force", false, "flash a build that isn't a tagged release (\"0.54.2-1\", \"+\")")
 
-	root.AddCommand(ez, eeprom, channels, reset, firmware, remote)
+	root.AddCommand(ez, eeprom, channels, reset, firmware, remote, updateCmd(&port))
 	root.Args, root.RunE = cobra.NoArgs, ez.RunE // no command (a double-click): flash
 	err := fang.Execute(context.Background(), root)
 	closeWait(false)

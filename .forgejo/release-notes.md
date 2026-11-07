@@ -24,5 +24,6 @@ It puts v{ver} on the radio in about a minute, and your channels and settings st
 with what to do if something goes wrong: [Updating the firmware](https://github.com/limehawk/td-h3-fw/wiki/Updating).
 
 The firmware on its own, for other tools: td-h3-fw-{ver}.bin (receive and transmit) and
-td-h3-fw-{ver}-rx.bin (receive only). SHA256SUMS lists each file's checksum, and LICENSES.txt the
+td-h3-fw-{ver}-rx.bin (receive only). SHA256SUMS lists each file's checksum, SHA256SUMS.sig is its
+signature (what `tdh3 update` checks), and LICENSES.txt the
 licences and notices for the firmware and the flasher.

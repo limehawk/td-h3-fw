@@ -4,9 +4,9 @@ name: CI
 # suite with the hardware budget, the tdh3 CLI and a secret scan, then on a tag the release, only
 # once those pass. main takes changes only through a green PR, so a push to main isn't run again.
 # What each job checks and how to read a failure: docs/DEVELOPING.md, "CI". Runs on a runner with
-# the docker label. It needs two secrets, MISE_GITHUB_TOKEN (a public-read-only github.com
+# the docker label. It needs three secrets, MISE_GITHUB_TOKEN (a public-read-only github.com
 # token for mise's downloads), RELEASE_TOKEN (a real account's token: the job's own token would
-# publish the release as "Ghost"). The GitHub copy builds its own release: .github/workflows/release.yml.
+# publish the release as "Ghost") and TDH3_SIGNING_KEY (signs SHA256SUMS, tools/sign). The GitHub copy builds its own release: .github/workflows/release.yml.
 on:
   push:
     tags: ['v*']
@@ -138,7 +138,7 @@ jobs:
             --no-verification --results=verified,unverified,unknown --fail --no-update
 
   # The tag's release: both images and the tdh3 flasher for Windows, macOS and Linux, attached to the
-  # Forgejo release (made if missing, files replaced on a re-run) with SHA256SUMS; the text is
+  # Forgejo release (made if missing, files replaced on a re-run) with SHA256SUMS and its signature; the text is
   # .forgejo/release-notes.md. A tag with a "-" (v0.0.0-test) makes a pre-release.
   release:
     needs: [firmware, cli, secrets]
@@ -176,7 +176,11 @@ jobs:
         run: make -C fw all rxonly
 
       - name: Release files
-        run: tools/dist.sh "$GITHUB_REF_NAME"
+        env:
+          TDH3_SIGNING_KEY: ${{ secrets.TDH3_SIGNING_KEY }}
+        run: |
+          [ -n "$TDH3_SIGNING_KEY" ] || { echo "TDH3_SIGNING_KEY secret missing: tdh3 update would refuse this release"; exit 1; }
+          tools/dist.sh "$GITHUB_REF_NAME"
 
       - name: Forgejo release
         env:

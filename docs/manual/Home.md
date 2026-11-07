@@ -50,7 +50,8 @@ triple tap for strobe · any tap stops strobe or SOS.
 firmware is inside it) and open it with the radio plugged in. With the radio on and REMOTE on, press and hold
 **PTT** when it says so, and let go at **flash mode**. The first time (the
 radio still on TIDRADIO's firmware), or with the radio off: switch it off, hold **PTT**, switch it
-on, and let go after 2 seconds. See [Updating the firmware](Updating).
+on, and let go after 2 seconds. Next time, `tdh3 update` fetches the newest flasher and flashes it.
+See [Updating the firmware](Updating).
 
 
 ## What this radio does

@@ -40,7 +40,8 @@ working.
 4. **Do what it says.** Hold **PTT** (the big key on the side) when it tells you to. The first time, it asks you to switch the radio off, hold **PTT**, and switch it
    back on.
 
-It takes about a minute, and your channels and settings stay. Something not working, or want to go
+It takes about a minute, and your channels and settings stay. Next time, `tdh3 update` in a terminal
+fetches the newest flasher, checks its signature and flashes it. Something not working, or want to go
 back to TIDRADIO's firmware? [Updating the firmware](https://github.com/limehawk/td-h3-fw/wiki/Updating).
 
 This is not TIDRADIO's firmware and TIDRADIO has nothing to do with it. Flashing it is at your own

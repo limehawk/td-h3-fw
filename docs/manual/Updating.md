@@ -6,6 +6,7 @@
 |---|---|
 | Get the flasher | Download the one for your computer from the newest release: the firmware is inside it ([below](#get-the-flasher)) |
 | Flash the first time (radio still on TIDRADIO's firmware) | Open the flasher, then switch the radio off, hold **PTT** and switch it on, let go after 2 s |
+| Update to the newest release | `tdh3 update`: fetches the newest flasher, checks it, then flashes ([below](#updating-with-tdh3-update)) |
 | Flash new firmware | Radio on with REMOTE on: open the flasher, then press and hold **PTT** when it says so; let go at **flash mode** |
 | Flash with the radio off (or REMOTE off) | `tdh3 flash`, then switch the radio off, hold **PTT** and switch it on, let go after 2 s |
 | Flash the receive-only build | `tdh3 flash --rx` |
@@ -164,6 +165,41 @@ answer over the cable (REMOTE off): check MENU → VERSION (item 50) yourself.
 
 Unplug the USB cable when you're done listening: plugged into a computer it puts noise on the
 receiver and weak stations cut out.
+
+## Updating with `tdh3 update`
+
+Once you have the flasher, it can fetch the next release by itself, so you don't have to download
+it again. It needs the internet.
+
+1. Plug the radio in and leave it on with REMOTE on, as in [Flash](#flash), step 1.
+2. In a terminal in the flasher's folder, type `tdh3 update` (`.\tdh3-windows.exe update` on
+   Windows, `./tdh3-macos-apple update` on an Apple-chip Mac, and so on).
+3. It asks GitHub which release is the newest. If your flasher is that release, it says
+   **up to date** and stops: there's nothing to do.
+4. Otherwise it downloads the newest flasher for your computer and checks it. Every release is
+   signed, and the flasher checks that signature and the download's checksum before it changes
+   anything: a download that is damaged or was changed by someone else is refused, and your
+   flasher stays as it was.
+5. The new flasher takes the old one's place, under the same name, and flashes the firmware it
+   carries. From here it's [Flash](#flash), step 3: press and hold **PTT** when it says so.
+
+`tdh3 update --no-flash` only replaces the flasher; flash later with `tdh3 flash`. With several
+radio cables, `-p` picks one, as for flashing: `tdh3 -p COM4 update`.
+
+What it may say:
+
+- **up to date**: you have the newest release.
+- **built from source**: a flasher you built yourself never counts as up to date, so it fetches
+  the newest release's.
+- **isn't signed** or **doesn't match its checksum**: the download wasn't the release's own file.
+  Nothing was changed; try again later, or download the flasher as in [Get the flasher](#get-the-flasher).
+- **can't replace**: the flasher is in a folder you can't write to. Move it to a folder of your own
+  (your Downloads folder) and run it from there, or download the new one yourself.
+- **Unknown command "update"**: your flasher is older than this command. Download the new one once,
+  as in [Get the flasher](#get-the-flasher).
+
+On Windows the old flasher stays beside the new one as `tdh3.old.exe` until you next open the
+flasher, which deletes it.
 
 ## Putting the settings back to defaults
 

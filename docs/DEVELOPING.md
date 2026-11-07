@@ -272,7 +272,9 @@ commit, Actions → CI → *Run workflow* on the branch (`workflow_dispatch`).
 **Releases.** On a `v*` tag (`make -C fw bump`, `git push --follow-tags`) the `release` job runs
 once the other three pass: it builds both images, and `tools/dist.sh` fails unless they say exactly
 the tag's version (`0.5.1`, not `0.5.1-2` or `0.5.1+`), builds `tdh3` for Windows, macOS and Linux,
-and puts all of it with `SHA256SUMS` in `dist/`. The job attaches that to the Forgejo release for the
+and puts all of it with `SHA256SUMS` in `dist/`, signed into `SHA256SUMS.sig` by `tools/sign` with the
+`TDH3_SIGNING_KEY` secret (both release jobs fail without it; `tdh3 update` checks the signature
+against the public key in `tools/tdh3/update.go`). The job attaches that to the Forgejo release for the
 tag (made if missing; a re-run replaces the files), as the account behind `RELEASE_TOKEN`. The
 forge's push mirror carries main and the tags to GitHub, where `.github/workflows/release.yml` runs
 the same build and `tools/dist.sh` and publishes the GitHub release. The release text is `.forgejo/release-notes.md`,

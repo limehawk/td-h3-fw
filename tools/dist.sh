@@ -1,6 +1,6 @@
 #!/bin/sh
 # Release files for tag $1 (v0.60.0) into dist/: both images, the tdh3 flasher for each computer
-# (with both images inside it; the Macs' zipped), SHA256SUMS. Both forges' release jobs run it after building with `make -C fw all rxonly`.
+# (with both images inside it; the Macs' zipped), SHA256SUMS and its signature. Both forges' release jobs run it after building with `make -C fw all rxonly`.
 # The images must say exactly the tag's version (0.5.1, never 0.5.1-2 or 0.5.1+), in
 # build/version and as the NUL-ended VERSION string the radio and the flasher show.
 set -e
@@ -39,4 +39,7 @@ done
     done
   done
 } > dist/LICENSES.txt
-cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+(cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+# SHA256SUMS.sig: what `tdh3 update` checks before it trusts a download (tools/sign). The release
+# jobs give the key; a local run without it makes the files unsigned.
+if [ -n "$TDH3_SIGNING_KEY" ]; then go run tools/sign/main.go dist/SHA256SUMS; else echo "TDH3_SIGNING_KEY not set: SHA256SUMS left unsigned"; fi

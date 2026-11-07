@@ -34,7 +34,11 @@ jobs:
         run: make -C fw all rxonly
 
       - name: Release files
-        run: tools/dist.sh "$GITHUB_REF_NAME"
+        env:
+          TDH3_SIGNING_KEY: ${{ secrets.TDH3_SIGNING_KEY }}
+        run: |
+          [ -n "$TDH3_SIGNING_KEY" ] || { echo "TDH3_SIGNING_KEY secret missing: tdh3 update would refuse this release"; exit 1; }
+          tools/dist.sh "$GITHUB_REF_NAME"
 
       - name: GitHub release
         env:
