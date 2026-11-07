@@ -250,6 +250,7 @@ func main() {
 	wt.Flags().DurationVar(&until, "timeout", 0, "give up after this long, e.g. 30m; 0 waits for ever")
 	wt.Flags().BoolVar(&gone, "gone", false, "wait for TEXT to disappear instead")
 	remote.AddCommand(wt)
+	remote.AddCommand(recordCmds(&port)...)
 	remote.AddCommand(scr, &cobra.Command{
 		Use:   "keys KEY...",
 		Short: "Press keys: 0-9 MENU UP DOWN VM * # TORCH, add :long to hold (MENU:long)",

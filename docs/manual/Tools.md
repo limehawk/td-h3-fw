@@ -12,6 +12,7 @@
 | Flashlight on / off | Tap **side key 2** |
 | Lock / unlock the keys | Hold **\*** (**PTT**, **side key 1** and the flashlight still work locked, unless KEY LOCK is KEYS+PTT) |
 | Connect to a computer | **MENU**, **4** **4** (PC LINK), **MENU** |
+| Record the screen on a computer, as a GIF | REMOTE on, then `tdh3 remote record my.rec` and `tdh3 remote replay my.rec -o my.gif` ([below](#recording-the-screen)) |
 
 ## Scope (hold 3)
 
@@ -105,3 +106,22 @@ as usual.
 
 1. MENU → PC LINK → MENU hands the radio to a computer (CHIRP or `tdh3`). The receiver is off
    while it waits; **V/M** leaves. See [Channels and scanning](Channels-and-Scanning).
+
+## Recording the screen
+
+With the radio plugged into a computer, `tdh3` (the flasher you downloaded) can record what the
+screen shows while you use the radio, and turn it into an animated picture to share or to show
+someone how to do something.
+
+1. Switch on REMOTE: **MENU**, **4** **5**, **MENU**, **UP** so it says **ON**, **MENU**, then
+   **V/M** to leave the menu.
+2. On the computer, type `tdh3 remote record my.rec`. It starts recording at once.
+3. Use the radio as usual: press keys, change channels, let it receive. Every change on the screen
+   is saved with the moment it happened.
+4. Press **Ctrl-C** on the computer to stop. It says how many seconds it saved.
+5. `tdh3 remote replay my.rec` plays it back as text, at the speed it happened (add `--fast` to
+   see it all at once). `tdh3 remote replay my.rec --fast -o my.gif` also makes an animated GIF
+   that plays at the same speed as the real screen.
+
+Recording never presses a key and never transmits. While it records, the computer asks the radio
+for its status once a second, so the recording also has the frequency, signal and battery.

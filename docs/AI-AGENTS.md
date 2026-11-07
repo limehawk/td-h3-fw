@@ -37,6 +37,8 @@ frequencies on the home screen: A on top, B below. The selected one has its lett
 | `watch` | Prints the signal and whether the squelch is open, five times a second, until **Ctrl-C**: for finding why audio cuts out. |
 | `wait "squelch open"` | Waits until that text shows, on the screen or in the status line (any case), then prints the screen and the status line: `wait 146.520`, `wait FREQ`. `--gone` waits for it to go away, `--timeout 30m` gives up after that long with an error. No timeout: it waits for ever. |
 | `keys 1 4 6` | Presses keys: `0`-`9` `MENU` `UP` `DOWN` `VM` `*` `#` `TORCH`. Add `:long` to hold one (`1:long`). |
+| `record my.rec` | Saves every change on the screen, with its time, until **Ctrl-C**. Presses nothing. |
+| `replay my.rec` | Plays a recording back as text, at the speed it happened (`--fast`: all at once). `-o my.gif` also makes an animated GIF of it. |
 
 `tune`, `channel` and `slot` press one key at a time and read the screen back after each one.
 If a key gets lost or the radio shows something else, the command stops with a message that

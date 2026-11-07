@@ -187,14 +187,17 @@ func (sc *screen) PNG(w io.Writer) error {
 	img := image.NewRGBA(image.Rect(0, 0, 128*k, 128*k))
 	for y := range 128 {
 		for x := range 128 {
-			v := sc.px[y][x]
-			b, g, r := uint8(v>>11<<3), uint8(v>>5&63<<2), uint8(v&31<<3)
 			for i := range k * k {
-				img.Set(x*k+i%k, y*k+i/k, color.RGBA{r, g, b, 255})
+				img.Set(x*k+i%k, y*k+i/k, rgb(sc.px[y][x]))
 			}
 		}
 	}
 	return png.Encode(w, img)
+}
+
+// rgb is a BGR565 panel colour as RGB.
+func rgb(v uint16) color.RGBA {
+	return color.RGBA{uint8(v & 31 << 3), uint8(v >> 5 & 63 << 2), uint8(v >> 11 << 3), 255}
 }
 
 // openRemote opens the port at REMOTE's speed: 115200, or 38400 on older td-h3-fw. A
