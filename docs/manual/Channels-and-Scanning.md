@@ -36,6 +36,8 @@ downloaded ([Updating the firmware](Updating#get-the-flasher); type its own name
    tdh3 channels import mylist.csv
    ```
 3. **V/M** leaves PC LINK. It stays open until you do, however long the cable or CHIRP takes.
+   If the computer wrote the radio's settings (a CHIRP Upload can), the radio restarts by itself
+   when the computer is done, so it starts on the new settings.
 
 Your channels and settings are kept through firmware updates.
 

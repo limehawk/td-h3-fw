@@ -39,6 +39,8 @@ func sum8(b []byte) (s byte) {
 
 var magic = []byte("PVOJH\x5c\x14")
 
+var errNoHello = errors.New("no answer to the TD-H3 hello: radio off, wrong port, or other firmware")
+
 // handshake starts a clone session: hello (retried), ident, accept. It returns the radio's ident.
 func handshake(p port) (ident []byte, err error) {
 	ok := false
@@ -50,7 +52,7 @@ func handshake(p port) (ident []byte, err error) {
 		}
 	}
 	if !ok {
-		return nil, errors.New("no answer to the TD-H3 hello: radio off, wrong port, or other firmware")
+		return nil, errNoHello
 	}
 	readN(p, 64, 400*time.Millisecond) // a late ack to a retried hello would shift every reply after it
 	p.Write([]byte{2})

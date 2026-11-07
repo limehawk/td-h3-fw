@@ -275,43 +275,48 @@ func TestWritableNeverTouchesCalibration(t *testing.T) {
 	}
 }
 
-func TestApplyPatchesBitsAndRefusesProtected(t *testing.T) {
+func TestPatchBits(t *testing.T) {
 	blk := bytes.Repeat([]byte{0xAA}, 32)
-	out, err := apply(0x1900, blk, []edit{{0x1900, 0x07, 0x05}, {0x1901, 0xFF, 0x12}, {0x191F, 0x80, 0x00}})
+	out, err := patch(0x1900, blk, []edit{{0x1900, 0x07, 0x05}, {0x1901, 0xFF, 0x12}, {0x191F, 0x80, 0x00}})
 	must(t, err)
 	if out[0] != 0xAD || out[1] != 0x12 || out[31] != 0x2A || out[2] != 0xAA || !bytes.Equal(blk, bytes.Repeat([]byte{0xAA}, 32)) {
 		t.Errorf("patched % X (input must stay as read)", out)
 	}
-	for _, addr := range []int{0x1F40, 0x1F60, 0x1FE0, 0x1FF0, 0x1FF1, 0x0C80, 0x1940} {
-		if _, err := apply(addr, blk, nil); err == nil {
-			t.Errorf("apply(%04X) accepted", addr)
-		}
-	}
-	if _, err := apply(0x1900, blk, []edit{{0x1920, 0xFF, 1}}); err == nil {
+	if _, err := patch(0x1900, blk, []edit{{0x1920, 0xFF, 1}}); err == nil {
 		t.Error("edit outside the block accepted")
 	}
-	if _, err := apply(0x1900, blk[:31], nil); err == nil {
+	if _, err := patch(0x1900, blk[:31], nil); err == nil {
 		t.Error("short block accepted")
 	}
 }
 
-func TestWriteBlockSendsNothingToProtectedAddresses(t *testing.T) {
-	f := &fake{reply: func([]byte) []byte { return []byte{6} }}
-	for _, addr := range []int{0x1F40, 0x1F50, 0x1F60, 0x1FE0, 0x1FF0, 0x2000, 0x0001} {
-		if writeBlock(f, addr, make([]byte, 32)) == nil {
-			t.Errorf("writeBlock(%04X) accepted", addr)
+// importBlocks checks each block's area before it reads or writes it: a refused one never reaches the port.
+func TestImportSendsNothingToProtectedAddresses(t *testing.T) {
+	for _, addr := range []int{0x1F40, 0x1F50, 0x1F60, 0x1FC0, 0x1FE0, 0x1FF0, 0x2000, 0x0C80} {
+		f, writes := cloneRadio(t, seededEEPROM())
+		if _, err := importBlocks(f, map[int][]edit{addr: {{addr, 0xFF, 0}}}, writable, quiet); err == nil {
+			t.Errorf("block %04X accepted", addr)
+		}
+		for _, w := range f.sent {
+			if w[0] == 'R' || w[0] == 'W' {
+				t.Errorf("block %04X: sent % X", addr, w)
+			}
+		}
+		if len(*writes) != 0 {
+			t.Errorf("block %04X: wrote %04X", addr, *writes)
 		}
 	}
-	if len(f.sent) != 0 {
-		t.Fatalf("%d writes reached the port", len(f.sent))
-	}
-	must(t, writeBlock(f, 0x0020, bytes.Repeat([]byte{1}, 32)))
+}
+
+func TestSendBlockFrame(t *testing.T) {
+	f := &fake{reply: func([]byte) []byte { return []byte{6} }}
+	must(t, sendBlock(f, 0x0020, bytes.Repeat([]byte{1}, 32)))
 	want := append(append([]byte{'W', 0x00, 0x20, 0x20}, bytes.Repeat([]byte{1}, 32)...), 32)
 	if len(f.sent) != 1 || !bytes.Equal(f.sent[0], want) {
 		t.Errorf("sent % X", f.sent)
 	}
 	f.reply = func([]byte) []byte { return []byte{0x15} }
-	if writeBlock(f, 0x0020, make([]byte, 32)) == nil {
+	if sendBlock(f, 0x0020, make([]byte, 32)) == nil {
 		t.Error("nack accepted")
 	}
 }
@@ -408,7 +413,7 @@ func TestImportThreeRowsWritesExactBlocks(t *testing.T) {
 	mem := bytes.Clone(seed)
 	f, writes := cloneRadio(t, mem)
 
-	n, err := importBlocks(f, plan(res.chans, false), quiet)
+	n, err := importBlocks(f, plan(res.chans, false), writable, quiet)
 	must(t, err)
 	// records 1 (0x10) in block 0000, 2 and 3 (0x20, 0x30) in block 0020; names, used and scan bitmaps
 	if want := []int{0x0000, 0x0020, 0x0D40, 0x1900, 0x1920}; !slices.Equal(*writes, want) || n != 5 {
@@ -441,7 +446,7 @@ func TestImportThreeRowsWritesExactBlocks(t *testing.T) {
 
 	// a second run finds nothing to change and writes nothing
 	*writes = nil
-	n, err = importBlocks(f, plan(res.chans, false), quiet)
+	n, err = importBlocks(f, plan(res.chans, false), writable, quiet)
 	must(t, err)
 	if len(*writes) != 0 || n != 0 {
 		t.Errorf("second import wrote %04X", *writes)
@@ -457,7 +462,7 @@ func TestImportClearOnlyUsedBits(t *testing.T) {
 	}
 	mem := bytes.Clone(seed)
 	f, writes := cloneRadio(t, mem)
-	_, err = importBlocks(f, plan(res.chans, true), quiet)
+	_, err = importBlocks(f, plan(res.chans, true), writable, quiet)
 	must(t, err)
 
 	want := bytes.Repeat([]byte{0}, 32)
@@ -477,7 +482,7 @@ func TestImportClearOnlyUsedBits(t *testing.T) {
 	// without --clear the same bytes stay as they were
 	mem2 := bytes.Clone(seed)
 	f2, _ := cloneRadio(t, mem2)
-	_, err = importBlocks(f2, plan(res.chans, false), quiet)
+	_, err = importBlocks(f2, plan(res.chans, false), writable, quiet)
 	must(t, err)
 	if mem2[0x1903] != 0xFF {
 		t.Errorf("channel 25 used bit changed without --clear: %02X", mem2[0x1903])
@@ -490,7 +495,7 @@ func TestWipeKeepsEveryChannelInTheCSV(t *testing.T) {
 	for _, n := range []int{1, 8, 9, 199} {
 		chans = append(chans, channel{loc: n, rxTone: noTone, txTone: noTone})
 	}
-	out, err := apply(0x1900, bytes.Repeat([]byte{0xFF}, 32), plan(chans, true)[0x1900])
+	out, err := patch(0x1900, bytes.Repeat([]byte{0xFF}, 32), plan(chans, true)[0x1900])
 	must(t, err)
 	want := make([]byte, 32)
 	want[0], want[1], want[24] = 0x81, 0x01, 0xC0
@@ -514,7 +519,7 @@ func TestImportStopsOnNack(t *testing.T) {
 		}
 		return inner(w)
 	}
-	n, err := importBlocks(f, plan(res.chans, false), quiet)
+	n, err := importBlocks(f, plan(res.chans, false), writable, quiet)
 	if err == nil || n != 0 || !strings.Contains(err.Error(), "0000") {
 		t.Fatalf("n=%d err=%v", n, err)
 	}
@@ -543,7 +548,7 @@ func TestImportCatchesAWriteTheRadioDidNotKeep(t *testing.T) {
 		}
 		return inner(w)
 	}
-	if n, err := importBlocks(f, plan(res.chans, false), quiet); err == nil || n != 0 || !strings.Contains(err.Error(), "0000") {
+	if n, err := importBlocks(f, plan(res.chans, false), writable, quiet); err == nil || n != 0 || !strings.Contains(err.Error(), "0000") {
 		t.Fatalf("n=%d err=%v", n, err)
 	}
 }

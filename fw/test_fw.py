@@ -997,6 +997,30 @@ def test_channel_power(cpu):                # hold 2 on a memory channel steps i
     longpress(cpu, '2')                    # on MID: the slot shows it at once
     assert any('MID' in t for t in remote_texts(cpu)), remote_texts(cpu)
 
+def test_pc_link_settings_reset(cpu):     # tdh3 reset: the settings' magic cleared, then E restarts with every default
+    cpu.uart_baud = 38400
+    menu(cpu, 'PC', ['UP'])
+    out = cpu.uart_out
+    def send(b, wait=300_000):
+        out.clear()
+        cpu.uart_in.extend(b)
+        cpu.run(wait)
+        return bytes(out)
+    assert send(b'PVOJH\x5c\x14') == b'\x06' and send(b'\x02') and send(b'\x06') == b'\x06'
+    r = send(b'R\x1f\xc0\x20', 600_000)
+    blk = b'\x00' + r[5:36]
+    assert send(b'W\x1f\xc0\x20' + blk + bytes([sum(blk) & 0xFF]), 600_000) == b'\x06'
+    cal = bytes(cpu.ee.mem[0x1F50:0x1F80]) + bytes(cpu.ee.mem[0x1FF0:0x2000])
+    assert not cpu.resets, 'restarted before the end of the session'
+    assert send(b'E', 400_000) == b'\x06'
+    assert cpu.resets == [0x55], 'no restart: %r' % cpu.resets
+    scan = symbol(FW, '_key_scan')
+    assert cpu.run(12_000_000, until=lambda: cpu.pc == scan), 'no boot after the restart'
+    cpu.run(2_000_000)
+    assert cpu.xram[symbol(FW, '_cfg') + 4] & 4, 'DUAL WATCH not back at its default ON'
+    assert bytes(cpu.ee.mem[0x1F50:0x1F80]) + bytes(cpu.ee.mem[0x1FF0:0x2000]) == cal, 'calibration touched'
+    assert cpu.bk.regs[0x30] == 0xBFF1, 'not receiving after the restart'
+
 
 # ---- features added in 0.2 ----
 
@@ -3308,6 +3332,7 @@ INDEPENDENT = [
     ('flash restart: B arms, PTT restarts into the loader', test_flash_restart),
     ('flash restart: a setting changed just before is saved first', test_flash_restart_saves),
     ('hold 2 on a memory channel steps its saved power', test_channel_power),
+    ('PC LINK: settings reset restarts with every default', test_pc_link_settings_reset),
     ('fresh settings start A/B on the first two channels, dual watch on', test_fresh_settings_use_channels),
     ('one bad settings byte keeps the rest', test_settings_survive_one_bad_value),
     ('a corrupt slot mode byte resets that slot', test_settings_bad_slot_mode),

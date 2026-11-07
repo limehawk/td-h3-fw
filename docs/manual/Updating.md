@@ -16,6 +16,7 @@
 | `no answer from flash mode` | Switch off, hold **PTT**, switch on again |
 | Check the version afterwards | **MENU**, **5** **0** (VERSION) |
 | Back up the radio first | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 eeprom backup my-radio-backup.bin` |
+| Put every setting back to its default | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 reset` ([below](#putting-the-settings-back-to-defaults)) |
 | Copy channels from another radio | [Channels and scanning](Channels-and-Scanning#copy-channels-from-another-radio): `tdh3 channels copy FILE` |
 | Go back to TIDRADIO's firmware | `tdh3 firmware flash H3_250317.BIN` ([below](#going-back-to-tidradios-firmware)) |
 | `refusing v0.55.2-3: not a release` | That build isn't a numbered release: flash a release, or add `--force` for a test build |
@@ -163,6 +164,30 @@ answer over the cable (REMOTE off): check MENU → VERSION (item 50) yourself.
 
 Unplug the USB cable when you're done listening: plugged into a computer it puts noise on the
 receiver and weak stations cut out.
+
+## Putting the settings back to defaults
+
+`tdh3 reset` puts every menu setting back the way it was when the firmware was new, with slots
+A and B on your first two channels. Your memory channels and FM radio presets stay. The radio's factory
+transmit calibration is never touched. Flashing doesn't do this: it keeps your settings.
+
+1. Switch the radio on and plug it into the computer with its USB-C cable.
+2. On the radio: press **MENU**, type **4** **4** (PC LINK), press **MENU**. The screen says
+   *waiting for computer*.
+3. On the computer, in a terminal in the flasher's folder:
+   ```bash
+   tdh3 reset
+   ```
+   It shows what it will reset and what it keeps, then waits. Press **Enter**.
+4. The radio restarts by itself and comes back on its home screen with every setting at its
+   default. The last line on the computer says *the radio restarted with every default*.
+
+If it says *the radio didn't answer*, the radio isn't in PC LINK: do step 2 again and rerun.
+If it says *switch the radio off and on now, without pressing V/M*, the radio has older firmware
+that doesn't restart by itself: switch it off and on, without pressing **V/M** first (V/M would
+save the old settings back).
+
+To empty the channel list too, so the radio starts completely fresh: `tdh3 reset --channels`.
 
 ## Going back to TIDRADIO's firmware
 

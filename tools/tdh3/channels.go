@@ -12,8 +12,9 @@
 // Only three areas of the EEPROM are ever written, one 32-byte block at a time (read, patch,
 // write back only if changed): channel records 0x0000-0x0C7F, names 0x0D40-0x13BF and the
 // used/scan bitmaps 0x1900-0x193F. The factory TX calibration (0x1F50-0x1F7F, 0x1FF0-0x1FFF) is
-// refused in apply, in writeBlock and by the tests. Layout: TIDRADIO's map, which is CHIRP
-// chirp/drivers/tdh8.py minus its 8-byte ident header.
+// refused in importBlocks and by the tests (tdh3 reset, reset.go, adds the settings' first block
+// and nothing else). Layout: TIDRADIO's map, which is CHIRP chirp/drivers/tdh8.py minus its
+// 8-byte ident header.
 package main
 
 import (
@@ -493,16 +494,8 @@ func b2u(b bool) byte {
 	return 0
 }
 
-// apply returns blk (the 32 bytes read from the radio at addr) with the edits applied.
-// It refuses any block that is not wholly inside the writable areas.
-func apply(addr int, blk []byte, es []edit) ([]byte, error) {
-	if err := writable(addr); err != nil {
-		return nil, err
-	}
-	return patch(addr, blk, es)
-}
-
-// patch is apply without the area check (channels copy checks its own, byte by byte).
+// patch returns blk (the 32 bytes read from the radio at addr) with the edits applied. The callers
+// check the area: importBlocks with its ok, channels copy byte by byte.
 func patch(addr int, blk []byte, es []edit) ([]byte, error) {
 	if len(blk) != 32 {
 		return nil, fmt.Errorf("block %04X: %d bytes, want 32", addr, len(blk))
@@ -520,14 +513,7 @@ func patch(addr int, blk []byte, es []edit) ([]byte, error) {
 
 // ---- radio ----
 
-func writeBlock(p port, addr int, data []byte) error {
-	if err := writable(addr); err != nil { // last check before the wire
-		return err
-	}
-	return sendBlock(p, addr, data)
-}
-
-// sendBlock is writeBlock without the area check.
+// sendBlock writes one block; the caller has checked its area.
 func sendBlock(p port, addr int, data []byte) error {
 	if len(data) != 32 {
 		return fmt.Errorf("block %04X: %d bytes, want 32", addr, len(data))
@@ -543,7 +529,8 @@ func sendBlock(p port, addr int, data []byte) error {
 }
 
 // importBlocks runs the clone session: for each planned block read, patch, and write back if it changed.
-func importBlocks(p port, es map[int][]edit, say func(string, ...any)) (written int, err error) {
+// ok is the area check (writable; resetWritable for tdh3 reset): a block it refuses is never sent.
+func importBlocks(p port, es map[int][]edit, ok func(int) error, say func(string, ...any)) (written int, err error) {
 	ident, err := handshake(p)
 	if err != nil {
 		return 0, err
@@ -556,11 +543,14 @@ func importBlocks(p port, es map[int][]edit, say func(string, ...any)) (written 
 		}
 	}()
 	for _, addr := range slices.Sorted(maps.Keys(es)) {
+		if err := ok(addr); err != nil {
+			return written, err
+		}
 		old, err := readBlock(p, addr)
 		if err != nil {
 			return written, err
 		}
-		blk, err := apply(addr, old, es[addr])
+		blk, err := patch(addr, old, es[addr])
 		if err != nil {
 			return written, err
 		}
@@ -568,7 +558,7 @@ func importBlocks(p port, es map[int][]edit, say func(string, ...any)) (written 
 			say("block unchanged", "addr", fmt.Sprintf("%04X", addr))
 			continue
 		}
-		if err := writeBlock(p, addr, blk); err != nil {
+		if err := sendBlock(p, addr, blk); err != nil {
 			return written, err
 		}
 		// The radio acks every block, even one its EEPROM refused (clone.c, for CHIRP): read it back.
@@ -630,7 +620,7 @@ func runImport(portName, file string, wipe, dry bool) error {
 		logger.Info("channel", "n", c.loc, "name", c.name, "rx", mhz(c.rx), "tx", mhz(c.tx),
 			"rx_tone", c.rxTone.String(), "tx_tone", c.txTone.String(), "groups", groupList(c.groups))
 	}
-	written, err := importBlocks(p, es, func(m string, kv ...any) { logger.Debug(m, kv...) })
+	written, err := importBlocks(p, es, writable, func(m string, kv ...any) { logger.Debug(m, kv...) })
 	if err != nil {
 		return fmt.Errorf("import stopped part-way (the radio may hold a mix of old and new channels; rerun to finish): %w", err)
 	}

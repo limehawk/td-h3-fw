@@ -12,6 +12,7 @@ static const __code uint8_t hello[7] = {0x50, 0x56, 0x4F, 0x4A, 0x48, 0x5C, 0x14
 static const __code uint8_t ident[8] = {'P', '3', '1', '1', '8', '3', 0xFF, 0xFF};
 
 static uint8_t link, bt;                    // port that last spoke; Bluetooth enabled
+static __bit cfg_hit;                       // the computer wrote the settings' first block (CFG_ADDR, their magic)
 
 static int16_t get(void)                    // -1 after 100 ms of nothing
 {
@@ -54,6 +55,7 @@ static void block(uint8_t cmd) __reentrant
     // (ee_write refuses them); CHIRP still gets its ack.
     ee_write(a, blk, 16);
     ee_write(a + 16, blk + 16, 16);
+    if (a == 0x1FC0) cfg_hit = 1;
     put(0x06);
 }
 
@@ -63,6 +65,7 @@ void clone_session(uint8_t bt_on) __reentrant
     int16_t c;
     bt = bt_on;
     maps_ok = 0;                            // the screen buffer holds radio.c's bitmaps too (fw.h)
+    cfg_hit = 0;
     while (key_scan() != K_EXIT) {          // open till V/M: no timeout, so cables and CHIRP can take their time
         if ((c = get()) < 0) continue;
         if (c == hello[h]) {
@@ -71,7 +74,13 @@ void clone_session(uint8_t bt_on) __reentrant
         }
         h = c == hello[0];
         if (c == 0x02) for (i = 0; i < 8; i++) put(ident[i]);
-        else if (c == 0x06 || c == 'E') put(0x06);
+        else if (c == 0x06 || c == 'E') {
+            put(0x06);
+            // Settings written (tdh3 reset, CHIRP): start afresh, as at power-on, so the ones in
+            // memory can't be saved back over them. Only E comes after a W (0x06 is the handshake's),
+            // so cfg_hit alone picks it. No key held: the loader goes straight on to the app.
+            if (cfg_hit) remote_loader();
+        }
         else if (c == 'R' || c == 'W') block(c);
     }
     while (key_scan() == K_EXIT) WDT_KICK();   // let go of V/M before the UI sees it

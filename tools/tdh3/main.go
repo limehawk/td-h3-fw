@@ -5,6 +5,7 @@
 //	tdh3 firmware flash -p /dev/ttyUSB1 fw/build/td-h3-rx.bin
 //	tdh3 channels import -p /dev/ttyUSB1 list.csv
 //	tdh3 channels copy -p /dev/ttyUSB1 radio1.bin
+//	tdh3 reset -p /dev/ttyUSB1
 //	tdh3 remote screen -p /dev/ttyUSB1 -o screen.png
 //	tdh3 remote keys -p /dev/ttyUSB1 1 4 6 5 2 0
 //	tdh3 remote tune -p /dev/ttyUSB1 146.520
@@ -136,6 +137,20 @@ func main() {
 	cp.Flags().BoolVar(&fm, "fm", true, "also copy the 25 FM radio presets (--fm=false keeps this radio's)")
 	cp.Flags().BoolVarP(&yesCopy, "yes", "y", false, "don't wait for Enter")
 	channels.AddCommand(cp)
+
+	var resetCh, yesReset bool
+	reset := &cobra.Command{
+		Use:   "reset",
+		Short: "Put every setting back to its default (the channels stay; --channels clears them too)",
+		Long: "Over PC LINK (MENU, 4 4, MENU): clears the settings' check byte so the radio loads every\n" +
+			"default, and td-h3-fw restarts by itself to use them. Shows what it will do and waits for\n" +
+			"Enter. The memory channels stay unless --channels; the factory TX calibration is never\n" +
+			"written. -p is found by itself when there is one radio cable.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error { return runReset(port, resetCh, !yesReset) },
+	}
+	reset.Flags().BoolVar(&resetCh, "channels", false, "also clear every memory channel 1-199")
+	reset.Flags().BoolVarP(&yesReset, "yes", "y", false, "don't wait for Enter")
 
 	var shot string
 	remote := &cobra.Command{
@@ -353,7 +368,7 @@ func main() {
 	ez.Flags().BoolVarP(&yes, "yes", "y", false, "for scripts: wait for the radio as long as it takes (several cables need -p)")
 	ez.Flags().BoolVar(&force, "force", false, "flash a build that isn't a tagged release (\"0.54.2-1\", \"+\")")
 
-	root.AddCommand(ez, eeprom, channels, firmware, remote)
+	root.AddCommand(ez, eeprom, channels, reset, firmware, remote)
 	root.Args, root.RunE = cobra.NoArgs, ez.RunE // no command (a double-click): flash
 	err := fang.Execute(context.Background(), root)
 	closeWait(false)
