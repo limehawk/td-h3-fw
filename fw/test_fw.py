@@ -2820,8 +2820,13 @@ def test_flash_restart_saves(cpu):        # a setting changed just before a flas
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # the 2 s save wait and lost it (DUAL WATCH, long 9)
     cpu.run(3 * 800_000)                   # saved
     dw = cpu.ee.mem[0x1FC4] & 4
-    press(cpu, '9', hold=1_400_000, after=0)   # long 9; the flasher arms it at once
-    cpu.uart_in.extend(b'B'); cpu.run(100_000)
+    press(cpu, '9', hold=1_400_000, after=0)   # long 9; the flasher arms it at once and, answered,
+    cpu.uart_out.clear(); cpu.uart_in.extend(b'B')   # says to hold PTT
+    for _ in range(40):
+        if b'S\xa5\x5a' in cpu.uart_out: break
+        cpu.run(20_000)
+    assert b'S\xa5\x5a' in cpu.uart_out, "'B' not answered"
+    cpu.run(20_000)
     cpu.key = 'PTT'; cpu.run(300_000)
     assert cpu.resets == [0x55], cpu.resets
     assert cpu.ee.mem[0x1FC4] & 4 != dw, 'DUAL WATCH change lost by the restart: %s' % cpu.ee.mem[0x1FC0:0x1FF0].hex()
