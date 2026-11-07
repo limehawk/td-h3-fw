@@ -590,7 +590,15 @@ func (r *rig) settings() ([]string, error) {
 	if _, err := r.home(); err != nil {
 		return nil, err
 	}
-	sc, err := r.key("MENU", func(sc *screen) bool { t, _ := sc.at(0, 0); return strings.Contains(t, "/") })
+	sc, err := r.key("MENU", func(sc *screen) bool { // the title with its counter, and the lit row under it
+		t, _ := sc.at(0, 0)
+		for k := range 6 {
+			if s, lit := sc.at(15+15*k, 0); lit && s != "" {
+				return strings.Contains(t, "/")
+			}
+		}
+		return false
+	})
 	if err != nil {
 		return nil, err
 	}
