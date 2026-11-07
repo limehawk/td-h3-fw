@@ -2232,7 +2232,9 @@ void main(void)
 
         AMP_ON = open || beep_left || t_voice;
 
-        if (t_save && !scanning && since(&t_save) > 400) {   // 2 s after the last change; a scan's steps once it ends
+        // 2 s after the last change; a scan's steps once it ends; at once when armed for a flash, whose
+        // restart would lose it
+        if (t_save && (loader_armed || !scanning && since(&t_save) > 400)) {
             ee_write(CFG_ADDR, (const uint8_t *)&cfg, sizeof cfg);
             t_save = 0;
         }

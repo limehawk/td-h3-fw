@@ -2816,6 +2816,18 @@ def test_flash_restart_side_key(cpu):      # armed, side key 1 (PTT-B) restarts 
     assert cpu.resets == [0x55] and (0x30, 0xC1FE) not in cpu.bk.writes[n:], cpu.resets
 
 
+def test_flash_restart_saves(cpu):        # a setting changed just before a flash is kept: the restart came inside
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # the 2 s save wait and lost it (DUAL WATCH, long 9)
+    cpu.run(3 * 800_000)                   # saved
+    dw = cpu.ee.mem[0x1FC4] & 4
+    press(cpu, '9', hold=1_400_000, after=0)   # long 9; the flasher arms it at once
+    cpu.uart_in.extend(b'B'); cpu.run(100_000)
+    cpu.key = 'PTT'; cpu.run(300_000)
+    assert cpu.resets == [0x55], cpu.resets
+    assert cpu.ee.mem[0x1FC4] & 4 != dw, 'DUAL WATCH change lost by the restart: %s' % cpu.ee.mem[0x1FC0:0x1FF0].hex()
+    cpu.key = None
+
+
 def test_flash_restart(cpu):               # 'B' arms; PTT down then restarts into the loader before it keys up
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])
     # Armed, then 10 s with nothing from the computer: disarmed, so PTT transmits as ever.
@@ -3273,6 +3285,7 @@ INDEPENDENT = [
     ('no fixed text runs off the screen', test_no_clipped_text),
     ('screen mirror lapses after 10 s of silence', test_mirror_lapses),
     ('flash restart: B arms, PTT restarts into the loader', test_flash_restart),
+    ('flash restart: a setting changed just before is saved first', test_flash_restart_saves),
     ('fresh settings start A/B on the first two channels, dual watch on', test_fresh_settings_use_channels),
     ('one bad settings byte keeps the rest', test_settings_survive_one_bad_value),
     ('a corrupt slot mode byte resets that slot', test_settings_bad_slot_mode),
