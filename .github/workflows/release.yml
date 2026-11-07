@@ -1,0 +1,47 @@
+name: Release
+
+# The GitHub copy's releases. The forge (where CI runs on every PR) mirrors main and the release tags
+# here; each vX.Y.Z tag builds the same files as the forge's release job (tools/dist.sh) and
+# publishes them with the same notes (.forgejo/release-notes.md).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the build's version is git describe, which must be this tag
+
+      # Same pin as the forge's ci.yml (why and when to recheck are there).
+      - name: SDCC 4.5.0
+        run: |
+          curl -fsSL --retry 3 -o /tmp/sdcc.tar.bz2 \
+            https://downloads.sourceforge.net/project/sdcc/sdcc-linux-amd64/4.5.0/sdcc-4.5.0-amd64-unknown-linux2.5.tar.bz2
+          echo "3395722e3f8a31ce6a14c75fc419f586a3573b939f85efee5c88cdd35820a240  /tmp/sdcc.tar.bz2" | sha256sum -c
+          mkdir -p .toolchain && tar xjf /tmp/sdcc.tar.bz2 -C .toolchain
+
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install_args: go
+
+      - name: Build both images
+        run: make -C fw all rxonly
+
+      - name: Release files
+        run: tools/dist.sh "$GITHUB_REF_NAME"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sed "s/{ver}/${GITHUB_REF_NAME#v}/g" .forgejo/release-notes.md > /tmp/notes.md
+          pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease;; esac
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            && gh release upload "$GITHUB_REF_NAME" dist/* --clobber && gh release edit "$GITHUB_REF_NAME" --notes-file /tmp/notes.md \
+            || gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file /tmp/notes.md $pre

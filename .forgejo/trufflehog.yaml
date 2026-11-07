@@ -1,0 +1,27 @@
+# Custom TruffleHog detector for the global hooks: any *TOKEN / *SECRET /
+# *PASSWORD / *KEY assignment whose value is not a 1Password op:// reference
+# or a ${VAR}. TruffleHog's built-ins have no detector for many services' tokens.
+detectors:
+  - name: PlaintextEnvSecret
+    keywords:
+      - token
+      - secret
+      - password
+      - passwd
+      - api_key
+      - apikey
+      - private_key
+    regex:
+      value: '(?i)[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_?KEY)[A-Z0-9_]*\s*[:=]\s*["'']?([A-Za-z0-9_\-./+=]{16,})'
+    exclude_regexes_capture:
+      - '^op://'
+      - '^\$'
+      # Microsoft's public key token: in every Windows answer file, not a secret.
+      - '^31bf3856ad364e35$'
+      # Code that reads a secret is not a secret: env lookups and variable or property names
+      # (process.env.SQUARE_ACCESS_TOKEN, squareAccessToken, paymentIntent.client_secret).
+      - '^process\.env\.'
+      - '^import\.meta\.env\.'
+      - '^[a-z]+(?:[A-Z][a-z]+)+$'
+      - '^[a-z][A-Za-z]*\.[a-z_]+$'
+    entropy: 3.0

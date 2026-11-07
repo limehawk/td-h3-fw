@@ -1,0 +1,14 @@
+.toolchain/
+fw/build/
+backups/
+tools/tdh3/tdh3
+__pycache__/
+# TIDRADIO's firmware, updaters, guides and videos are theirs, not ours to publish:
+# only the index with download links and sha256s goes in git (stock/README.md).
+stock/*
+!stock/README.md
+!stock/zips.sha256
+
+docs/datasheets/*.pdf
+dist/
+tools/tdh3/builtin/

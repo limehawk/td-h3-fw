@@ -1,0 +1,7 @@
+# Tools for CI (.forgejo/workflows/ci.yml) and laptops; Renovate's mise manager bumps them.
+# Latest stable on 2026-11-04; recheck when Renovate opens a bump, or by 2027-02-01.
+# SDCC and PyPy aren't here: mise has no SDCC, and PyPy comes from uv (the workflow pins both).
+[tools]
+go = "1.27.3"         # tools/tdh3 (go.mod: go 1.27)
+uv = "0.13.7"         # installs PyPy for make test
+trufflehog = "3.99.8" # the secret scan the git hooks run

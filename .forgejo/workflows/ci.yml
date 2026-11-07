@@ -1,0 +1,217 @@
+name: CI
+
+# Every push to a PR, and every vX.Y.Z release tag, one run each: both firmware images, the emulator
+# suite with the hardware budget, the tdh3 CLI and a secret scan, then on a tag the release, only
+# once those pass. main takes changes only through a green PR, so a push to main isn't run again.
+# What each job checks and how to read a failure: docs/DEVELOPING.md, "CI". Runs on a runner with
+# the docker label. It needs two secrets, MISE_GITHUB_TOKEN (a public-read-only github.com
+# token for mise's downloads), RELEASE_TOKEN (a real account's token: the job's own token would
+# publish the release as "Ghost"). The GitHub copy builds its own release: .github/workflows/release.yml.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:                      # a newer push to the same PR or branch cancels the older run
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firmware:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # tags: the build's version comes from git describe
+
+      # SDCC, PyPy and the stock image, keyed on this file: a pin changed here fetches afresh.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .toolchain
+            stock/td-h3/250317/H3_250317.BIN
+          key: fw-tools-${{ hashFiles('.forgejo/workflows/ci.yml') }}
+
+      - uses: https://github.com/jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install_args: uv
+          cache: true
+          # github.token on Forgejo is a forge token; mise needs a github.com one
+          # for release downloads (60/h unauthenticated per runner IP).
+          github_token: ${{ secrets.MISE_GITHUB_TOKEN }}
+
+      # SDCC 4.5.0: the compiler every image so far was built and budgeted with; a new SDCC changes
+      # code size, so moving is its own change with a budget.py --compare. mise has no SDCC.
+      # Pinned 2026-11-04 (4.5.0 is the latest release); recheck at SDCC's next release or 2027-05-01.
+      - name: SDCC 4.5.0
+        run: |
+          [ -x .toolchain/sdcc-4.5.0/bin/sdcc ] && exit 0
+          curl -fsSL --retry 3 -o /tmp/sdcc.tar.bz2 \
+            https://downloads.sourceforge.net/project/sdcc/sdcc-linux-amd64/4.5.0/sdcc-4.5.0-amd64-unknown-linux2.5.tar.bz2
+          echo "3395722e3f8a31ce6a14c75fc419f586a3573b939f85efee5c88cdd35820a240  /tmp/sdcc.tar.bz2" | sha256sum -c
+          mkdir -p .toolchain && tar xjf /tmp/sdcc.tar.bz2 -C .toolchain
+
+      # PyPy runs the emulator ~10x faster than CPython (13 s against 2.5 min). uv checks its
+      # downloads against the sha256s built into uv (pinned in mise.toml).
+      # Pinned 2026-11-04 (latest PyPy 3.11); recheck when uv is bumped or by 2027-02-01.
+      - name: PyPy 3.11.17
+        run: |
+          echo "UV_PYTHON_INSTALL_DIR=$PWD/.toolchain/uv-python" >> "$GITHUB_ENV"
+          UV_PYTHON_INSTALL_DIR=$PWD/.toolchain/uv-python uv python install pypy3.11.17
+
+      # The boot test compares our LCD and BK4819 init with stock 250317, which isn't in git
+      # (TIDRADIO's, not ours to publish). Fetched from the URL in stock/README.md and checked
+      # against the sha256s there and in stock/zips.sha256.
+      - name: Stock 250317 image
+        working-directory: stock
+        run: |
+          bin=td-h3/250317/H3_250317.BIN
+          [ -f $bin ] && exit 0
+          url=$(sed -n 's/^- TD-H3 250317: //p' README.md)
+          curl -fsSL --retry 3 -o /tmp/stock.zip "$url"
+          echo "$(grep ' td-h3_250317.zip$' zips.sha256 | cut -d' ' -f1)  /tmp/stock.zip" | sha256sum -c
+          mkdir -p $(dirname $bin)
+          python3 -c "import zipfile, sys; sys.stdout.buffer.write(zipfile.ZipFile('/tmp/stock.zip').read('H3_250317.BIN'))" > $bin
+          echo "$(grep -o "[0-9a-f]\{64\} | $bin" README.md | cut -d' ' -f1)  $bin" | sha256sum -c
+
+      - name: Build both images (fails at 0xF800 or on initialized XDATA), and the all-C image
+        run: make -C fw all rxonly && make -C fw cref
+
+      # What ships is ASM=1 (the default): the C stays the source of truth, so the whole suite runs on
+      # the all-C images too, and each fw/asm function is run beside its C original (DEVELOPING.md,
+      # Assembly). A stale asm (its C changed) builds from C and prints "asm stale".
+      - name: Emulator suite, ASM=0
+        run: |
+          set -o pipefail
+          export TEST_JOBS=4
+          make -C fw test ASM=0 NOBUDGET=1 2>&1 | tee /tmp/test-c.log
+          grep -qx 'all passed' /tmp/test-c.log
+
+      - name: Assembly against its C
+        run: make -C fw cref asm && cd fw && $(uv python find pypy3.11) ../tools/asmdiff.py
+
+      - name: Emulator suite and hardware budget (ASM=1, what ships)
+        run: |
+          set -o pipefail
+          nproc; free -m
+          # The runner sees all the host's cores but not all its RAM: a worker per core runs out of memory.
+          export TEST_JOBS=4
+          make -C fw test 2>&1 | tee /tmp/test.log
+          grep -qx 'all passed' /tmp/test.log
+
+  cli:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+      - uses: https://github.com/jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install_args: go
+          cache: true
+          github_token: ${{ secrets.MISE_GITHUB_TOKEN }}
+      - name: go vet and go test
+        working-directory: tools/tdh3
+        # windows and darwin too: the release builds tdh3 for both. -tags release is the release's
+        # flasher, the firmware inside it (stand-in files here; tools/dist.sh puts the real ones in).
+        run: |
+          go vet ./... && go test ./... && GOOS=windows CGO_ENABLED=0 go vet ./... && GOOS=darwin CGO_ENABLED=0 go vet ./...
+          mkdir -p builtin && printf '\002' > builtin/td-h3.bin && printf '\002' > builtin/td-h3-rx.bin
+          go vet -tags release ./... && go test -tags release ./... && GOOS=windows CGO_ENABLED=0 go vet -tags release ./... && GOOS=darwin CGO_ENABLED=0 go vet -tags release ./...
+
+  # The same two scans as the global git hooks, over the whole history (about a second here).
+  # .forgejo/trufflehog.yaml is a copy of the hooks' custom detector for plaintext *_TOKEN etc.
+  secrets:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: https://github.com/jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install_args: trufflehog
+          cache: true
+          github_token: ${{ secrets.MISE_GITHUB_TOKEN }}
+      - name: TruffleHog
+        run: |
+          trufflehog git file://. --results=verified,unknown --fail --no-update
+          trufflehog git file://. --config .forgejo/trufflehog.yaml --include-detectors=CustomRegex \
+            --no-verification --results=verified,unverified,unknown --fail --no-update
+
+  # The tag's release: both images and the tdh3 flasher for Windows, macOS and Linux, attached to the
+  # Forgejo release (made if missing, files replaced on a re-run) with SHA256SUMS; the text is
+  # .forgejo/release-notes.md. A tag with a "-" (v0.0.0-test) makes a pre-release.
+  release:
+    needs: [firmware, cli, secrets]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the build's version is git describe, which must be this tag
+
+      # The CI job's cache (same key, same paths): SDCC is all this needs from it.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .toolchain
+            stock/td-h3/250317/H3_250317.BIN
+          key: fw-tools-${{ hashFiles('.forgejo/workflows/ci.yml') }}
+
+      # Same pin as ci.yml (why and when to recheck are there).
+      - name: SDCC 4.5.0
+        run: |
+          [ -x .toolchain/sdcc-4.5.0/bin/sdcc ] && exit 0
+          curl -fsSL --retry 3 -o /tmp/sdcc.tar.bz2 \
+            https://downloads.sourceforge.net/project/sdcc/sdcc-linux-amd64/4.5.0/sdcc-4.5.0-amd64-unknown-linux2.5.tar.bz2
+          echo "3395722e3f8a31ce6a14c75fc419f586a3573b939f85efee5c88cdd35820a240  /tmp/sdcc.tar.bz2" | sha256sum -c
+          mkdir -p .toolchain && tar xjf /tmp/sdcc.tar.bz2 -C .toolchain
+
+      - uses: https://github.com/jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install_args: go
+          cache: true
+          github_token: ${{ secrets.MISE_GITHUB_TOKEN }}
+
+      - name: Build both images
+        run: make -C fw all rxonly
+
+      - name: Release files
+        run: tools/dist.sh "$GITHUB_REF_NAME"
+
+      - name: Forgejo release
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "RELEASE_TOKEN secret missing: the release would be published as Ghost"; exit 1; }
+          python3 - <<'EOF'
+          import json, os, urllib.request, urllib.error
+          api = '%s/api/v1/repos/%s' % (os.environ['GITHUB_SERVER_URL'], os.environ['GITHUB_REPOSITORY'])
+          tag = os.environ['GITHUB_REF_NAME']
+          def call(method, path, body=None, ctype='application/json'):
+              req = urllib.request.Request(api + path, data=body, method=method,
+                                           headers={'Authorization': 'token ' + os.environ['TOKEN'], 'Content-Type': ctype})
+              with urllib.request.urlopen(req) as r:
+                  data = r.read()
+                  return json.loads(data) if data else None
+          notes = open('.forgejo/release-notes.md').read().replace('{ver}', tag[1:])   # for users, never a commit message
+          try:
+              rel = call('GET', '/releases/tags/' + tag)
+              call('PATCH', '/releases/%d' % rel['id'], json.dumps({'body': notes}).encode())
+          except urllib.error.HTTPError as e:
+              if e.code != 404:
+                  raise
+              rel = call('POST', '/releases', json.dumps({'tag_name': tag, 'name': tag, 'body': notes,
+                                                          'prerelease': '-' in tag}).encode())
+          for name in sorted(os.listdir('dist')):
+              for a in rel.get('assets', []):
+                  if a['name'] == name:                    # a re-run replaces the old file
+                      call('DELETE', '/releases/%d/assets/%d' % (rel['id'], a['id']))
+              b = 'tdh3fwrelease'
+              body = (b'--' + b.encode() + b'\r\nContent-Disposition: form-data; name="attachment"; filename="' + name.encode()
+                      + b'"\r\nContent-Type: application/octet-stream\r\n\r\n' + open('dist/' + name, 'rb').read()
+                      + b'\r\n--' + b.encode() + b'--\r\n')
+              call('POST', '/releases/%d/assets?name=%s' % (rel['id'], name), body, 'multipart/form-data; boundary=' + b)
+              print('attached', name)
+          print(rel['html_url'])
+          EOF
+

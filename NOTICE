@@ -1,0 +1,64 @@
+TD-H3 open firmware
+===================
+
+This firmware is MIT (LICENSE), except for the parts below, adapted from Apache-2.0 firmware for
+the Quansheng UV-K5 family (the same BK4819 radio chip) and changed for this board and MCU. Those
+parts are under the Apache License, Version 2.0 (LICENSE-APACHE); each file holding one says so at
+its top. Register values found by trying them on the air are facts, used with credit, not code.
+
+What this firmware took, by source
+----------------------------------
+
+Dual Tachyon, uv-k5-firmware (https://github.com/DualTachyon/uv-k5-firmware), Copyright 2023
+Dual Tachyon:
+  - the 55 Hz squelch-tail detector set-up and the REG_02 interrupt acknowledge (fw/bk4819.c).
+  - the VOX detector set-up: REG_46, REG_79, REG_7A's low bits, REG_31 bit 2 and its found and lost
+    interrupts (fw/bk4819.c, bk_vox_on); the thresholds and the hang are ours.
+
+OneOfEleven, am_fix.c, as carried in https://github.com/armel/uv-k5-firmware-custom,
+Copyright 2023 OneOfEleven:
+  - the LNA gain steps and five rows of the AM gain table (fw/bk4819.c).
+
+Armel / F4HWN, https://github.com/armel/uv-k5-firmware-custom (register values, fw/bk4819.c,
+fw/radio.c):
+  - DTMF decode threshold, AM filter width and AGC thresholds, the FM weak-signal filter, mic AGC
+    (REG_19), the compander words, the reverse-burst tail (REG_52) and the 6.25 kHz filter.
+  - the USB (SSB) receive set-up, from RADIO_SetModulation in radio.c: REG_47 AF type 5, REG_3D
+    IF 0 and REG_73 bit 4 (AFC off), changed to our register table code in bk_mode.
+
+muzkr and Armel / F4HWN, the UV-K1 / UV-K5 V3 port,
+https://github.com/armel/uv-k1-k5v3-firmware-custom (register values, fw/bk4819.c):
+  - REG_2B's de-emphasis and audio low-pass bits, off in AM.
+
+fagci (https://github.com/fagci), spectrum.c as carried in the UV-K1 / UV-K5 V3 port,
+Copyright 2023 fagci:
+  - the scope's RSSI read (fw/bk4819.c, bk_dbm_at): wait for the glitch count to settle, then drop
+    the first RSSI read, as GetRssi does.
+
+Egzumer (https://github.com/egzumer/uv-k5-firmware-custom): nothing taken; named because the UV-K1
+port's NOTICE carries them.
+
+Attribution notices carried from the UV-K1 port's NOTICE
+--------------------------------------------------------
+
+  This product includes software originally developed by Dual Tachyon for the Quansheng UV-K5
+  open-source firmware project: https://github.com/DualTachyon/uv-k5-firmware
+
+  This product includes work derived from Egzumer's UV-K5 custom firmware:
+  https://github.com/egzumer/uv-k5-firmware-custom
+
+  This product includes work developed by Armel / F4HWN and contributors for the F4HWN firmware
+  projects, including the F4HWN Edition Fusion port for UV-K1 and UV-K5 V3 radios:
+  https://github.com/armel/uv-k5-firmware-custom
+  https://github.com/armel/uv-k1-k5v3-firmware-custom
+
+  The UV-K1 and UV-K5 V3 port is the result of joint work by muzkr and Armel / F4HWN.
+
+  This product includes contributions and/or derived work from, among others: Dual Tachyon,
+  OneOfEleven, fagci, Egzumer, muzkr, Armel / F4HWN.
+
+  The spectrum analyzer implementation includes work originally developed by fagci:
+  https://github.com/fagci
+
+Attribution here does not imply endorsement by Dual Tachyon, OneOfEleven, fagci, Egzumer, muzkr,
+Armel / F4HWN or any other contributor, and does not modify the terms of any licence.
