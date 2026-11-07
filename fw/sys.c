@@ -192,7 +192,9 @@ void uart_put(uint8_t port, uint8_t c) __reentrant
     if (port) {
         tx1_done = 0;
         SBUF1 = c;
-        while (!tx1_done && --t) ;
+        while (!tx1_done && --t)
+            if ((IE & 0xC0) != 0xC0 && (SCON1 & 0x02)) { SCON1 &= ~0x02; break; }   // no uart1_isr to clear TI
+
     } else {
         SBUF0 = c;
         while (!(SCON0 & 0x02) && --t) ;
