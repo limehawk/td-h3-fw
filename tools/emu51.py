@@ -467,6 +467,8 @@ class CPU:
         if self.sfr[0x88] & 0x20 and ie & 0x02:
             self.sfr[0x88] &= ~0x20
             self.vector(0x0B)
+        elif ie & 0x40 and self.sfr[0xEA] & 3:
+            self.vector(0x33)              # UART1, RI1 or TI1 (the handler clears them)
         elif self.adc_pending and self.sfr[0xAA] & 0x10:
             self.adc_pending = False
             self.vector(0x9B)

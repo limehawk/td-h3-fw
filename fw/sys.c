@@ -121,6 +121,24 @@ uint16_t batt_mv(void)
 __sfr __at(0x98) SCON0;
 __sfr __at(0x99) SBUF0;
 
+// UART1 runs on its interrupt (6, vector 0x0033, ES1: reference manual 19.5): each byte that lands
+// goes into rx1 at once, so a busy main loop (a mirrored redraw, 200 ms and more) no longer loses
+// the computer's bytes but the first. TI1 and RI1 share the vector and both need clearing, so the
+// handler also takes TI1 and tells uart_put by tx1_done.
+static __xdata uint8_t rx1[16];
+static volatile __data uint8_t rx1_in, rx1_out;     // free-running; rx1_in - rx1_out bytes waiting
+static volatile __bit tx1_done;
+
+void uart1_isr(void) __interrupt(6)
+{
+    if (SCON1 & 0x01) {                     // read SBUF before clearing RI, or a byte landing in between overwrites it
+        uint8_t c = SBUF1;
+        SCON1 &= ~0x01;
+        if ((uint8_t)(rx1_in - rx1_out) < sizeof rx1) rx1[rx1_in++ & 15] = c;   // full: dropped
+    }
+    if (SCON1 & 0x02) { SCON1 &= ~0x02; tx1_done = 1; }
+}
+
 void uart_init(void)
 {
     SCON1 = (SCON1 & 0x3F) | 0x40;
@@ -132,6 +150,8 @@ void uart_init(void)
     BRTCON |= 0x80;
     PS_RXD1 = 0x11;
     P11CFG = 2; P13CFG = 2;
+    rx1_in = rx1_out = 0;
+    IE |= 0x40;                             // ES1: uart1_isr
 
     SCON0 = (SCON0 & 0x3F) | 0x40;
     FUNCCR = (FUNCCR & 0xF8) | 0x04;
@@ -153,14 +173,12 @@ void uart_usb_fast(uint8_t speed) __reentrant
     BRTCON |= 0x80;
 }
 
-int16_t uart_get(uint8_t port) __reentrant  // read SBUF before clearing RI, or a byte landing in between overwrites it
+int16_t uart_get(uint8_t port) __reentrant
 {
     uint8_t c;
     if (port) {
-        if (!(SCON1 & 0x01)) return -1;
-        c = SBUF1;
-        SCON1 &= ~0x01;
-        return c;
+        if (rx1_in == rx1_out) return -1;
+        return rx1[rx1_out++ & 15];
     }
     if (!(SCON0 & 0x01)) return -1;
     c = SBUF0;
@@ -172,9 +190,9 @@ void uart_put(uint8_t port, uint8_t c) __reentrant
 {
     uint16_t t = 60000;                     // > one byte at 9600 baud
     if (port) {
+        tx1_done = 0;
         SBUF1 = c;
-        while (!(SCON1 & 0x02) && --t) ;
-        SCON1 &= ~0x02;
+        while (!tx1_done && --t) ;
     } else {
         SBUF0 = c;
         while (!(SCON0 & 0x02) && --t) ;

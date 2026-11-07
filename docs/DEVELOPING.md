@@ -534,7 +534,9 @@ which does all of this:
   `FREQ`/`CHANNEL`) before typing.
 - **Full-screen modes (scope, FM, freq find, PC LINK) only from the home screen**, checked, and
   check the home screen again after leaving them.
-- **One byte per remote command, 20 ms+ apart**: UART1 holds one byte and is polled every ~10 ms.
+- **One byte per remote command.** The radio keeps up to 16 that land while it is busy (UART1's
+  interrupt, `uart1_isr`) and reads one key byte a pass; older firmware held one byte and lost the
+  rest, so tdh3 still spaces them 20 ms+ apart.
 - **PC LINK owns the port**: no remote screen while it runs; V/M leaves it.
 - **Never `pkill -f` a pattern that matches your own shell** (it kills the command that ran it).
 - **Leave the radio as you found it**: note slot frequencies, step and mode first, and put them

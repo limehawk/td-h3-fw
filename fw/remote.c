@@ -16,8 +16,8 @@
 //                       'B'                         arm the flash restart: answers 'S' A5 5A, then 115200; the next PTT press
 //                                                    restarts into the vendor loader (tdh3 flash), 10 s of
 //                                                    nothing from the computer disarms it
-// One byte per command, 20 ms or more apart: UART1 holds one byte and this polls every ~10 ms,
-// so a byte that lands before the last one was read is lost (seen on the radio).
+// One byte per command. uart1_isr keeps up to 16 that land while the loop is busy; this reads at
+// most one key byte a pass (every ~10 ms), so each hold and release is seen in turn.
 #include "fw.h"
 
 uint8_t remote, rkey, mirror, remote_voice;
@@ -81,7 +81,10 @@ void remote_poll(void) __reentrant          // from key_scan, so every screen he
     // press ("15" became 1, 5, 5). A new press comes after a release or tdh3's 'S', so a second V/M
     // from the next tdh3 call still counts (v0.47.3 dropped it: rgone outlived the press).
     if ((uint16_t)(t - was) > 50) was = t - 50;
-    while ((r = uart_get(PORT_USB)) >= 0) {
+    // Nothing is read while a held key isn't yet registered: after a slow pass the hold and its release
+    // wait together in uart1_isr's buffer, and read in one go the press would be let go unseen.
+    // remote_tick's 1 s let-go still ends a hold key_event never registers.
+    while (!(rkey && key_held != rkey) && (r = uart_get(PORT_USB)) >= 0) {
         c = r;
         mirror = 1;
         t_heard = was;
@@ -91,6 +94,7 @@ void remote_poll(void) __reentrant          // from key_scan, so every screen he
             c &= 0x7F;
             if (!(c && c == rprev && !rkey)) rkey = c >= K_PTT && c != K_SIDE2 ? K_NONE : c;
             rprev = c;
+            break;                          // one key byte a pass: a hold and its release read together never pressed
         }
         else if (c == 'B') {                // answered at 1 Mbaud, then the loader's speed: no redraw
             loader_armed = 1;

@@ -164,7 +164,7 @@ cal = EEPROM 0x1F50-0x1F7F, valid when EEPROM 0x1FF0 = 0x85 (stock 0xC8E3). Stoc
 
 **Battery.** ADC channel 8, 12-bit left-aligned (`ADRESH<<4 | ADRESL>>4`), stock config `ADCON1 = ch | 0x60 | 0x80`, `ADCLDO=0xA0` (0xE4A4). Stock's bars at raw 3106/3492/3789 and it waits at boot until raw > 2807. Volts per count is not on the schematic page we read: 2.058 mV/count (`BATT_UV_PER_COUNT` in `fw/sys.c`) read 7.4 V on the test radio, which is plausible for a 2S pack; BCAL in the menu trims it in 20 mV steps.
 
-**UART1 (USB-C).** `SCON1` mode 1, `FUNCCR` selects the baud timer, `BRTDL/H`=0xFFB2 (38400; ours 0xFFFD = 1 Mbaud while REMOTE is on, 0xFFE6 = 115200 while armed, `uart_usb_fast`), `PCON.SMOD1`, `PS_RXD1`(0xF69E)=0x11, `P11CFG`=`P13CFG`=2 (stock 0xDBAD). Stock flips `P11CFG` to 0 to read the external PTT on the same pin.
+**UART1 (USB-C).** `SCON1` mode 1, `FUNCCR` selects the baud timer, `BRTDL/H`=0xFFB2 (38400; ours 0xFFFD = 1 Mbaud while REMOTE is on, 0xFFE6 = 115200 while armed, `uart_usb_fast`), `PCON.SMOD1`, `PS_RXD1`(0xF69E)=0x11, `P11CFG`=`P13CFG`=2 (stock 0xDBAD). Stock flips `P11CFG` to 0 to read the external PTT on the same pin. Its interrupt is number 6, vector 0x0033, enabled by `ES1` (IE bit 6); TI1 and RI1 share it and both are cleared in software (CMS8S3680/69xx Reference Manual V1.0.9, 6.1 and 19.5). Stock never enables it (its only vectors are Timer0 0x0B and ADC 0x9B); ours does, for `uart1_isr`'s 16-byte receive buffer.
 
 ## EEPROM (AT24C64, 8 KB)
 

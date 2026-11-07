@@ -2146,6 +2146,18 @@ def test_remote_paced_vm(cpu):             # as tools/emuport.py feeds tdh3's by
     assert next(t.strip() for t in remote_texts(cpu) if t.strip() in ('VFO', '*M1')) == '*M1', 'V/M lost'
 
 
+def test_remote_bytes_kept_in_redraw(cpu):   # uart1_isr keeps what lands while the loop is busy: 'S', then a
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # whole V/M press and a 'Q' at once, all inside the mirrored redraw
+    cpu.run(1_000_000)
+    cpu.uart_out.clear()
+    lost = cpu.uart_lost
+    cpu.uart_in.extend(b'S\x8e\x8e\x80\x80Q')
+    cpu.run(4_000_000)
+    assert cpu.uart_lost == lost, 'bytes lost: %d' % (cpu.uart_lost - lost)
+    assert b'S\xa5\x5a' in cpu.uart_out and b'\nq' not in cpu.uart_out[:3] and b'q' in cpu.uart_out, 'no status line'
+    assert next(t.strip() for t in remote_texts(cpu) if t.strip() in ('VFO', '*M1')) == '*M1', 'V/M lost'
+
+
 def test_remote_up_one_step(cpu):          # a redraw slower than 200 ms ate both release bytes; the hold byte
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # it left read late held UP past the 0.5 s repeat: THEME moved two
     for item, row, vals in (('THEME', 'THEME', ['CLASSIC', 'AMBER', 'GREEN', 'RED']), ('BRIGHT', 'BRIGHTNESS', '12345')):
@@ -3150,6 +3162,7 @@ INDEPENDENT = [
     ('REMOTE: a digit from tdh3 landing in a redraw still counts (menu number)', test_remote_digit_in_redraw),
     ('REMOTE: the same key in two tdh3 calls counts twice, dark screen too', test_remote_same_key_twice),
     ('REMOTE: a V/M fed a byte at a time (emuport) still counts', test_remote_paced_vm),
+    ('REMOTE: bytes that land in a redraw are kept, a whole press read in turn', test_remote_bytes_kept_in_redraw),
     ('dual watch waits 3 s after a call drops (fades)', test_dual_watch_waits_after_a_fade),
     ('a scan stops for hold MENU (save) and the hold-key tools', test_scan_stops_for_save_and_tools),
     ('scan stop: back to the start with no hit, to the one hit (memory and VFO)', test_scan_stop_goes_back_or_to_hit),

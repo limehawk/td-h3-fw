@@ -9,6 +9,7 @@
 // SDCC emits an interrupt vector only when the ISR prototype is visible in main's file.
 void t0_isr(void) __interrupt(1);
 void t1_isr(void) __interrupt(3);
+void uart1_isr(void) __interrupt(6);
 extern volatile uint16_t ticks;            // 5 ms
 void sys_init(void);
 uint16_t now(void);                        // ticks, read safely

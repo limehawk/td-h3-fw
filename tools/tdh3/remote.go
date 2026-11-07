@@ -242,9 +242,9 @@ func look(p port, wait time.Duration) (*screen, error) {
 func lookRest(p port, wait time.Duration) (*screen, []byte, error) {
 	readN(p, 1<<16, 100*time.Millisecond) // drop whatever was mid-flight
 	p.Write([]byte("S"))
-	// The radio holds one byte and reads it when its loop gets round to it: a byte sent before it
-	// took the last is lost (a busy radio, a call coming in, lost 'Q's this way). So 'Q' goes once
-	// 'S' is answered, and again if the redraw ends without the status line.
+	// Older firmware holds one byte and reads it when its loop gets round to it: a byte sent before it
+	// took the last is lost (a busy radio, a call coming in, lost 'Q's this way); newer keeps 16. So
+	// 'Q' goes once 'S' is answered, and again if the redraw ends without the status line.
 	// Done as soon as the redraw's 'E' and the status line are both in; older firmware sends no
 	// 'E', and the screens without one (FM, scope) neither, so `wait` stays the upper limit.
 	var got []byte
