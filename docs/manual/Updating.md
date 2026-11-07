@@ -88,6 +88,8 @@ and typing `tdh3 flash` do the same thing.
 
    With TIDRADIO's firmware on the radio (or REMOTE off) the fourth line says **radio not
    answering (off, or REMOTE off): you'll switch it on holding PTT next** instead: that's normal.
+   An older flasher says the same to a radio with newer firmware, which talks over the cable
+   faster than it knows; it still flashes, the switch-on-holding-PTT way.
 
    It flashes only numbered releases (`0.55.2`) and TIDRADIO's own images. A build made between
    releases (`0.55.2-3`, or one with a `+`) is refused before anything is shown, with

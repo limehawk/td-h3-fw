@@ -10,7 +10,7 @@ in that image. "Schematic" means TIDRADIO's `TD-H3 sch.pdf` as nicsure posted it
 |---|---|---|
 | Part | Marked TA3782F; schematic symbol says "SC95F7767". **It is a Cmsemicon CMS8S6990-family 1T 8051, 48-pin**, not SinOne SC95F. | Stock uses CMS8S6990 registers throughout: `TA` (0x96) + `WDCON` (0x97) timed access, `SCON1`/`SBUF1` at 0xEA/0xEB, baud timer `BRTCON` at XDATA 0xF5C0, `PxTRIS` direction registers, pin-function registers `PxyCFG` at XDATA 0xF000+. Names from Cmsemicon `cms8s6990.h`. The SinOne SC95F761x map does not fit (stock's UART/port writes land on unrelated SC95F registers). |
 | Extra ports | P4 at 0xC0, P5 at 0xD8, `P4TRIS` 0xA4, `P5TRIS` 0xA5 (not in the 32-pin CMS8S6990 header) | Stock port init at 0xE4FC writes 0xA4/0xA5 right after `P0TRIS`..`P3TRIS`, and the values match the schematic's pin directions exactly. |
-| Clock | 48 MHz | UART1 reload 0xFFB2 gives 38400 only at 48 MHz (Fsys/16/78 = 38462, +0.16%; ours uses 0xFFE6, 48 MHz/16/26 = 115385, +0.16%, for REMOTE); UART0 reload 0xFEC8 gives 9600; Timer0 reload 0xB1E0 at Fsys/12 gives a 5 ms tick (stock 0xEE1B). Stock never writes `CLKDIV`: the reset clock is already right. |
+| Clock | 48 MHz | UART1 reload 0xFFB2 gives 38400 only at 48 MHz (Fsys/16/78 = 38462, +0.16%; ours uses 0xFFFD, 48 MHz/16/3 = 1 Mbaud exactly, for REMOTE, and 0xFFE6, 48 MHz/16/26 = 115385, +0.16%, while armed for the flash restart); UART0 reload 0xFEC8 gives 9600; Timer0 reload 0xB1E0 at Fsys/12 gives a 5 ms tick (stock 0xEE1B). Stock never writes `CLKDIV`: the reset clock is already right. |
 | Flash | 64 KB; app 0x0000-0xF7FF, bootloader 0xF800-0xFFFF | Bootloader (below). |
 | XRAM | at least 0x04E5 bytes: stock addresses XDATA up to 0x04E4; this firmware declares 1280 B | Stock XDATA addresses; our `fw.map`. |
 | Watchdog | Stock sets `CKCON[7:5]=7`, then `TA=AA,55; WDCON|=0x02`, and kicks with `TA=AA,55; WDCON|=0x01` | Stock 0xEF28, 0xF040. Copied as is. |
@@ -164,7 +164,7 @@ cal = EEPROM 0x1F50-0x1F7F, valid when EEPROM 0x1FF0 = 0x85 (stock 0xC8E3). Stoc
 
 **Battery.** ADC channel 8, 12-bit left-aligned (`ADRESH<<4 | ADRESL>>4`), stock config `ADCON1 = ch | 0x60 | 0x80`, `ADCLDO=0xA0` (0xE4A4). Stock's bars at raw 3106/3492/3789 and it waits at boot until raw > 2807. Volts per count is not on the schematic page we read: 2.058 mV/count (`BATT_UV_PER_COUNT` in `fw/sys.c`) read 7.4 V on the test radio, which is plausible for a 2S pack; BCAL in the menu trims it in 20 mV steps.
 
-**UART1 (USB-C).** `SCON1` mode 1, `FUNCCR` selects the baud timer, `BRTDL/H`=0xFFB2 (38400; ours 0xFFE6 = 115200 while REMOTE is on, `uart_usb_fast`), `PCON.SMOD1`, `PS_RXD1`(0xF69E)=0x11, `P11CFG`=`P13CFG`=2 (stock 0xDBAD). Stock flips `P11CFG` to 0 to read the external PTT on the same pin.
+**UART1 (USB-C).** `SCON1` mode 1, `FUNCCR` selects the baud timer, `BRTDL/H`=0xFFB2 (38400; ours 0xFFFD = 1 Mbaud while REMOTE is on, 0xFFE6 = 115200 while armed, `uart_usb_fast`), `PCON.SMOD1`, `PS_RXD1`(0xF69E)=0x11, `P11CFG`=`P13CFG`=2 (stock 0xDBAD). Stock flips `P11CFG` to 0 to read the external PTT on the same pin.
 
 ## EEPROM (AT24C64, 8 KB)
 

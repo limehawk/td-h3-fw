@@ -25,7 +25,8 @@ import test_fw  # noqa: E402
 RATE = 800_000                              # instructions per second: 4000 per 5 ms tick
 SLICE = 4000
 GAP = RATE * 15 // 100                     # 150 ms: a key is held at least this long
-BAUDS = {termios.B38400: 38400, termios.B115200: 115200, termios.B1000000: 1_000_000}
+B1M = getattr(termios, "B1000000", 0o010010)   # Linux's value: PyPy's termios has no name for it
+BAUDS = {termios.B38400: 38400, termios.B115200: 115200, B1M: 1_000_000}
 DEBUG = os.environ.get('EMU_DEBUG')
 
 cpu = test_fw.boot(sys.argv[1] if len(sys.argv) > 1 else test_fw.FW)

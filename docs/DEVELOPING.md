@@ -483,10 +483,10 @@ bootloader can't erase itself. Stock images are in `stock/` if you ever need to 
 
 ## Driving the real radio (REMOTE)
 
-With MENU → REMOTE → ON, the radio mirrors every `lcd_fill`/`lcd_text` to USB-C at 115200 and
+With MENU → REMOTE → ON, the radio mirrors every `lcd_fill`/`lcd_text` to USB-C at 1 Mbaud and
 takes key presses (protocol at the top of `fw/remote.c`). PTT and PTT-B are refused in the
 firmware and absent from the tool. `B` arms the flash restart that `tdh3 flash` uses: the radio
-answers as for `S`, and the next physical PTT press restarts it into the vendor bootloader
+answers `S` A5 5A and switches to the bootloader's 115200 (tdh3 follows it), and the next physical PTT press restarts it into the vendor bootloader
 (HARDWARE.md, Bootloader) before it can key up; 10 s with no byte from the computer disarms it, so tdh3 sends 0x80 (no key) every 2 s while it waits for PTT, with no time limit.
 Don't send `B` from scripts that drive the radio.
 
@@ -498,9 +498,11 @@ tools/tdh3/tdh3 -p /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0 remote keys 
 
 The status line gives frequency, RSSI, squelch open/closed, speaker on/off and battery, which
 is how squelch and audio routing get checked without ears on the radio. Mirroring slows every
-redraw (115200 baud, about 87 µs a byte), so leave REMOTE off in normal use. PC LINK drops the
+redraw (1 Mbaud, 10 µs a byte), so leave REMOTE off in normal use. PC LINK drops the
 port to the clone protocol's 38400 while it runs (CHIRP, `tdh3 eeprom`/`channels`); `tdh3 remote`
-tries 115200 first and falls back to 38400 for older builds. In the emulator, `tools/lcdshot.py`
+tries 1 Mbaud first and falls back to 115200 and 38400 for older builds. The step commands read
+the screen whole once, then keep it from the draws each key sets off; a check that fails on that
+screen reads it whole again before it counts. In the emulator, `tools/lcdshot.py`
 renders `cpu.lcd` to a PNG the same way.
 
 `remote tune`, `channel`, `slot`, `home` and `settings` do the checked steps of `tools/radio.py`
