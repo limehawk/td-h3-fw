@@ -236,7 +236,7 @@ class CPU:
         self.adc_pending = False
         self.uart_t = 0
         self.uart_lost = 0
-        self.uart_baud = 115200   # the computer's end of USB-C (None: any); a mismatch drops bytes both ways
+        self.uart_baud = 1_000_000   # the computer's end of USB-C (None: any); a mismatch drops bytes both ways
         self.uart_garbled = 0     # bytes dropped for that
         self.uart_tx_due = 0      # icount when SBUF1's byte is out and TI sets
         self.idles = 0

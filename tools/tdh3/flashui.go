@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go.bug.st/serial"
 	"io"
 	"os"
 	"regexp"
@@ -110,20 +111,32 @@ const holdPTT = "switch the radio off, then hold PTT and switch it on"
 // fw/remote.c disarms after 10 s with no byte from the computer, and 0x80 gets no answer.
 const keepArmed = 2 * time.Second
 
-// restart arms the radio's flash restart over REMOTE: 'B', answered as 'S' is ("S" A5 5A). The
-// next PTT press then restarts it into the bootloader with PTT still held: flash mode with no
-// power-cycle. Firmware without it ignores 'B', so no answer means the power-cycle way.
+// restart arms the radio's flash restart over REMOTE: 'B', answered "S" A5 5A at REMOTE's speed;
+// armed, the radio waits at the bootloader's 115200, and so does p after this. The next PTT press
+// then restarts it into the bootloader with PTT still held: flash mode with no power-cycle.
+// Firmware without it ignores 'B', so no answer means the power-cycle way.
 func restart(p port) bool {
-	if _, err := p.Write([]byte("B")); err != nil {
-		return false
-	}
-	var got []byte // a byte at a time, so the bootloader's A5s after the answer stay for flash
-	for t := time.Now(); time.Since(t) < time.Second; {
-		if got = append(got, readN(p, 1, 100*time.Millisecond)...); bytes.HasSuffix(got, []byte("S\xA5\x5A")) {
-			return true
+	defer setBaud(p, 115200)
+	for _, baud := range remoteBauds[:2] { // 115200: older td-h3-fw
+		setBaud(p, baud)
+		if _, err := p.Write([]byte("B")); err != nil {
+			return false
+		}
+		var got []byte // a byte at a time, so the bootloader's A5s after the answer stay for flash
+		for t := time.Now(); time.Since(t) < time.Second; {
+			if got = append(got, readN(p, 1, 100*time.Millisecond)...); bytes.HasSuffix(got, []byte("S\xA5\x5A")) {
+				return true
+			}
 		}
 	}
 	return false
+}
+
+// setBaud changes a serial port's speed (the test fakes have none).
+func setBaud(p port, baud int) {
+	if s, ok := p.(serial.Port); ok {
+		s.SetMode(&serial.Mode{BaudRate: baud})
+	}
 }
 
 // armed waits for PTT with no time limit, keeping the radio armed, until stop closes. gone
@@ -231,7 +244,7 @@ func statusVersion(b []byte) (string, bool) {
 }
 
 // findRadio waits for the radio to show up, for up to `wait` (0: until Ctrl-C): running, answering
-// REMOTE's status request with its version (at 115200, or 38400 on older firmware); or in flash mode,
+// REMOTE's status request with its version (at any of remoteBauds); or in flash mode,
 // the bootloader's run of A5s at 115200. hint is called once after 4 s of nothing.
 func findRadio(portName string, wait time.Duration, hint func()) (ver string, flashMode bool) {
 	start, hinted := time.Now(), false
@@ -246,7 +259,7 @@ func findRadio(portName string, wait time.Duration, hint func()) (ver string, fl
 		} else {
 			time.Sleep(200 * time.Millisecond) // the cable is out: don't spin a core waiting for it
 		}
-		for _, baud := range []int{115200, 38400} {
+		for _, baud := range remoteBauds {
 			if p, err := open(portName, baud); err == nil {
 				hold(p)
 				var got []byte

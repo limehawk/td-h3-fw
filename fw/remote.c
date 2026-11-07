@@ -1,7 +1,8 @@
 // Remote control over USB-C, on while MENU -> REMOTE is ON. Every LCD draw is copied to the
 // port and the computer may hold a key (tools/tdh3 remote). PTT and PTT-B are refused, so the
-// radio never transmits from here. PC LINK switches it off while it owns the port. 115200 8N1
-// while on, 38400 (the clone protocol's speed) while off: key_scan switches it.
+// radio never transmits from here. PC LINK switches it off while it owns the port. 1 Mbaud 8N1
+// while on (115200 while armed by 'B'), 38400 (the clone protocol's speed) while off: key_scan
+// switches it.
 //
 //   radio -> computer   'f' x y w h c16             fill
 //                       't' x y scale fg16 bg16 text NUL
@@ -12,7 +13,7 @@
 //                                                     held; 0x80 lets go, and so do 300 ms of nothing
 //                       'S'  'Q'
 //                       'V' n                       play voice chip prompt n: answers 'q' "VOICE n"
-//                       'B'                         arm the flash restart: answers as 'S' does; the next PTT press
+//                       'B'                         arm the flash restart: answers 'S' A5 5A, then 115200; the next PTT press
 //                                                    restarts into the vendor loader (tdh3 flash), 10 s of
 //                                                    nothing from the computer disarms it
 // One byte per command, 20 ms or more apart: UART1 holds one byte and this polls every ~10 ms,
@@ -91,7 +92,12 @@ void remote_poll(void) __reentrant          // from key_scan, so every screen he
             if (!(c && c == rprev && !rkey)) rkey = c >= K_PTT && c != K_SIDE2 ? K_NONE : c;
             rprev = c;
         }
-        else if (c == 'B') { loader_armed = 1; goto sync; }
+        else if (c == 'B') {                // answered at 1 Mbaud, then the loader's speed: no redraw
+            loader_armed = 1;
+            put('S'); put(0xA5); put(0x5A);
+            delay_ms(1);                    // the last stop bit out before the speed changes
+            uart_usb_fast(USB_LOADER);
+        }
         else if (c == 'S') { sync: rprev = 0; put('S'); put(0xA5); put(0x5A); remote_req |= REQ_REDRAW; }
         else if (c == 'Q') remote_req |= REQ_STATUS;
     }

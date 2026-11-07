@@ -26,10 +26,13 @@ extern volatile uint8_t beep_left;         // 5 ms units, nonzero while beeping
 uint16_t batt_mv(void);
 void uart_init(void);
 #define PORT_BT  0                         // UART0, Bluetooth, 9600
-#define PORT_USB 1                         // UART1, USB-C, 115200 with REMOTE on, else 38400
+#define PORT_USB 1                         // UART1, USB-C, 1 Mbaud with REMOTE on, else 38400
 int16_t uart_get(uint8_t port) __reentrant; // -1 if nothing
 void uart_put(uint8_t port, uint8_t c) __reentrant;
-void uart_usb_fast(uint8_t fast) __reentrant;   // USB-C at 115200 (REMOTE) or 38400 (clone protocol)
+void uart_usb_fast(uint8_t speed) __reentrant;  // USB-C: USB_CLONE 38400, USB_REMOTE 1 Mbaud, USB_LOADER 115200
+#define USB_CLONE  0
+#define USB_REMOTE 1
+#define USB_LOADER 2                        // REMOTE armed to restart into the loader: the loader's speed
 
 // lcd.c (128x128, RGB565)
 #define W 128

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestScreenFromMirror(t *testing.T) {
@@ -89,5 +90,82 @@ func TestLitIsInverseVideo(t *testing.T) {
 	}
 	if _, lit := sc.at(14, 1); !lit {
 		t.Fatal("the selected letter not lit")
+	}
+}
+
+// simRadio answers like fw/remote.c on the home screen: 'S' redraws it all, 'Q' sends the status
+// line, a key redraws only what it changes. Digits type a frequency on the bottom line.
+type simRadio struct {
+	out    bytes.Buffer
+	typed  string
+	freq   string
+	held   bool
+	syncs  int
+	broken bool // the next key's redraw goes missing
+}
+
+func (r *simRadio) text(x, y, scale int, s string, fg uint16) {
+	r.out.Write([]byte{'t', byte(x), byte(y), byte(scale), byte(fg >> 8), byte(fg), 0, 0})
+	r.out.WriteString(s + "\x00")
+}
+
+func (r *simRadio) bottom() {
+	r.out.Write([]byte{'f', 0, 120, 128, 8, 0, 0})
+	if r.typed != "" {
+		r.text(0, 120, 1, "FREQ "+r.typed[:min(3, len(r.typed))]+"."+r.typed[min(3, len(r.typed)):], 0xFFFF)
+	}
+}
+
+func (r *simRadio) Write(b []byte) (int, error) {
+	for _, c := range b {
+		switch {
+		case c == 'S':
+			r.syncs++
+			r.out.Write(sync)
+			r.out.Write([]byte{'f', 0, 0, 128, 128, 0, 0})
+			r.out.Write([]byte{'t', 1, 14, 1, 0, 0, 0xFF, 0xFF, 'A', 0}) // the selected letter, lit
+			r.text(32, 23, 2, r.freq, 0xFFFF)
+			r.text(0, 27, 1, "VFO", 0xFFFF)
+			r.text(32, 82, 2, "446.000", 0xFFFF)
+			r.bottom()
+			r.out.WriteByte('E')
+		case c == 'Q':
+			r.out.WriteString("q" + r.freq + " -112 C - 7400 0.61.0\n")
+		case c == 0x80:
+			r.held = false
+		case c > 0x80 && !r.held:
+			r.held = true
+			if d := c&0x7F - 1; d <= 9 {
+				r.typed += string('0' + d)
+				if len(r.typed) == 6 {
+					r.freq, r.typed = r.typed[:3]+"."+r.typed[3:], ""
+					r.text(32, 23, 2, r.freq, 0xFFFF)
+				}
+				if r.broken {
+					r.broken = false
+					continue
+				}
+				r.bottom()
+			}
+		}
+	}
+	return len(b), nil
+}
+func (r *simRadio) Read(b []byte) (int, error)         { return r.out.Read(b) }
+func (r *simRadio) SetReadTimeout(time.Duration) error { return nil }
+
+func TestTuneReadsKeysFromTheStream(t *testing.T) {
+	sim := &simRadio{freq: "146.520"}
+	sim.broken = true // the first digit's redraw is lost: the whole screen is read again, not an error
+	r := &rig{p: sim, wait: 300 * time.Millisecond}
+	sc, err := r.tune(145500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sc.freq() != "145.500" {
+		t.Fatalf("freq %q\n%s", sc.freq(), sc.Text())
+	}
+	if sim.syncs != 2 { // home's look, then the one lost redraw; never one per key
+		t.Fatalf("%d full redraws asked for", sim.syncs)
 	}
 }

@@ -200,26 +200,46 @@ func rgb(v uint16) color.RGBA {
 	return color.RGBA{uint8(v & 31 << 3), uint8(v >> 5 & 63 << 2), uint8(v >> 11 << 3), 255}
 }
 
-// openRemote opens the port at REMOTE's speed: 115200, or 38400 on older td-h3-fw. A
-// sync ('S', answered on every screen) picks the one the radio answers; at the wrong speed a byte
-// reads as 0xFF-ish noise there, which is no key. Neither: 115200, and the command says no answer.
+// remoteBauds are REMOTE's speeds, newest first: 1 Mbaud, then 115200 and 38400 for older td-h3-fw.
+var remoteBauds = []int{1000000, 115200, 38400}
+
+// openRemote opens the port at REMOTE's speed. A sync ('S', answered on every screen) picks the
+// one the radio answers; at the wrong speed a byte reads as noise there, which is no key. None:
+// 1 Mbaud, and the command says no answer.
 func openRemote(name string) (serial.Port, error) {
-	for _, baud := range []int{115200, 38400} {
+	for _, baud := range remoteBauds {
 		p, err := open(name, baud)
 		if err != nil {
 			return nil, err
 		}
 		p.Write([]byte("S"))
-		if bytes.Contains(readN(p, 1<<16, 400*time.Millisecond), sync) {
+		if readUntil(p, sync, 400*time.Millisecond) {
 			return p, nil
 		}
 		p.Close()
 	}
-	return open(name, 115200)
+	return open(name, remoteBauds[0])
+}
+
+// readUntil reads until pat has come in, or d has passed: false then.
+func readUntil(p port, pat []byte, d time.Duration) bool {
+	var got []byte
+	for end := time.Now().Add(d); time.Now().Before(end); {
+		if got = append(got, readN(p, 1<<16, 20*time.Millisecond)...); bytes.Contains(got, pat) {
+			return true
+		}
+	}
+	return false
 }
 
 // look asks for a redraw (and a status line) and rebuilds the screen from what comes back.
 func look(p port, wait time.Duration) (*screen, error) {
+	sc, _, err := lookRest(p, wait)
+	return sc, err
+}
+
+// lookRest is look, and also returns the start of a record still coming in after the screen.
+func lookRest(p port, wait time.Duration) (*screen, []byte, error) {
 	readN(p, 1<<16, 100*time.Millisecond) // drop whatever was mid-flight
 	p.Write([]byte("S"))
 	// The radio holds one byte and reads it when its loop gets round to it: a byte sent before it
@@ -241,9 +261,9 @@ func look(p port, wait time.Duration) (*screen, error) {
 			tQ = time.Now()
 		}
 		*sc = screen{}
-		if sc.apply(got[i:]) == nil && sc.end {
+		if n, err := sc.feed(got[i:]); err == nil && sc.end {
 			if sc.query != "" {
-				return sc, nil
+				return sc, got[i+n:], nil
 			}
 			if !resent && time.Since(tQ) > 400*time.Millisecond {
 				p.Write([]byte("Q"))
@@ -253,10 +273,11 @@ func look(p port, wait time.Duration) (*screen, error) {
 	}
 	i := bytes.Index(got, sync)
 	if i < 0 {
-		return nil, fmt.Errorf("no answer (%d bytes): on the radio set MENU, REMOTE to ON", len(got))
+		return nil, nil, fmt.Errorf("no answer (%d bytes): on the radio set MENU, REMOTE to ON", len(got))
 	}
 	*sc = screen{}
-	return sc, sc.apply(got[i:])
+	n, err := sc.feed(got[i:])
+	return sc, got[i+n:], err
 }
 
 // press holds each key, then lets go. "MENU:long" holds it past the 0.8 s long press.
@@ -331,16 +352,58 @@ var font = [97][5]byte{
 
 // rig drives the radio a step at a time and reads the screen back after every key, as
 // tools/radio.py does: a dropped or doubled key stops the command, it never tunes the wrong place.
+//
+// After the first full read the screen is kept up to date from the draws the radio mirrors while
+// the computer talks, so a key costs the few records it redraws, not a whole new screen (a menu
+// at 115200 takes 200 ms and more). A check that fails on the kept screen reads the whole screen
+// once more before it counts (sure): a missed draw is never taken for a lost key.
 type rig struct {
 	p    port
 	wait time.Duration // how long a screen read waits for the redraw
+	sc   *screen       // the screen as the mirrored draws left it; nil before the first look
+	rest []byte        // the start of a record still coming in
 }
 
-func (r rig) look() (*screen, error) { return look(r.p, r.wait) }
+func (r *rig) look() (sc *screen, err error) {
+	sc, r.rest, err = lookRest(r.p, r.wait)
+	r.sc = sc
+	return sc, err
+}
 
-func (r rig) key(k string) (*screen, error) {
+// settle reads the draws a key set off until the radio has been quiet for 60 ms; a screen that
+// never goes quiet (a moving S-meter, the scope) is kept up to date regardless, so 600 ms caps it.
+func (r *rig) settle() (*screen, error) {
+	for end := time.Now().Add(600 * time.Millisecond); time.Now().Before(end); {
+		b := readN(r.p, 1<<16, 60*time.Millisecond)
+		if len(b) == 0 {
+			break
+		}
+		b = append(r.rest, b...)
+		n, err := r.sc.feed(b)
+		if err != nil {
+			return r.look() // lost track of the stream: read it whole
+		}
+		r.rest = b[n:]
+	}
+	return r.sc, nil
+}
+
+func (r *rig) key(k string) (*screen, error) {
+	if r.sc == nil {
+		if _, err := r.look(); err != nil {
+			return nil, err
+		}
+	}
 	if err := press(r.p, []string{k}); err != nil {
 		return nil, err
+	}
+	return r.settle()
+}
+
+// sure is sc if ok passes on it, else the whole screen read again.
+func (r *rig) sure(sc *screen, ok func(*screen) bool) (*screen, error) {
+	if ok(sc) {
+		return sc, nil
 	}
 	return r.look()
 }
@@ -392,41 +455,55 @@ func (sc *screen) freq() string {
 }
 
 // home presses V/M until the home screen shows with nothing half typed.
-func (r rig) home() (*screen, error) {
+// V/M goes only on a screen read whole (sure): on the home screen it would switch the mode.
+func (r *rig) home() (*screen, error) {
+	at := func(sc *screen) bool {
+		b := sc.bottom()
+		return isHome(sc) && !strings.HasPrefix(b, "FREQ") && !strings.HasPrefix(b, "CHANNEL")
+	}
+	sc, err := r.look()
 	for range 6 {
-		sc, err := r.look()
 		if err != nil {
 			return nil, err
 		}
-		if b := sc.bottom(); isHome(sc) && !strings.HasPrefix(b, "FREQ") && !strings.HasPrefix(b, "CHANNEL") {
+		if at(sc) {
 			return sc, nil
 		}
-		if err := press(r.p, []string{"VM"}); err != nil {
-			return nil, err
+		if sc, err = r.key("VM"); err == nil {
+			sc, err = r.sure(sc, at)
 		}
 	}
 	return nil, errors.New("could not get back to the home screen")
 }
 
 // mode puts the selected slot in memory (true) or VFO (false) mode with V/M.
-func (r rig) mode(memory bool) (*screen, error) {
+func (r *rig) mode(memory bool) (*screen, error) {
 	sc, err := r.home()
 	if err != nil || (sc.mem() != "") == memory {
 		return sc, err
 	}
-	if sc, err = r.key("VM"); err == nil && (sc.mem() != "") != memory {
+	if sc, err = r.key("VM"); err == nil {
+		sc, err = r.sure(sc, func(sc *screen) bool { return (sc.mem() != "") == memory })
+	}
+	if err == nil && (sc.mem() != "") != memory {
 		err = errors.New("V/M did not switch between frequency and memory mode")
 	}
 	return sc, err
 }
 
 // typeIn types digits one at a time, checking each on the bottom line ("FREQ 146.5", "CHANNEL 01").
-func (r rig) typeIn(digits, prompt string) (sc *screen, err error) {
+func (r *rig) typeIn(digits, prompt string) (sc *screen, err error) {
 	for i := range digits {
-		if sc, err = r.key(digits[i : i+1]); err != nil {
+		shows := func(sc *screen) bool {
+			return i == len(digits)-1 || strings.ReplaceAll(strings.TrimPrefix(sc.bottom(), prompt), ".", "") == digits[:i+1]
+		}
+		if sc, err = r.key(digits[i : i+1]); err == nil {
+			sc, err = r.sure(sc, shows)
+		}
+		if err != nil {
 			return nil, err
 		}
-		if b := sc.bottom(); i < len(digits)-1 && strings.ReplaceAll(strings.TrimPrefix(b, prompt), ".", "") != digits[:i+1] {
+		if b := sc.bottom(); !shows(sc) {
 			return nil, fmt.Errorf("typed %s, the bottom line shows %q", digits[:i+1], b)
 		}
 	}
@@ -434,7 +511,7 @@ func (r rig) typeIn(digits, prompt string) (sc *screen, err error) {
 }
 
 // tune puts the selected slot's VFO on khz (6 digits on the keypad: 146520 is 146.520 MHz).
-func (r rig) tune(khz int) (*screen, error) {
+func (r *rig) tune(khz int) (*screen, error) {
 	if _, err := r.mode(false); err != nil {
 		return nil, err
 	}
@@ -442,19 +519,26 @@ func (r rig) tune(khz int) (*screen, error) {
 	if err != nil {
 		return nil, err
 	}
-	if want := fmt.Sprintf("%d.%03d", khz/1000, khz%1000); sc.freq() != want {
+	want := fmt.Sprintf("%d.%03d", khz/1000, khz%1000)
+	if sc, err = r.sure(sc, func(sc *screen) bool { return sc.freq() == want }); err != nil {
+		return nil, err
+	}
+	if sc.freq() != want {
 		return nil, fmt.Errorf("tuned %s but the screen shows %q (outside the radio's bands?)", want, sc.freq())
 	}
 	return sc, nil
 }
 
 // channel puts the selected slot on memory channel n.
-func (r rig) channel(n int) (*screen, error) {
+func (r *rig) channel(n int) (*screen, error) {
 	if _, err := r.mode(true); err != nil {
 		return nil, err
 	}
 	sc, err := r.typeIn(fmt.Sprintf("%03d", n), "CHANNEL ")
 	if err != nil {
+		return nil, err
+	}
+	if sc, err = r.sure(sc, func(sc *screen) bool { return sc.mem() == strconv.Itoa(n) }); err != nil {
 		return nil, err
 	}
 	if sc.mem() != strconv.Itoa(n) {
@@ -464,10 +548,12 @@ func (r rig) channel(n int) (*screen, error) {
 }
 
 // slot makes "A" or "B" the selected slot.
-func (r rig) slot(which string) (*screen, error) {
+func (r *rig) slot(which string) (*screen, error) {
 	sc, err := r.home()
 	if err == nil && slotOf(sc) != which {
-		sc, err = r.key("#")
+		if sc, err = r.key("#"); err == nil {
+			sc, err = r.sure(sc, func(sc *screen) bool { return slotOf(sc) == which })
+		}
 	}
 	if err == nil && slotOf(sc) != which {
 		err = fmt.Errorf("could not select slot %s", which)
@@ -479,7 +565,7 @@ func (r rig) slot(which string) (*screen, error) {
 // down the menu until each item has been on the screen, then it goes home.
 // draw_menu: the title row ends in "14/43" (the cursor's item of all); six rows 15 px apart from
 // y 15, the cursor's lit; a section heading row ("SCAN ------") is no item and is skipped.
-func (r rig) settings() ([]string, error) {
+func (r *rig) settings() ([]string, error) {
 	if _, err := r.home(); err != nil {
 		return nil, err
 	}

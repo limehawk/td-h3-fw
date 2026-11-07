@@ -951,8 +951,8 @@ def test_no_auto_pc_link(cpu):
 
 
 def test_pc_link_clone(cpu):
-    menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # REMOTE at 115200 ...
-    cpu.uart_baud = 38400                  # ... and PC LINK back at CHIRP's 38400, then 115200 again after
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # REMOTE at 1 Mbaud ...
+    cpu.uart_baud = 38400                  # ... and PC LINK back at CHIRP's 38400, then 1 Mbaud again after
     menu(cpu, 'PC', ['UP'])
     cal_before = bytes(cpu.ee.mem[0x1F50:0x1F80])
     out = cpu.uart_out
@@ -978,8 +978,8 @@ def test_pc_link_clone(cpu):
     press(cpu, 'EXIT')                     # leave PC LINK
     press(cpu, 'EXIT')                     # leave menu
     assert cpu.bk.regs[0x30] == 0xBFF1, 'radio not back in RX after PC LINK'
-    cpu.uart_baud = 115200
-    assert remote_texts(cpu), 'REMOTE not back at 115200 after PC LINK'
+    cpu.uart_baud = 1_000_000
+    assert remote_texts(cpu), 'REMOTE not back at 1 Mbaud after PC LINK'
 
 
 # ---- features added in 0.2 ----
@@ -2817,8 +2817,9 @@ def test_flash_restart(cpu):               # 'B' arms; PTT down then restarts in
     cpu.run(2_000_000)
     cpu.uart_out.clear()
     cpu.uart_in.extend(b'B')
-    cpu.run(3_000_000)                     # answered as 'S' is, so a mirrored full redraw follows
-    assert b'S\xa5\x5a' in cpu.uart_out, "'B' not answered as 'S' is"
+    cpu.run(3_000_000)
+    assert cpu.uart_out == b'S\xa5\x5a', "'B' not answered as 'S' is, at 1 Mbaud: %r" % bytes(cpu.uart_out[:16])
+    assert cpu.uart_reload() == 26, 'armed but not at the loader\'s 115200'
     assert not cpu.resets, 'restarted with no PTT'
     n = len(cpu.bk.writes)
     cpu.key = 'PTT'

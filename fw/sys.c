@@ -111,7 +111,7 @@ uint16_t batt_mv(void)
     return (((uint16_t)ADRESH << 4 | ADRESL >> 4) * BATT_UV_PER_COUNT) / 1000;
 }
 
-// UART1: P1.1/P1.3, USB-C CH340N, 38400 (115200 while REMOTE is on). UART0: P2.0/P2.1, Bluetooth module, 9600.
+// UART1: P1.1/P1.3, USB-C CH340N, 38400 (1 Mbaud while REMOTE is on). UART0: P2.0/P2.1, Bluetooth module, 9600.
 // Both from stock 0xDBAD / 0xDE80.
 #define BRT2CON XREG(0xF5C4)
 #define BRT2DL  XREG(0xF5C5)
@@ -143,12 +143,13 @@ void uart_init(void)
     P20CFG = 2; P21CFG = 2;
 }
 
-// Fsys/16/(65536-reload): 26 gives 115385 (+0.16%), 78 gives 38462 (+0.16%). PC LINK stays at
-// 38400, the clone protocol's speed (CHIRP, tdh3 eeprom/channels).
-void uart_usb_fast(uint8_t fast) __reentrant
+// Fsys/16/(65536-reload): 78 gives 38462 (+0.16%), 3 gives 1 Mbaud exactly, 26 gives 115385
+// (+0.16%). PC LINK stays at 38400, the clone protocol's speed (CHIRP, tdh3 eeprom/channels).
+static const __code uint8_t brt[] = { 0xB2, 0xFD, 0xE6 };   // BRTDH stays 0xFF
+void uart_usb_fast(uint8_t speed) __reentrant
 {
     BRTCON &= 0x7F;
-    BRTDL = fast ? 0xE6 : 0xB2;             // BRTDH stays 0xFF
+    BRTDL = brt[speed];
     BRTCON |= 0x80;
 }
 

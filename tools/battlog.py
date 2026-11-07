@@ -28,7 +28,7 @@ def open_port():
     a = termios.tcgetattr(fd)
     a[0] = a[1] = a[3] = 0                              # raw: no input/output/local processing
     a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
-    a[4] = a[5] = termios.B115200                    # REMOTE (38400 on older td-h3-fw)
+    a[4] = a[5] = termios.B1000000                   # REMOTE (115200 or 38400 on older td-h3-fw)
     termios.tcsetattr(fd, termios.TCSANOW, a)
     return fd
 

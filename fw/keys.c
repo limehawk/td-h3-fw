@@ -38,11 +38,14 @@ static uint8_t cols(void) { udelay(); udelay(); return (!KEY_L3) | (!KEY_L2) << 
 
 uint8_t key_scan(void)
 {
-    static __data uint8_t fast;
+    static __data uint8_t speed;
     uint8_t c, g, k = K_NONE;
-    if (remote != fast) {                   // PC LINK turns remote off: 38400 for CHIRP
-        uart_usb_fast(fast = remote);
-        mirror = loader_armed = 0;          // REMOTE off or PC LINK: remote_tick no longer runs to let them lapse
+    // PC LINK turns remote off: 38400 for CHIRP. Armed, the loader's 115200, so the flasher is already
+    // at its speed when PTT restarts into it; 1 Mbaud again once the arming lapses.
+    c = remote ? (loader_armed ? USB_LOADER : USB_REMOTE) : USB_CLONE;
+    if (c != speed) {
+        uart_usb_fast(speed = c);
+        if (!remote) mirror = loader_armed = 0;   // remote_tick no longer runs to let them lapse
     }
     if (remote) { remote_tick(); remote_poll(); if (rkey) return rkey; }   // a late byte is judged after the let-go
     rows_off();

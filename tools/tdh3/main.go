@@ -266,14 +266,14 @@ func main() {
 	})
 
 	// The step commands check the screen after every key and print the home screen when done.
-	step := func(use, short string, args cobra.PositionalArgs, do func(r rig, args []string) (*screen, error)) *cobra.Command {
+	step := func(use, short string, args cobra.PositionalArgs, do func(r *rig, args []string) (*screen, error)) *cobra.Command {
 		return &cobra.Command{Use: use, Short: short, Args: args, RunE: func(cmd *cobra.Command, a []string) error {
 			p, err := openRemote(port)
 			if err != nil {
 				return err
 			}
 			defer p.Close()
-			sc, err := do(rig{p, wait}, a)
+			sc, err := do(&rig{p: p, wait: wait}, a)
 			if err != nil {
 				return err
 			}
@@ -286,9 +286,9 @@ func main() {
 	}
 	remote.AddCommand(
 		step("home", "Back to the home screen: leaves menus, drops half-typed entries", cobra.NoArgs,
-			func(r rig, _ []string) (*screen, error) { return r.home() }),
+			func(r *rig, _ []string) (*screen, error) { return r.home() }),
 		step("tune MHZ", "Put the selected slot on a frequency, e.g. 146.520 (switches it to VFO)", cobra.ExactArgs(1),
-			func(r rig, a []string) (*screen, error) {
+			func(r *rig, a []string) (*screen, error) {
 				f, err := strconv.ParseFloat(a[0], 64)
 				khz := int(math.Round(f * 1000))
 				if err != nil || khz < 1000 || khz > 999999 {
@@ -297,7 +297,7 @@ func main() {
 				return r.tune(khz)
 			}),
 		step("channel N", "Put the selected slot on memory channel N (1-199)", cobra.ExactArgs(1),
-			func(r rig, a []string) (*screen, error) {
+			func(r *rig, a []string) (*screen, error) {
 				n, err := strconv.Atoi(a[0])
 				if err != nil || n < 1 || n > 199 {
 					return nil, fmt.Errorf("channel %q: give 1-199", a[0])
@@ -305,7 +305,7 @@ func main() {
 				return r.channel(n)
 			}),
 		step("slot A|B", "Select slot A (top) or B (bottom)", cobra.ExactArgs(1),
-			func(r rig, a []string) (*screen, error) {
+			func(r *rig, a []string) (*screen, error) {
 				s := strings.ToUpper(a[0])
 				if s != "A" && s != "B" {
 					return nil, fmt.Errorf("slot %q: A or B", a[0])
@@ -322,7 +322,7 @@ func main() {
 					return err
 				}
 				defer p.Close()
-				items, err := rig{p, wait}.settings()
+				items, err := (&rig{p: p, wait: wait}).settings()
 				for i, s := range items {
 					fmt.Printf("%2d  %s\n", i+1, s)
 				}
