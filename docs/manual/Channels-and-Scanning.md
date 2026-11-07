@@ -40,8 +40,9 @@ downloaded ([Updating the firmware](Updating#get-the-flasher); type its own name
 Your channels and settings are kept through firmware updates.
 
 **Power** is stored the way TIDRADIO's own firmware stores it, so a channel set to High in CHIRP
-transmits on high. A channel's power is set from the computer, Low or High (CHIRP and `tdh3` know
-only those two); the radio's own power setting, with MID and ULTRA LOW, is for frequency mode.
+transmits on high. To change a channel's power on the radio, go to the channel and hold **2**: each
+hold steps low → mid → high → ultra-low, shows on the screen at once, and is saved with the channel.
+CHIRP and `tdh3` know only Low and High, and show MID and ULTRA LOW as Low.
 
 **Mode**: `tdh3 channels import` reads the CSV's Mode column: FM, NFM (narrow FM), AM, or USB for
 [SSB](Home-Screen#listening-to-ssb). CHIRP's own Upload stores every channel as FM (the air band

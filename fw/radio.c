@@ -127,6 +127,7 @@ static void tone_put(__xdata uint8_t *b, uint16_t t) __reentrant   // b is FF FF
 }
 
 static uint8_t rec_write(uint8_t n) __reentrant { return ee_write(0x10 * n, rec, 16); }   // channel n's 16 bytes from rec
+static uint8_t rec_read(uint8_t n) __reentrant { return ee_read(0x10 * n, rec, 16); }     // and into rec
 
 // Power in byte 14 bits 5:4: 0 low, 1 high (stock, CHIRP), 2 mid, 3 ultra-low (ours). CHIRP's
 // TD-H3 driver knows only Low and High and shows 2 and 3 as Low.
@@ -153,6 +154,17 @@ uint8_t chan_save(uint8_t n)
     return 1;
 }
 
+// Step channel n's power (ULTRA LOW, LOW, MID, HIGH, round again) in its record; nothing else changes.
+void chan_power(uint8_t n)
+{
+    static const __code uint8_t up[4] = {0x20, 0x30, 0x10, 0x00};   // bits 5:4 one step up: low, high, mid, ultra-low
+    uint8_t b;
+    if (!rec_read(n)) return;
+    b = rec[14];
+    rec[14] = b & 0xCF | up[b >> 4 & 3];
+    rec_write(n);
+}
+
 // Empty channel n (1-199) as CHIRP does: its record all FF, its used bit off (name, scan bit stay).
 uint8_t chan_delete(uint8_t n)
 {
@@ -165,7 +177,7 @@ uint8_t chan_delete(uint8_t n)
 uint8_t chan_load(uint8_t n)
 {
     uint8_t i;
-    if (!is_valid(n) || !ee_read(0x10 * n, rec, 16)) return 0;
+    if (!is_valid(n) || !rec_read(n)) return 0;
     ch.rx = bcd32(rec);
     ch.tx = (rec[4] & rec[5] & rec[6] & rec[7]) == 0xFF ? 0 : bcd32(rec + 4);   // FF..: no TX (CHIRP "off")
     if (ch.rx - MHZ(18) > MHZ(1300 - 18)) return 0;   // erased or garbage: under 18 or over 1300 MHz

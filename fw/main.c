@@ -1527,7 +1527,7 @@ static void on_long(uint8_t k) __reentrant
         step_freq(sdir);
         break;
     case K_1: mon ^= 1; dirty = 1; break;                                      // monitor
-    case K_2: if (!sl_mem()) { item_step(M_POW, 1); retune(); } break;
+    case K_2: if (sl_mem()) chan_power(sl_chn()); else item_step(M_POW, 1); retune(); break;   // a channel's own, saved
     case K_3: scan_stop(); menu = M_SCOPE; menu_change(1); break;   // the tools: a scan would retune off their pick
     case K_4: if (ch.mode == MOD_USB) cfg.sstep++; else item_step(M_STEP, 1); dirty = 1; save_soon(); break;
     case K_5: rev ^= 1; retune(); break;                                       // reverse

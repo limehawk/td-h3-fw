@@ -193,6 +193,7 @@ void chan_scan_toggle(uint8_t n) __reentrant;
 uint8_t chan_free(void);
 uint8_t chan_save(uint8_t n);              // write `ch` as channel n
 uint8_t chan_delete(uint8_t n);            // empty channel n (CHIRP's way)
+void chan_power(uint8_t n);                // step channel n's saved power, round
 void radio_tune(void);                     // apply ch to BK4819 and RX path
 uint8_t rx_settled(void);                  // the receiver has settled since radio_tune: RSSI and the squelch read true
 uint8_t radio_tx(uint8_t on) __reentrant;              // 1 = transmitting

@@ -57,7 +57,7 @@ The legends printed on the keys:
 | Key | Does |
 |---|---|
 | 1 | **Monitor**: open the squelch to hear everything, even noise. Again to close. |
-| 2 | **Power**: low → mid → high → ultra-low (frequency mode only; a channel keeps its own). |
+| 2 | **Power**: low → mid → high → ultra-low. On a memory channel it changes that channel's own power and saves it there; everything else about the channel stays. |
 | 3 | **Scope**: a live spectrum around this frequency. See [Tools](Tools). Stops a scan. |
 | 4 | **Step**: the next tuning step (STEP kHz in the [Menu](Menu)). In USB, the next fine step: 0.05, 0.1, 1, 0.01 kHz. |
 | 5 | **Reverse**: listen on the repeater's input, to hear a station directly. `REV` shows in the status bar; again, **#** or **V/M** turns it off. A channel saved meanwhile is saved the normal way round. |

@@ -11,7 +11,7 @@
 | Talk without pressing PTT (VOX) | **MENU**, **1** **7** (VOX), **MENU**, **UP** to a level, **MENU** |
 | Store DTMF codes | **MENU**, **1** **9** (DTMF CODES), **MENU** |
 | Choose where I may transmit | **MENU**, **1** **3** (TX BANDS), **MENU**, **UP** / **DOWN**, **MENU** |
-| Change power | In frequency mode: hold **2**, or **MENU**, **0** **9** (POWER). A channel's power is set from CHIRP or `tdh3` |
+| Change power | Hold **2**: low → mid → high → ultra-low. On a memory channel it's saved with the channel. In frequency mode **MENU**, **0** **9** (POWER) does it too |
 | Set the longest transmission | **MENU**, **1** **4** (TX TIMEOUT; 120 s to start with) |
 | Check which build I have | **MENU**, **5** **0** (VERSION) |
 

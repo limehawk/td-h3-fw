@@ -982,6 +982,22 @@ def test_pc_link_clone(cpu):
     assert remote_texts(cpu), 'REMOTE not back at 1 Mbaud after PC LINK'
 
 
+def test_channel_power(cpu):                # hold 2 on a memory channel steps its own saved power, round; nothing
+    press(cpu, 'EXIT')                     # else in the record changes (name, tones, groups, scan list)
+    rec = lambda: bytes(cpu.ee.mem[0x10:0x20])
+    before, name, bits = rec(), bytes(cpu.ee.mem[0x0D40:0x0D48]), bytes(cpu.ee.mem[0x1900:0x1940])
+    assert before[14] & 0x30 == 0x00, 'channel 1 not saved LOW: %s' % before.hex()
+    for want in (0x20, 0x10, 0x30, 0x00):  # MID, HIGH, ULTRA LOW, LOW
+        longpress(cpu, '2')
+        r = rec()
+        assert r[14] & 0x30 == want, 'power bits %02x, want %02x' % (r[14] & 0x30, want)
+        assert r[:14] + bytes([r[14] & 0xCF]) + r[15:] == before[:14] + bytes([before[14] & 0xCF]) + before[15:], r.hex()
+    assert bytes(cpu.ee.mem[0x0D40:0x0D48]) == name and bytes(cpu.ee.mem[0x1900:0x1940]) == bits
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    longpress(cpu, '2')                    # on MID: the slot shows it at once
+    assert any('MID' in t for t in remote_texts(cpu)), remote_texts(cpu)
+
+
 # ---- features added in 0.2 ----
 
 def test_save_vfo_to_memory(cpu):
@@ -3291,6 +3307,7 @@ INDEPENDENT = [
     ('screen mirror lapses after 10 s of silence', test_mirror_lapses),
     ('flash restart: B arms, PTT restarts into the loader', test_flash_restart),
     ('flash restart: a setting changed just before is saved first', test_flash_restart_saves),
+    ('hold 2 on a memory channel steps its saved power', test_channel_power),
     ('fresh settings start A/B on the first two channels, dual watch on', test_fresh_settings_use_channels),
     ('one bad settings byte keeps the rest', test_settings_survive_one_bad_value),
     ('a corrupt slot mode byte resets that slot', test_settings_bad_slot_mode),
