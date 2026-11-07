@@ -8,6 +8,7 @@
 //	tdh3 remote screen -p /dev/ttyUSB1 -o screen.png
 //	tdh3 remote keys -p /dev/ttyUSB1 1 4 6 5 2 0
 //	tdh3 remote tune -p /dev/ttyUSB1 146.520
+//	tdh3 remote wait -p /dev/ttyUSB1 "squelch open"
 //
 // Commands are noun then verb: tdh3 eeprom backup, tdh3 channels import.
 package main
@@ -220,6 +221,35 @@ func main() {
 	}
 	watch.Flags().DurationVar(&every, "every", 200*time.Millisecond, "time between readings")
 	remote.AddCommand(watch)
+	var until time.Duration
+	var gone bool
+	wt := &cobra.Command{
+		Use:   "wait TEXT",
+		Short: "Wait until TEXT shows on the screen or in the status line (\"squelch open\", 146.520)",
+		Long: "Follows the screen as the radio draws it and stops as soon as TEXT shows, in any case, in\n" +
+			"the screen text or the status line in words (as remote screen prints them), then prints both.\n" +
+			"--gone waits for it to go instead. With --timeout it gives up with an error after that long.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			p, err := openRemote(port)
+			if err != nil {
+				return err
+			}
+			defer p.Close()
+			sc, err := waitFor(p, args[0], gone, until)
+			if err != nil {
+				return err
+			}
+			fmt.Print(sc.Text())
+			if sc.query != "" {
+				fmt.Println(status(sc.query))
+			}
+			return nil
+		},
+	}
+	wt.Flags().DurationVar(&until, "timeout", 0, "give up after this long, e.g. 30m; 0 waits for ever")
+	wt.Flags().BoolVar(&gone, "gone", false, "wait for TEXT to disappear instead")
+	remote.AddCommand(wt)
 	remote.AddCommand(scr, &cobra.Command{
 		Use:   "keys KEY...",
 		Short: "Press keys: 0-9 MENU UP DOWN VM * # TORCH, add :long to hold (MENU:long)",

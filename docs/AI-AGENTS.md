@@ -35,6 +35,7 @@ frequencies on the home screen: A on top, B below. The selected one has its lett
 | `slot B` | Selects slot A or B. |
 | `settings` | Lists all the menu settings and their values. Changes nothing. Takes about 30 seconds. |
 | `watch` | Prints the signal and whether the squelch is open, five times a second, until **Ctrl-C**: for finding why audio cuts out. |
+| `wait "squelch open"` | Waits until that text shows, on the screen or in the status line (any case), then prints the screen and the status line: `wait 146.520`, `wait FREQ`. `--gone` waits for it to go away, `--timeout 30m` gives up after that long with an error. No timeout: it waits for ever. |
 | `keys 1 4 6` | Presses keys: `0`-`9` `MENU` `UP` `DOWN` `VM` `*` `#` `TORCH`. Add `:long` to hold one (`1:long`). |
 
 `tune`, `channel` and `slot` press one key at a time and read the screen back after each one.
@@ -45,6 +46,11 @@ home screen so the agent can see the result.
 They are careful rather than fast: each key waits for the screen to change. From firmware 0.16 the
 radio says when a redraw is finished, so a screen read takes a fraction of a second instead of a
 fixed 1.5 s wait (older firmware still works, at the old speed).
+
+`wait` is how to be told when something happens instead of checking again and again. Leave
+`tdh3 remote wait "squelch open"` running and it returns the moment someone talks on the
+frequency the radio is on (the squelch opens when a signal comes in). An agent can follow a
+key press with `wait` for the screen it expects rather than guessing how long to pause.
 
 ## Tell your agent about it
 

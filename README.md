@@ -62,6 +62,7 @@ sends.
 tdh3 remote screen                  # what the radio shows, as text (-o shot.png for a picture)
 tdh3 remote tune 146.520            # tune the selected slot
 tdh3 remote settings                # every menu setting and its value
+tdh3 remote wait "squelch open"     # returns when someone talks on the frequency
 ```
 
 To load a channel list saved from CHIRP, put the radio in PC LINK instead (**MENU**, **4** **4**,

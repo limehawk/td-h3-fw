@@ -119,19 +119,23 @@ func luma(c uint16) int {
 }
 
 // apply parses records starting right after a sync. It stops at the first incomplete one.
-func (sc *screen) apply(b []byte) error {
+func (sc *screen) apply(b []byte) error { _, err := sc.feed(b); return err }
+
+// feed is apply that also says how many bytes it used: a stream's next read carries on from there.
+func (sc *screen) feed(in []byte) (int, error) {
+	b := in
 	for len(b) > 0 {
 		switch b[0] {
 		case 'f':
 			if len(b) < 7 {
-				return nil
+				return len(in) - len(b), nil
 			}
 			sc.fill(int(b[1]), int(b[2]), int(b[3]), int(b[4]), uint16(b[5])<<8|uint16(b[6]))
 			b = b[7:]
 		case 't':
 			end := bytes.IndexByte(b[min(len(b), 8):], 0)
 			if len(b) < 8 || end < 0 {
-				return nil
+				return len(in) - len(b), nil
 			}
 			sc.draw(int(b[1]), int(b[2]), int(b[3]), string(b[8:8+end]),
 				uint16(b[4])<<8|uint16(b[5]), uint16(b[6])<<8|uint16(b[7]))
@@ -139,23 +143,23 @@ func (sc *screen) apply(b []byte) error {
 		case 'q':
 			end := bytes.IndexByte(b, '\n')
 			if end < 0 {
-				return nil
+				return len(in) - len(b), nil
 			}
 			sc.query = string(b[1:end])
 			b = b[end+1:]
 		case 'S':
 			if len(b) < 3 {
-				return nil
+				return len(in) - len(b), nil
 			}
 			b = b[3:]
 		case 'E': // the radio finished the redraw (firmware 0.16+)
 			sc.end = true
 			b = b[1:]
 		default:
-			return fmt.Errorf("lost track of the screen stream at 0x%02X: run it again", b[0])
+			return len(in) - len(b), fmt.Errorf("lost track of the screen stream at 0x%02X: run it again", b[0])
 		}
 	}
-	return nil
+	return len(in), nil
 }
 
 // Text lists what is written on the screen, top to bottom.
