@@ -82,7 +82,7 @@ changes and the other five files stay the same, because they only use the name.
    board switch and model the differences. Run `make -C fw test` for every board before any flash.
 6. **Guard the EEPROM.** Find out where the variant keeps its factory calibration and its
    "initialized" magic. On the TD-H3 these are 0x1F50-0x1F7F and 0x1FF0. Put them in the board
-   header, and add the never-write rule from CLAUDE.md for those addresses.
+   header, and make every EEPROM write refuse those addresses, as the TD-H3's `ee_write` does.
 7. **Tell the flasher.** `tdh3 firmware flash` must refuse an image built for another board. Put
    the board's name next to `VERSION` in the image. Find out what the variant's bootloader
    reports about itself, if anything, and check the name against that. If it reports nothing,
