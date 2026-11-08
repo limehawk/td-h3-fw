@@ -46,6 +46,7 @@ PC LINK looks like this on the radio, and REMOTE like this once it's on:
 | `tdh3 flash` | Puts on the firmware this flasher carries. `--rx` for the receive-only build. | Hold **PTT** when it asks |
 | `tdh3 update` | Downloads the newest flasher, checks its signature, replaces itself, then flashes. `--no-flash` stops before the flash. | Internet |
 | `tdh3 firmware flash FILE.bin` | Flashes a firmware file you have. | Hold **PTT** when it asks |
+| `tdh3 firmware extract FOLDER` | Saves the firmware this flasher carries as `.bin` files in that folder, the full build and the receive-only one. Leave out the folder to use the current one. | Nothing |
 
 ![The flasher when it has finished](img/term-flash.png)
 

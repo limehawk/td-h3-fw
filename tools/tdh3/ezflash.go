@@ -82,6 +82,34 @@ func pickCable(ports manyCables) (port, ver string, inFlash bool) {
 	}
 }
 
+// builtInName is the name a release gives this image, so a saved copy flashes like a downloaded one.
+func builtInName(rx bool, img []byte) string {
+	if rx {
+		return "td-h3-fw-" + imageVersion("", img) + "-rx.bin"
+	}
+	return "td-h3-fw-" + imageVersion("", img) + ".bin"
+}
+
+// extractFirmware saves the images this flasher carries into dir, making it if needed, and returns their paths.
+func extractFirmware(dir string) ([]string, error) {
+	if builtIn(false) == nil {
+		return nil, errors.New("this copy of tdh3 carries no firmware: download the flasher from a release")
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	var saved []string
+	for _, rx := range []bool{false, true} {
+		img := builtIn(rx)
+		p := filepath.Join(dir, builtInName(rx, img))
+		if err := os.WriteFile(p, img, 0o644); err != nil {
+			return saved, err
+		}
+		saved = append(saved, p)
+	}
+	return saved, nil
+}
+
 // newestImage finds the image to flash, its name and bytes: the one this flasher carries (a
 // release's, see builtin_release.go; before any .bin lying about, which could be an older one from
 // an earlier download), else a downloaded release (td-h3-fw-0.59.6.bin, -rx.bin with rx; the newest
@@ -100,11 +128,7 @@ func newestImage(rx bool) (string, []byte, error) {
 		dirs = append(dirs, filepath.Dir(exe))
 	}
 	if img := builtIn(rx); img != nil {
-		n := "td-h3-fw-" + imageVersion("", img) + ".bin"
-		if rx {
-			n = "td-h3-fw-" + imageVersion("", img) + "-rx.bin"
-		}
-		return n + " (built in)", img, nil
+		return builtInName(rx, img) + " (built in)", img, nil
 	}
 	for _, d := range dirs {
 		if p := newestRelease(d, rx); p != "" {

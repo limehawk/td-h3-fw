@@ -4,6 +4,7 @@
 //	tdh3 flash
 //	tdh3 update
 //	tdh3 firmware flash -p /dev/ttyUSB1 fw/build/td-h3-rx.bin
+//	tdh3 firmware extract firmware/
 //	tdh3 channels import -p /dev/ttyUSB1 list.csv
 //	tdh3 channels copy -p /dev/ttyUSB1 radio1.bin
 //	tdh3 channels list -p /dev/ttyUSB1
@@ -109,7 +110,19 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error { return flashFile(port, args[0], false, forceFw) },
 	}
 	fwFlash.Flags().BoolVar(&forceFw, "force", false, "flash a build that isn't a tagged release (\"0.54.2-1\", \"+\")")
-	firmware.AddCommand(fwFlash)
+	firmware.AddCommand(fwFlash, &cobra.Command{
+		Use:   "extract [FOLDER]",
+		Short: "Save the firmware this flasher carries as .bin files (full and receive-only)",
+		Long:  "Writes td-h3-fw-VERSION.bin and td-h3-fw-VERSION-rx.bin into FOLDER, the current one if you\ngive none. Doesn't need a radio.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			saved, err := extractFirmware(append(args, ".")[0])
+			for _, p := range saved {
+				fmt.Println(p)
+			}
+			return err
+		},
+	})
 
 	var wipe, dry bool
 	channels := &cobra.Command{Use: "channels", Short: "The radio's memory channels (1-199)"}

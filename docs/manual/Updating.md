@@ -20,6 +20,7 @@
 | Put every setting back to its default | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 reset` ([below](#putting-the-settings-back-to-defaults)) |
 | Put my settings back from a backup | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 settings restore my-radio-backup.bin` ([below](#saving-and-restoring-your-settings)) |
 | Copy channels from another radio | [Channels and scanning](Channels-and-Scanning#copy-channels-from-another-radio): `tdh3 channels copy FILE` |
+| Get just the `.bin` files | `tdh3 firmware extract my-folder` saves both builds there |
 | Go back to TIDRADIO's firmware | `tdh3 firmware flash H3_250317.BIN` ([below](#going-back-to-tidradios-firmware)) |
 | `refusing v0.55.2-3: not a release` | That build isn't a numbered release: flash a release, or add `--force` for a test build |
 

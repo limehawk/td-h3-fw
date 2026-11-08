@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,5 +59,25 @@ func TestNewestImageBuiltIn(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "td-h3-fw-0.59.0.bin"), []byte{2}, 0o644)
 	if p, _, _ := newestImage(false); p != "td-h3-fw-0.60.0.bin (built in)" {
 		t.Fatalf("a .bin in the folder beat the built-in firmware: %q", p)
+	}
+}
+
+// Saved under a release's names, in a folder it makes; a plain build has nothing to save and says so.
+func TestExtractFirmware(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "new", "folder")
+	if _, err := extractFirmware(dir); err == nil || fileExists(dir) {
+		t.Fatalf("no firmware inside: err %v", err)
+	}
+	full, rx := append([]byte{2, 0, 0, 0}, "\x000.60.0\x00"...), append([]byte{2, 0, 0, 1}, "\x000.60.0\x00"...)
+	builtInImg = [2][]byte{full, rx}
+	defer func() { builtInImg = [2][]byte{} }()
+	saved, err := extractFirmware(dir)
+	if err != nil || len(saved) != 2 {
+		t.Fatal(saved, err)
+	}
+	for name, want := range map[string][]byte{"td-h3-fw-0.60.0.bin": full, "td-h3-fw-0.60.0-rx.bin": rx} {
+		if got, err := os.ReadFile(filepath.Join(dir, name)); err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("%s: %x %v", name, got, err)
+		}
 	}
 }
