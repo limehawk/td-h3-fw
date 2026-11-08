@@ -18,6 +18,7 @@
 | Check the version afterwards | **MENU**, **5** **0** (VERSION) |
 | Back up the radio first | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 eeprom backup my-radio-backup.bin` |
 | Put every setting back to its default | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 reset` ([below](#putting-the-settings-back-to-defaults)) |
+| Put my settings back from a backup | **MENU**, **4** **4** (PC LINK), **MENU**, then `tdh3 settings restore my-radio-backup.bin` ([below](#saving-and-restoring-your-settings)) |
 | Copy channels from another radio | [Channels and scanning](Channels-and-Scanning#copy-channels-from-another-radio): `tdh3 channels copy FILE` |
 | Go back to TIDRADIO's firmware | `tdh3 firmware flash H3_250317.BIN` ([below](#going-back-to-tidradios-firmware)) |
 | `refusing v0.55.2-3: not a release` | That build isn't a numbered release: flash a release, or add `--force` for a test build |
@@ -224,6 +225,28 @@ that doesn't restart by itself: switch it off and on, without pressing **V/M** f
 save the old settings back).
 
 To empty the channel list too, so the radio starts completely fresh: `tdh3 reset --channels`.
+
+## Saving and restoring your settings
+
+A backup holds every menu setting, so you can try things and put your own setup back in one go,
+or copy your settings onto a second TD-H3.
+
+1. **Save them.** Radio in PC LINK (**MENU**, **4** **4**, **MENU**), then:
+   ```bash
+   tdh3 eeprom backup my-radio-backup.bin
+   ```
+   Press **V/M** on the radio when it's done.
+2. **Put them back, any time later.** Radio in PC LINK again, then:
+   ```bash
+   tdh3 settings restore my-radio-backup.bin
+   ```
+   It shows what it will do, then waits. Press **Enter**. The radio restarts by itself with the
+   settings from the backup. The last line on the computer says *the radio restarted with them*.
+
+Only the settings come back: the memory channels on the radio stay as they are, and the radio's
+own factory calibration is never written, even when the backup comes from another radio. To copy
+channels from a backup, use `tdh3 channels copy`. The messages and what to do about them are the
+same as for `tdh3 reset` above.
 
 ## Going back to TIDRADIO's firmware
 

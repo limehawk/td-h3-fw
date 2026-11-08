@@ -7,6 +7,7 @@
 //	tdh3 channels import -p /dev/ttyUSB1 list.csv
 //	tdh3 channels copy -p /dev/ttyUSB1 radio1.bin
 //	tdh3 reset -p /dev/ttyUSB1
+//	tdh3 settings restore -p /dev/ttyUSB1 backups/td-h3-eeprom.bin
 //	tdh3 remote screen -p /dev/ttyUSB1 -o screen.png
 //	tdh3 remote keys -p /dev/ttyUSB1 1 4 6 5 2 0
 //	tdh3 remote tune -p /dev/ttyUSB1 146.520
@@ -152,6 +153,21 @@ func main() {
 	}
 	reset.Flags().BoolVar(&resetCh, "channels", false, "also clear every memory channel 1-199")
 	reset.Flags().BoolVarP(&yesReset, "yes", "y", false, "don't wait for Enter")
+
+	var yesRestore bool
+	settings := &cobra.Command{Use: "settings", Short: "The radio's menu settings"}
+	restore := &cobra.Command{
+		Use:   "restore BACKUP.bin",
+		Short: "Put the settings from a `tdh3 eeprom backup` file back (the channels stay)",
+		Long: "Over PC LINK (MENU, 4 4, MENU): writes only the settings (0x1FC0-0x1FEF) from BACKUP.bin,\n" +
+			"which may come from another TD-H3, reads them back, and td-h3-fw restarts with them. Shows\n" +
+			"what it will do and waits for Enter. The memory channels and the factory TX calibration on\n" +
+			"the radio are never written. -p is found by itself when there is one radio cable.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error { return runRestore(port, args[0], !yesRestore) },
+	}
+	restore.Flags().BoolVarP(&yesRestore, "yes", "y", false, "don't wait for Enter")
+	settings.AddCommand(restore)
 
 	var shot string
 	remote := &cobra.Command{
@@ -369,9 +385,13 @@ func main() {
 	ez.Flags().BoolVarP(&yes, "yes", "y", false, "for scripts: wait for the radio as long as it takes (several cables need -p)")
 	ez.Flags().BoolVar(&force, "force", false, "flash a build that isn't a tagged release (\"0.54.2-1\", \"+\")")
 
-	root.AddCommand(ez, eeprom, channels, reset, firmware, remote, updateCmd(&port))
+	root.AddCommand(ez, eeprom, channels, reset, settings, firmware, remote, updateCmd(&port))
 	root.Args, root.RunE = cobra.NoArgs, ez.RunE // no command (a double-click): flash
-	err := fang.Execute(context.Background(), root)
+	ver := "built from source"                   // a release flasher is the version of the firmware inside it
+	if img := builtIn(false); img != nil {
+		ver = "v" + imageVersion("", img)
+	}
+	err := fang.Execute(context.Background(), root, fang.WithVersion(ver))
 	closeWait(false)
 	if err != nil {
 		os.Exit(1)

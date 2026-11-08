@@ -379,6 +379,14 @@ func cloneRadio(t *testing.T, mem []byte) (f *fake, writes *[]int) {
 			if w[3] != 0x20 || a%32 != 0 || sum8(w[4:36]) != w[36] {
 				t.Fatalf("malformed write % X", w)
 			}
+			if a == 0x1FE0 { // settings, then 0x1FF0-0x1FFF: as td-h3-fw, only the first half is kept;
+				if !bytes.Equal(w[20:36], mem[0x1FF0:0x2000]) { // the calibration half must be the radio's own
+					t.Fatalf("write to 1FE0 changes the calibration at 1FF0")
+				}
+				copy(mem[a:a+16], w[4:20])
+				*writes = append(*writes, a)
+				return []byte{6}
+			}
 			if a+32 > 0x1F50 && a < 0x1F80 || a+32 > 0x1FF0 && a < 0x2000 || a >= 0x2000 {
 				t.Fatalf("write to protected block %04X", a)
 			}
