@@ -113,7 +113,7 @@ their values show **VFO** in front (`VFO LOW`): changing them doesn't change the
 
 | # | Item | What it does |
 |---|---|---|
-| 44 | PC LINK | Hand the radio to a computer (CHIRP, `tdh3`), over the USB-C cable, or over Bluetooth too when BLUETOOTH is on. The screen says *waiting for computer*; **V/M** leaves. See [Channels and scanning](Channels-and-Scanning#loading-your-channel-list). |
+| 44 | PC LINK | Hand the radio to a computer (CHIRP, `tdh3`), over the USB-C cable, or over Bluetooth too when BLUETOOTH is on. The screen says *waiting for computer*; **V/M** leaves. See [Channels and scanning](Channels-and-Scanning#loading-your-channel-list), and [Updating](Updating#saving-and-restoring-your-settings) for backing up and restoring settings. |
 | 45 | REMOTE | Let a computer see the screen and press keys (never transmit), or wait for something to happen: `tdh3 remote wait "squelch open"` returns when someone talks on the frequency. Off by default. |
 | 46 | BLUETOOTH | OFF (default) or ON: the Bluetooth module, for programming from a phone. The Bluetooth sign shows in the status bar while it's on. |
 | 47 | FREQ CAL | Fine frequency correction, -10.0 to +10.0 ppm in 0.1 steps. Leave at +0.0 unless you've measured an error. |

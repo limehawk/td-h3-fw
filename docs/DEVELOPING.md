@@ -501,7 +501,7 @@ tools/tdh3/tdh3 -p /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0 remote keys 
 The status line gives frequency, RSSI, squelch open/closed, speaker on/off and battery, which
 is how squelch and audio routing get checked without ears on the radio. Mirroring slows every
 redraw (1 Mbaud, 10 µs a byte), so leave REMOTE off in normal use. PC LINK drops the
-port to the clone protocol's 38400 while it runs (CHIRP, `tdh3 eeprom`/`channels`); `tdh3 remote`
+port to the clone protocol's 38400 while it runs (CHIRP, `tdh3 eeprom`/`channels`/`reset`/`settings`); `tdh3 remote`
 tries 1 Mbaud first and falls back to 115200 and 38400 for older builds. The step commands read
 the screen whole once, then keep it from the draws each key sets off; a check that fails on that
 screen reads it whole again before it counts. In the emulator, `tools/lcdshot.py`

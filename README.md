@@ -66,8 +66,14 @@ tdh3 remote settings                # every menu setting and its value
 tdh3 remote wait "squelch open"     # returns when someone talks on the frequency
 ```
 
-To load a channel list saved from CHIRP, put the radio in PC LINK instead (**MENU**, **4** **4**,
-**MENU**), then `tdh3 channels import channels.csv`; **V/M** leaves PC LINK.
+For these, put the radio in PC LINK instead (**MENU**, **4** **4**, **MENU**); **V/M** leaves it:
+
+```bash
+tdh3 channels import channels.csv   # load a channel list saved from CHIRP
+tdh3 eeprom backup my-radio.bin     # save the radio's memory: channels and settings
+tdh3 settings restore my-radio.bin  # put the settings from that backup back
+tdh3 reset                          # every setting back to its default (the channels stay)
+```
 
 (`tdh3` is the flasher you downloaded: `.\tdh3-windows.exe`, `./tdh3-macos-apple`, ...) What it
 can do and what to tell your assistant: [docs/AI-AGENTS.md](docs/AI-AGENTS.md).
@@ -120,7 +126,7 @@ Left out on purpose: scrambler, DTMF paging and remote kill, voice prompts, LSB.
 ```bash
 make -C fw all rxonly    # SDCC 4.5 in .toolchain/; fails if an image would reach the bootloader
 make -C fw test          # the real firmware in an 8051 emulator, about 90 tests
-cd tools/tdh3 && go build && go test ./...   # tdh3: backup, channels, flash, remote
+cd tools/tdh3 && go build && go test ./...   # tdh3: flash, update, backup, channels, settings, remote
 ```
 
 `docs/manual/` is the wiki's source: `make -C fw wiki` publishes it.
