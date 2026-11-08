@@ -6,6 +6,8 @@
 //	tdh3 firmware flash -p /dev/ttyUSB1 fw/build/td-h3-rx.bin
 //	tdh3 channels import -p /dev/ttyUSB1 list.csv
 //	tdh3 channels copy -p /dev/ttyUSB1 radio1.bin
+//	tdh3 channels list -p /dev/ttyUSB1
+//	tdh3 channels set -p /dev/ttyUSB1 88-94 --power ulow
 //	tdh3 reset -p /dev/ttyUSB1
 //	tdh3 settings restore -p /dev/ttyUSB1 backups/td-h3-eeprom.bin
 //	tdh3 remote screen -p /dev/ttyUSB1 -o screen.png
@@ -139,6 +141,7 @@ func main() {
 	cp.Flags().BoolVar(&fm, "fm", true, "also copy the 25 FM radio presets (--fm=false keeps this radio's)")
 	cp.Flags().BoolVarP(&yesCopy, "yes", "y", false, "don't wait for Enter")
 	channels.AddCommand(cp)
+	channels.AddCommand(chanCmds(&port)...)
 
 	var resetCh, yesReset bool
 	reset := &cobra.Command{

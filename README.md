@@ -70,6 +70,8 @@ For these, put the radio in PC LINK instead (**MENU**, **4** **4**, **MENU**); *
 
 ```bash
 tdh3 channels import channels.csv   # load a channel list saved from CHIRP
+tdh3 channels list                  # see your channels (also: export, set, move, clear, lock)
+tdh3 channels set 88-94 --power low # change only what you give, on one channel or many
 tdh3 eeprom backup my-radio.bin     # save the radio's memory: channels and settings
 tdh3 settings restore my-radio.bin  # put the settings from that backup back
 tdh3 reset                          # every setting back to its default (the channels stay)

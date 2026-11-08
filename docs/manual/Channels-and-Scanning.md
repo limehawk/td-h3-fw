@@ -16,6 +16,7 @@
 | Name, delete or copy a channel | **MENU**, **3** **2** (CH NAME), **3** **4** (DELETE CH) or **3** **3** (CH TO VFO), then **MENU** |
 | Listen to NOAA weather | Hold **#**; hold **#** again to go back |
 | Copy channels from another radio | `tdh3 eeprom backup` on that one, then `tdh3 channels copy FILE` on this one ([below](#copy-channels-from-another-radio)) |
+| See, change, move or empty channels from the computer | PC LINK, then `tdh3 channels list`, `set`, `move`, `clear` ([below](#changing-channels-from-the-computer)) |
 
 The radio stores up to 199 **memory channels**, each a frequency with its name, tones and power.
 Press **V/M** to switch a slot between frequency mode (VFO, type any frequency) and memory mode
@@ -52,6 +53,36 @@ under it (0.5W ultra-low, 1.0W or 2.0W low, 3.0W mid, 5.0W high).
 [SSB](Home-Screen#listening-to-ssb). CHIRP's own Upload stores every channel as FM (the air band
 stays AM), so import a USB channel with `tdh3`, or save it on the radio from a frequency set to
 USB (MENU → MODE).
+
+## Changing channels from the computer
+
+`tdh3` (the flasher you downloaded) can show and change your channels one at a time, or many at
+once. Put the radio in PC LINK first: **MENU**, type **4** **4**, **MENU**. **V/M** leaves it when you're done.
+
+| I want to… | Type |
+|---|---|
+| See my channels | `tdh3 channels list` (just some: `--slots 1-20,84`) |
+| Save them to a file I can edit | `tdh3 channels export my-channels.csv` |
+| Load that file back | `tdh3 channels import my-channels.csv` |
+| Lower the power on some channels | `tdh3 channels set 88-94 --power ulow` |
+| Rename a channel | `tdh3 channels set 11 --name "HOME RPT"` |
+| Change its tone | `tdh3 channels set 11 --tone 100.0` (`--rx-tone`, `--tx-tone` for one way; DCS is `D023N`; `off` removes it) |
+| Change its shift | `tdh3 channels set 11 --duplex - --offset 0.6` (or `--duplex simplex`) |
+| Change its frequency | `tdh3 channels set 11 --rx 145.470` (its shift stays) |
+| Narrow or wide | `tdh3 channels set 88-94 --bw narrow` |
+| Put channels in scan groups | `tdh3 channels set 1-39 --groups 1,3` (`none` empties them) |
+| Take channels off the scan list | `tdh3 channels set 115-121 --scan off` |
+| Move a channel to an empty number | `tdh3 channels move 111 150` |
+| Empty channels | `tdh3 channels clear 66` |
+| Stop a channel ever transmitting | `tdh3 channels lock 132` (`unlock` makes it simplex again) |
+
+Channel numbers can be a list and ranges, like `1-39,41,88-94`. Only what you ask for changes; everything
+else about a channel stays. Before changing anything `tdh3` saves the radio's whole memory to a dated
+file in `backups/`, and it reads back what it wrote. If one channel in the list is empty or a value is
+wrong, it says so and changes nothing at all. `list` and `export` also read a backup file: add
+`--file my-radio-backup.bin`, no radio needed.
+
+Power is `ulow`, `low`, `mid`, `high`, or watts like `5W`.
 
 ## Copy channels from another radio
 
