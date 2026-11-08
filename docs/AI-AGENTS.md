@@ -13,8 +13,7 @@ No other radio firmware does this as far as we know.
 1. Plug the radio into the computer with its USB-C cable.
 2. On the radio, switch REMOTE on: press **MENU**, then **4** **5** (item 45, REMOTE), **MENU**,
    **UP** so it says **ON**, **MENU**, and **V/M** to leave the menu.
-3. Use the flasher you downloaded (`tdh3-windows.exe`, `tdh3-macos-apple`, ...; below it's
-   `tdh3`), or build it from the source: `cd tools/tdh3 && go build`.
+3. Use the flasher you downloaded (`tdh3.exe` on Windows, `tdh3` on a Mac or Linux), or build it from the source: `cd tools/tdh3 && go build`.
 4. That's all: `tdh3` finds the radio's cable by itself. With two radios plugged in, a person
    opening the flasher types a number to pick one; you pass `-p` with a name from the list it prints (`-p /dev/ttyUSB1`, `-p COM4`).
 
@@ -58,8 +57,8 @@ key press with `wait` for the screen it expects rather than guessing how long to
 
 The manual has [a fuller prompt to paste](https://github.com/limehawk/td-h3-fw/wiki/The-tdh3-Program#using-it-with-an-ai-assistant). The short version: put something like this in the project's `CLAUDE.md` or `AGENTS.md`, or paste it into the chat:
 
-> The TD-H3 radio is plugged in over USB-C with REMOTE on. `./tdh3-linux-x64` in this folder
-> (put your flasher's name here) works it: `./tdh3-linux-x64 remote --help` lists the commands.
+> The TD-H3 radio is plugged in over USB-C with REMOTE on. `./tdh3` in this folder
+> works it: `./tdh3 remote --help` lists the commands.
 > Read the screen after anything you do. Leave the radio on the home screen, the way you found it.
 
 Then ask things like "what is the radio listening to?", "tune slot B to 162.550 and tell me

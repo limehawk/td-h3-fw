@@ -1,6 +1,6 @@
 #!/bin/sh
 # Release files for tag $1 (v0.60.0) into dist/: both images, the tdh3 flasher for each computer
-# (with both images inside it; the Macs' zipped), SHA256SUMS and its signature. Both forges' release jobs run it after building with `make -C fw all rxonly`.
+# (with both images inside it; Mac and Linux packed), SHA256SUMS and its signature. Both forges' release jobs run it after building with `make -C fw all rxonly`.
 # The images must say exactly the tag's version (0.5.1, never 0.5.1-2 or 0.5.1+), in
 # build/version and as the NUL-ended VERSION string the radio and the flasher show.
 set -e
@@ -16,15 +16,20 @@ cp fw/build/td-h3-rx.bin dist/td-h3-fw-$ver-rx.bin
 # Each flasher carries both images (-tags release, builtin_release.go): one download flashes a radio.
 mkdir -p tools/tdh3/builtin
 cp fw/build/td-h3.bin fw/build/td-h3-rx.bin tools/tdh3/builtin/
-for t in windows/amd64/windows.exe darwin/arm64/macos-apple darwin/amd64/macos-intel linux/amd64/linux-x64 linux/arm64/linux-arm64; do
+# Every flasher comes out of its download as tdh3 (tdh3.exe on Windows), and keeps its run permission:
+# a Mac drops it from a file downloaded on its own, and a tar keeps it, so Linux needs no chmod.
+for t in windows/amd64/tdh3.exe darwin/arm64/tdh3-macos-apple.zip darwin/amd64/tdh3-macos-intel.zip linux/amd64/tdh3-linux-x64.tar.gz linux/arm64/tdh3-linux-arm64.tar.gz; do
   set -- $(echo $t | tr / ' ')
-  (cd tools/tdh3 && CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -tags release -trimpath -ldflags=-s -o ../../dist/tdh3-$3 .)
-done
-# A Mac drops the run permission of a file downloaded on its own, not of one unzipped from a zip.
-for m in macos-apple macos-intel; do
-  python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1], 'w', zipfile.ZIP_DEFLATED); i = zipfile.ZipInfo('tdh3-' + sys.argv[2]); i.external_attr = 0o100755 << 16; i.compress_type = zipfile.ZIP_DEFLATED; z.writestr(i, open(sys.argv[3], 'rb').read()); z.close()" \
-    dist/tdh3-$m.zip $m dist/tdh3-$m
-  rm dist/tdh3-$m
+  out=tdh3; [ "$3" = tdh3.exe ] && out=tdh3.exe
+  (cd tools/tdh3 && CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -tags release -trimpath -ldflags=-s -o ../../dist/$out .)
+  case $3 in
+    *.zip)
+      python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1], 'w', zipfile.ZIP_DEFLATED); i = zipfile.ZipInfo('tdh3'); i.external_attr = 0o100755 << 16; i.compress_type = zipfile.ZIP_DEFLATED; z.writestr(i, open(sys.argv[2], 'rb').read()); z.close()" dist/$3 dist/tdh3
+      rm dist/tdh3 ;;
+    *.tar.gz)
+      tar -C dist -czf dist/$3 --owner=0 --group=0 --numeric-owner tdh3
+      rm dist/tdh3 ;;
+  esac
 done
 # LICENSES.txt: the notices the firmware's and the flasher's licences ask to travel with binaries:
 # this project's MIT licence, NOTICE and the Apache-2.0 text (fw/bk4819.c), the fonts', and the

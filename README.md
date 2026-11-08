@@ -23,11 +23,11 @@ working.
 
    | Computer | Download |
    |---|---|
-   | Windows | [tdh3-windows.exe](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-windows.exe) |
+   | Windows | [tdh3.exe](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3.exe) |
    | Mac with an Apple chip (M1 or newer) | [tdh3-macos-apple.zip](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-macos-apple.zip) |
    | Mac with an Intel chip | [tdh3-macos-intel.zip](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-macos-intel.zip) |
-   | Linux | [tdh3-linux-x64](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-x64) |
-   | Raspberry Pi (64-bit Raspberry Pi OS) | [tdh3-linux-arm64](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-arm64) |
+   | Linux | [tdh3-linux-x64.tar.gz](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-x64.tar.gz) |
+   | Raspberry Pi (64-bit Raspberry Pi OS) | [tdh3-linux-arm64.tar.gz](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-arm64.tar.gz) |
 
 2. **Plug the radio into the computer** with a USB-C cable that carries data (a charge-only cable won't do).
 3. **Open the flasher.**
@@ -35,8 +35,8 @@ working.
    - Mac: double-click the zip (Safari may have unzipped it already), then double-click the flasher.
      The first time, the Mac won't open it: go to **System Settings**, **Privacy & Security**, scroll
      down, click **Open Anyway** and confirm with your password, then open the flasher again.
-   - Linux or Raspberry Pi: in a terminal, `cd ~/Downloads`, `chmod +x tdh3-linux-*`, then
-     `./tdh3-linux-x64` (or `-arm64`).
+   - Linux or Raspberry Pi: in a terminal, `cd ~/Downloads`, `tar xf tdh3-linux-*.tar.gz`, then
+     `./tdh3`.
 4. **Do what it says.** Hold **PTT** (the big key on the side) when it tells you to. The first time, it asks you to switch the radio off, hold **PTT**, and switch it
    back on.
 
@@ -77,7 +77,7 @@ tdh3 settings restore my-radio.bin  # put the settings from that backup back
 tdh3 reset                          # every setting back to its default (the channels stay)
 ```
 
-(`tdh3` is the flasher you downloaded: `.\tdh3-windows.exe`, `./tdh3-macos-apple`, ...) What it
+(`tdh3` is the flasher you downloaded: `.\tdh3.exe` on Windows, `./tdh3` on a Mac or Linux.) What it
 can do and what to tell your assistant: [docs/AI-AGENTS.md](docs/AI-AGENTS.md).
 
 ## What it does

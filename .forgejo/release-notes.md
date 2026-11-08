@@ -7,17 +7,17 @@ Open firmware for the TIDRADIO TD-H3 (not the TD-H3 Plus, a different radio insi
 
    | Computer | Download |
    |---|---|
-   | Windows | tdh3-windows.exe |
+   | Windows | tdh3.exe |
    | Mac with an Apple chip (M1 or newer) | tdh3-macos-apple.zip |
    | Mac with an Intel chip | tdh3-macos-intel.zip |
-   | Linux | tdh3-linux-x64 |
-   | Raspberry Pi | tdh3-linux-arm64 |
+   | Linux | tdh3-linux-x64.tar.gz |
+   | Raspberry Pi | tdh3-linux-arm64.tar.gz |
 
 2. **Plug the radio into the computer** with a USB-C cable.
 3. **Open the flasher.** Windows: double-click it (if Windows says it protected your PC, click
    **More info**, then **Run anyway**). Mac: double-click the zip, then the flasher that comes out
    of it (the first time, go to **System Settings**, **Privacy & Security** and click **Open
-   Anyway**). Linux: `chmod +x tdh3-linux-*`, then run it.
+   Anyway**). Linux: `tar xf tdh3-linux-*.tar.gz`, then `./tdh3`.
 4. **Do what it says:** hold **PTT** when it tells you to.
 
 It puts v{ver} on the radio in about a minute, and your channels and settings stay. Step by step,

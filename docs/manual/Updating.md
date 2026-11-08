@@ -35,11 +35,11 @@ carries that release's firmware.
 
 | Computer | Download |
 |---|---|
-| Windows | [tdh3-windows.exe](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-windows.exe) |
+| Windows | [tdh3.exe](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3.exe) |
 | Mac with an Apple chip (M1 or newer) | [tdh3-macos-apple.zip](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-macos-apple.zip) (double-click it to unzip) |
 | Mac with an Intel chip | [tdh3-macos-intel.zip](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-macos-intel.zip) (double-click it to unzip) |
-| Linux (most PCs) | [tdh3-linux-x64](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-x64) |
-| Raspberry Pi (64-bit Raspberry Pi OS) | [tdh3-linux-arm64](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-arm64) |
+| Linux (most PCs) | [tdh3-linux-x64.tar.gz](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-x64.tar.gz) |
+| Raspberry Pi (64-bit Raspberry Pi OS) | [tdh3-linux-arm64.tar.gz](https://github.com/limehawk/td-h3-fw/releases/latest/download/tdh3-linux-arm64.tar.gz) |
 
 The first time you open it, your computer may stop it, because it's a program from the internet
 that isn't signed by Microsoft or Apple:
@@ -51,8 +51,8 @@ that isn't signed by Microsoft or Apple:
 - **Mac**: Safari may have unzipped it already. The first time, the Mac says it can't check the
   flasher: go to **System Settings**, **Privacy & Security**, scroll down and click **Open
   Anyway**, confirm with your password, and open the flasher again. It opens in Terminal.
-- **Linux** needs it made runnable once, in a terminal in its folder (`cd ~/Downloads`):
-  `chmod +x tdh3-linux-*`, then `./tdh3-linux-x64` (or `-arm64`). If it says **permission
+- **Linux** unpacks in a terminal in its folder (`cd ~/Downloads`): `tar xf tdh3-linux-*.tar.gz`,
+  then `./tdh3`. If it says **permission
   denied** for the cable, run `sudo usermod -aG dialout $USER` once (`uucp` on Arch), then log out
   and back in. If it never finds the cable on Ubuntu, the braille-display service has taken it:
   `sudo apt remove brltty`.
@@ -60,8 +60,8 @@ that isn't signed by Microsoft or Apple:
 Windows and recent Macs know the radio's USB cable by themselves; on an older Windows, if no radio
 is found, install the CH340 driver from the cable chip's maker (WCH).
 
-Below, `tdh3` stands for your flasher when you type it in a terminal: `.\tdh3-windows.exe` on
-Windows, `./tdh3-macos-apple` on an Apple-chip Mac, and so on. Opening the flasher (a double-click)
+In a terminal, type `.\tdh3.exe` on Windows and `./tdh3` on a Mac or Linux where these pages say
+`tdh3`. Opening the flasher (a double-click)
 and typing `tdh3 flash` do the same thing.
 
 ## Flash
@@ -173,8 +173,8 @@ Once you have the flasher, it can fetch the next release by itself, so you don't
 it again. It needs the internet.
 
 1. Plug the radio in and leave it on with REMOTE on, as in [Flash](#flash), step 1.
-2. In a terminal in the flasher's folder, type `tdh3 update` (`.\tdh3-windows.exe update` on
-   Windows, `./tdh3-macos-apple update` on an Apple-chip Mac, and so on).
+2. In a terminal in the flasher's folder, type `tdh3 update` (`.\tdh3.exe update` on
+   Windows, `./tdh3 update` on a Mac or Linux).
 3. It asks GitHub which release is the newest. If your flasher is that release, it says
    **up to date** and stops: there's nothing to do.
 4. Otherwise it downloads the newest flasher for your computer and checks it. Every release is
@@ -201,6 +201,8 @@ What it may say:
 
 On Windows the old flasher stays beside the new one as `tdh3.old.exe` until you next open the
 flasher, which deletes it.
+
+If `tdh3 update` says the release **has no** file for your computer, your flasher is from v0.63 or v0.64, before the downloads were renamed. [Download the new flasher](#get-the-flasher) by hand this once; after that `tdh3 update` works again.
 
 ## Putting the settings back to defaults
 

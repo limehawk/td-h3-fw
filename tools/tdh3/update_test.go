@@ -1,8 +1,10 @@
 package main
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -20,11 +22,11 @@ import (
 
 func TestAssetName(t *testing.T) {
 	for in, want := range map[string]string{
-		"windows/amd64": "tdh3-windows.exe",
+		"windows/amd64": "tdh3.exe",
 		"darwin/arm64":  "tdh3-macos-apple.zip",
 		"darwin/amd64":  "tdh3-macos-intel.zip",
-		"linux/amd64":   "tdh3-linux-x64",
-		"linux/arm64":   "tdh3-linux-arm64",
+		"linux/amd64":   "tdh3-linux-x64.tar.gz",
+		"linux/arm64":   "tdh3-linux-arm64.tar.gz",
 		"freebsd/amd64": "",
 		"linux/386":     "",
 	} {
@@ -161,7 +163,7 @@ func TestFetchMacZip(t *testing.T) {
 	bin := []byte("mac flasher")
 	var zb bytes.Buffer
 	z := zip.NewWriter(&zb)
-	h := &zip.FileHeader{Name: "tdh3-macos-apple", Method: zip.Deflate}
+	h := &zip.FileHeader{Name: "tdh3", Method: zip.Deflate}
 	h.SetMode(0o755)
 	w, _ := z.CreateHeader(h)
 	w.Write(bin)
@@ -176,9 +178,9 @@ func TestFetchMacZip(t *testing.T) {
 func TestReplaceExe(t *testing.T) {
 	for _, windows := range []bool{false, true} {
 		dir := t.TempDir()
-		exe := filepath.Join(dir, "tdh3-linux-x64")
+		exe := filepath.Join(dir, "tdh3")
 		if windows {
-			exe = filepath.Join(dir, "tdh3-windows.exe")
+			exe = filepath.Join(dir, "tdh3.exe")
 		}
 		os.WriteFile(exe, []byte("old"), 0o755)
 		if err := replaceExe(exe, []byte("new"), windows); err != nil {
@@ -197,7 +199,7 @@ func TestReplaceExe(t *testing.T) {
 		}
 		want := []string{filepath.Base(exe)}
 		if windows {
-			want = []string{"tdh3-windows.exe", "tdh3.old.exe"}
+			want = []string{"tdh3.exe", "tdh3.old.exe"}
 			if b, _ := os.ReadFile(oldExe(exe)); string(b) != "old" {
 				t.Errorf("old exe holds %q", b)
 			}
@@ -205,5 +207,23 @@ func TestReplaceExe(t *testing.T) {
 		if strings.Join(names, " ") != strings.Join(want, " ") {
 			t.Errorf("windows=%v: folder has %v, want %v", windows, names, want)
 		}
+	}
+}
+
+func TestFetchUnpacksTarGz(t *testing.T) {
+	want := []byte("flasher program")
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	tw := tar.NewWriter(gz)
+	must(t, tw.WriteHeader(&tar.Header{Name: "tdh3", Mode: 0o755, Size: int64(len(want))}))
+	_, err := tw.Write(want)
+	must(t, err)
+	must(t, tw.Close())
+	must(t, gz.Close())
+	files, pub, _ := signedFiles(t, "tdh3-linux-x64.tar.gz", b.Bytes())
+	got, err := fetch(t, files, "tdh3-linux-x64.tar.gz", pub)
+	must(t, err)
+	if !bytes.Equal(got, want) {
+		t.Errorf("got %q", got)
 	}
 }

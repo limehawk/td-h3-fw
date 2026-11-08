@@ -1,8 +1,10 @@
 package main
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -64,11 +66,11 @@ func (r *ghRelease) asset(name string) string {
 // assetName is this computer's flasher in a release, as tools/dist.sh names it.
 func assetName(goos, goarch string) (string, error) {
 	n, ok := map[string]string{
-		"windows/amd64": "tdh3-windows.exe",
+		"windows/amd64": "tdh3.exe",
 		"darwin/arm64":  "tdh3-macos-apple.zip",
 		"darwin/amd64":  "tdh3-macos-intel.zip",
-		"linux/amd64":   "tdh3-linux-x64",
-		"linux/arm64":   "tdh3-linux-arm64",
+		"linux/amd64":   "tdh3-linux-x64.tar.gz",
+		"linux/arm64":   "tdh3-linux-arm64.tar.gz",
 	}[goos+"/"+goarch]
 	if !ok {
 		return "", fmt.Errorf("releases have no flasher for %s/%s: build tdh3 from source", goos, goarch)
@@ -164,6 +166,9 @@ func fetchFlasher(r *ghRelease, name string, key ed25519.PublicKey) ([]byte, err
 	if strings.HasSuffix(name, ".zip") {
 		return unzipOne(bin)
 	}
+	if strings.HasSuffix(name, ".tar.gz") {
+		return untarOne(bin)
+	}
 	return bin, nil
 }
 
@@ -182,6 +187,26 @@ func unzipOne(b []byte) ([]byte, error) {
 	}
 	defer f.Close()
 	return io.ReadAll(io.LimitReader(f, 64<<20))
+}
+
+// untarOne is the one file in a Linux release's tar.gz.
+func untarOne(b []byte) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	t := tar.NewReader(gz)
+	if _, err = t.Next(); err != nil {
+		return nil, err
+	}
+	out, err := io.ReadAll(io.LimitReader(t, 64<<20))
+	if err != nil {
+		return nil, err
+	}
+	if _, err = t.Next(); err != io.EOF {
+		return nil, errors.New("tar holds more than the flasher")
+	}
+	return out, nil
 }
 
 // oldExe is where Windows keeps the replaced flasher until the next start deletes it: a running

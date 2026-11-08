@@ -25,8 +25,8 @@ Press **V/M** to switch a slot between frequency mode (VFO, type any frequency) 
 ## Loading your channel list
 
 The easiest way is from a computer with [CHIRP](https://chirp.danplanet.com) or `tdh3`, the flasher you
-downloaded ([Updating the firmware](Updating#get-the-flasher); type its own name, such as
-`.\tdh3-windows.exe` or `./tdh3-macos-apple`, where these steps say `tdh3`).
+downloaded ([Updating the firmware](Updating#get-the-flasher); type `.\tdh3.exe` on Windows and
+`./tdh3` on a Mac or Linux where these steps say `tdh3`).
 
 1. On the radio: **MENU**, then type **4** **4** to reach **PC LINK**, then **MENU**. The
    screen says *waiting for computer*. Plug in the USB-C cable. (With BLUETOOTH on in the menu, a

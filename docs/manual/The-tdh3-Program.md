@@ -17,9 +17,8 @@ manages its channels and settings, and lets a computer see its screen and press 
 
 ## Getting ready
 
-**Running it.** Open a terminal in the folder where the flasher is. The examples here say `tdh3`;
-yours has a longer name, depending on your computer: `.\tdh3-windows.exe` on Windows,
-`./tdh3-macos-apple` on a Mac, `./tdh3-linux-x64` on Linux. See [Updating the firmware](Updating).
+**Running it.** Open a terminal in the folder where the flasher is. The examples here say `tdh3`:
+type `.\tdh3.exe` on Windows and `./tdh3` on a Mac or Linux. See [Updating the firmware](Updating).
 
 **Two ways the radio talks to a computer.** Each command needs one of these:
 
@@ -94,11 +93,11 @@ More: [Recording the screen](Tools#recording-the-screen).
 ## Using it with an AI assistant
 
 An assistant that can run commands on your computer (Claude Code, Codex and others) can work the
-radio with `tdh3`. Switch REMOTE on, then paste this into the chat. Change the first line to your flasher's name.
+radio with `tdh3`. Switch REMOTE on, then paste this into the chat.
 
 ```text
 You can operate my TIDRADIO TD-H3 radio, which runs td-h3-fw, with the command-line
-program ./tdh3-linux-x64 (called tdh3 below). It's connected by USB-C. For exact
+program ./tdh3 (called tdh3 below; on Windows it's .\\tdh3.exe). It's connected by USB-C. For exact
 options run: tdh3 --help, and tdh3 COMMAND --help.
 
 How the radio connects:
