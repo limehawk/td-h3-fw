@@ -21,7 +21,7 @@ a new or changed key, menu item, screen, message, limit or default.
   Each page opens with one, a short "I want to… | Press" table of its most common moves.
 - Menu numbers: `make -C fw test` fails if any page's `| 13 | TX BANDS |`, `TX BANDS (item 13)` or
   `**1** **3** (TX BANDS)` no longer matches the firmware's menu. Write them one of those ways.
-- Flashing or the `tdh3` tool: [Updating the firmware](Updating).
+- Flashing or the `tdh3` tool: [Updating the firmware](Updating), and every `tdh3` command in [The tdh3 program](The-tdh3-Program).
 - Text: the page under `docs/manual/` that covers it.
 - Pictures: `make -C fw screenshots` regenerates every screenshot from the real firmware. Commit
   the images that changed.
