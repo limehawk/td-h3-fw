@@ -28,7 +28,8 @@ a new or changed key, menu item, screen, message, limit or default.
 - Callout numbers live in `tools/screens.py` (`CALLOUTS`) and in the page's numbered list. Change
   one, change the other.
 - A new screen: add a capture step to `tools/screens.py`, callouts in `CALLOUTS` (or its name in
-  `PLAIN` for a picture with no numbers), and a section to the page.
+  `PLAIN` for a picture with no numbers), a section to the page, and the picture to
+  [Screenshots](Screenshots).
 
 ![A screenshot with its callout numbers](img/menu.png)
 

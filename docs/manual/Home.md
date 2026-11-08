@@ -77,6 +77,7 @@ See [Updating the firmware](Updating).
 8. **[Updating the firmware](Updating)**: flashing a new version.
 9. **[The tdh3 program](The-tdh3-Program)**: every command the flasher has, on one page.
 10. **[Glossary](Glossary)**: radio words in plain English.
+11. **[Screenshots](Screenshots)**: every screen in one place.
 
 For people working on the firmware: [Keeping this manual current](Keeping-This-Manual-Current).
 

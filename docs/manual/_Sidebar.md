@@ -10,5 +10,6 @@
 - [Transmitting](Transmitting)
 - [Updating](Updating)
 - [The tdh3 program](The-tdh3-Program)
+- [Screenshots](Screenshots)
 - [Glossary](Glossary)
 - [Keeping this manual current](Keeping-This-Manual-Current)
