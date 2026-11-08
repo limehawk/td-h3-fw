@@ -1,5 +1,5 @@
 ; asm-for: main.c draw_slot
-; c-sha256: 6a4e624c28bcc9a0
+; c-sha256: dbd5f115e84ff4a8
 ; draw_slot: slot A (i 0, y 14) or B (i 1, y 73): letter and name, memory number, the frequency at 2x
 ; (only the digits that changed on a fast redraw), USB's small 10 Hz digits, the mode/power/shift/
 ; bandwidth row and the tones/step row (or DTMF digits, or the tone heard). main.c has the C original.
@@ -528,7 +528,7 @@ _draw_slot:
 	orl	a,r5
 	orl	a,r4
 	jz	00046$			; tx == rx
-; a shift: "+0.6", "-5": the sign, then dec(p, |d|, 6, 5) - 2 with its trailing 0s and '.' dropped
+; a shift: "+0.6", "-5", "-10": the sign, then dec(p, |d|, w, 5) - 2 with its trailing 0s and '.' dropped
 	pop	dph
 	pop	dpl
 	mov	a,#'+'
@@ -554,8 +554,29 @@ _draw_slot:
 	inc	dptr
 	mov	a,#5
 	push	acc
-	mov	a,#6
-	push	acc
+	mov	r3,#6			; w = 6 + (d >= 1000000) + (d >= 10000000): 1-3 digits of MHz
+	clr	c
+	mov	a,r4
+	subb	a,#0x40
+	mov	a,r5
+	subb	a,#0x42
+	mov	a,r6
+	subb	a,#0x0F
+	mov	a,r7
+	subb	a,#0
+	jc	00091$
+	inc	r3			; no carry on the way here: the next compare starts clear
+	mov	a,r4
+	subb	a,#0x80
+	mov	a,r5
+	subb	a,#0x96
+	mov	a,r6
+	subb	a,#0x98
+	mov	a,r7
+	subb	a,#0
+	jc	00091$
+	inc	r3
+00091$:	push	ar3
 	push	ar4
 	push	ar5
 	push	ar6

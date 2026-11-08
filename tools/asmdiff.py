@@ -233,7 +233,7 @@ def gen_draw_meter(r):
 def chan(r):                                   # a random chan_t, as asm.inc lays it out
     c = bytearray(K['CHAN_SIZE'])
     rx = r.choice([14652000, 44610000, 16255000, 46256250, 46256875, 14652001, r.randrange(1800000, 99999999), r.randrange(1 << 31)])   # 12.5, 6.25 kHz and 10 Hz digits
-    tx = r.choice([rx, 0, rx + 60000, rx - 500000, rx + 25, r.randrange(1800000, 99999999), r.randrange(1 << 31)])
+    tx = r.choice([rx, 0, rx + 60000, rx - 500000, rx + 25, rx + 999999, rx - 1000000, rx + 9999999, rx - 10000000, rx + 30000000, r.randrange(1800000, 99999999), r.randrange(1 << 31)])   # shifts of 1, 2 and 3 digits of MHz
     c[K['CHAN_RX']:K['CHAN_RX'] + 4] = rx.to_bytes(4, 'little')
     c[K['CHAN_TX']:K['CHAN_TX'] + 4] = (tx % (1 << 31)).to_bytes(4, 'little')
     tone = lambda: r.choice([0, 0, 885, 1000, 1413, 0x8000 | 0o23, r.randrange(0x10000)])

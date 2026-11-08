@@ -71,8 +71,9 @@ and noise.
 
 **Offset / shift**: a repeater listens on one frequency and transmits on another. The offset is
 the gap (0.6 MHz on 2 m, 5 MHz on 70 cm and GMRS) and the shift (+/-) its direction. The radio
-handles it: memory channels carry their own, and in frequency mode SHIFT AUTO picks it from the band
-plan.
+handles it: memory channels carry their own, and in frequency mode SHIFT AUTO picks it from the US band
+plan. Outside the US, set SHIFT to + or - yourself; OFFSET keeps one gap for VHF and one for UHF (see the
+[Menu](Menu)).
 
 **Priority channel**: one channel the radio checks every 2 seconds whatever else it's doing (every 5 seconds while you're listening to a call).
 

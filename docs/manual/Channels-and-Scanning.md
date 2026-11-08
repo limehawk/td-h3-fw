@@ -257,7 +257,7 @@ tune up and down from it, or change its tone, without touching the channel itsel
 The slot switches to frequency mode on the channel's frequency, and the frequency-mode settings
 (RX TONE, TX TONE, SHIFT, OFFSET, BANDWIDTH, POWER) take the channel's values. The channel stays as
 it was; **V/M** goes back to it. A channel whose transmit frequency is an unusual distance from its
-receive frequency (not one of the OFFSET choices: 0.1, 0.6, 1.0, 1.6, 5.0, 7.6 or 10 MHz) comes over
+receive frequency (more than 12.75 MHz, or not a multiple of 0.05 MHz) comes over
 with SHIFT OFF: set SHIFT and OFFSET yourself before you talk through that repeater.
 
 ## Naming a channel

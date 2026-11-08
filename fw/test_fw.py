@@ -2017,7 +2017,7 @@ def test_menu_walk(cpu):                   # every setting through its whole ran
         out.append('%s %s' % (name, shown(i)))
         for d in (1, -1):
             start = prev = cfgb()
-            for _ in range(600):
+            for _ in range(8 if name == 'OFFS' else 600):   # OFFSET has 255 values: a few here, the ends in test_offset_dial
                 call(cpu, change, d)
                 now = cfgb()
                 diff = ' '.join('%02X=%02X' % (k, now[k]) for k in range(48) if now[k] != base[k])
@@ -2337,7 +2337,7 @@ def test_ch_to_vfo(cpu):                   # CH TO VFO: channel 4 (446.100 +5, D
     cpu.run(1_000_000)
     texts = remote_texts(cpu)
     assert freq(cpu) == 44610000 and not any(t.startswith('*M') for t in texts), (freq(cpu), texts)
-    for at, rows in (('TXT', [('SHIFT', '+'), ('OFFSET MHz', '5.0'), ('TX TONE', 'D754I')]),   # rows SHIFT to TAIL TONE
+    for at, rows in (('TXT', [('SHIFT', '+'), ('OFFSET MHz', '5.00'), ('TX TONE', 'D754I')]),   # rows SHIFT to TAIL TONE
                      ('RXT', [('RX TONE', 'D023N'), ('BANDWIDTH', 'NARROW'), ('POWER', 'HIGH')])):   # ATTENUATOR to POWER
         menu(cpu, at)
         cpu.run(1_000_000)
@@ -2383,10 +2383,8 @@ def test_auto_shift(cpu):            # SHIFT AUTO: the ARRL band plan's repeater
     cpu.run(1_000_000)
     for f, want in [('146940', '-0.6'), ('147000', '+0.6'), ('145350', '-0.6'), ('146400', ''), ('442500', '+5'),
                     ('448000', '-5'), ('446000', ''), ('462725', '+5'), ('462750', 'RXONLY'), ('462575', '+5'),
-                    ('462562', ''), ('146520', '')]:   # 462.562 types GMRS 1, 462.5625: simplex
-        keys(cpu, f)
-        line = [t for t in remote_texts(cpu) if t.startswith('FM ')][0]   # slot A's mode, power, shift line
-        assert line.split()[2] == (want or 'WIDE'), (f, line)
+                    ('462562', ''), ('146520', ''), ('145130', '-0.6'), ('145090', '')]:   # 462.562 types GMRS 1, 462.5625: simplex
+        assert shift_of(cpu, f) == (want or 'WIDE'), f
     keys(cpu, '462587')                    # GMRS 2 typed: the half kilohertz is filled in, 462.5875
     assert freq(cpu) == 46258750, freq(cpu)
     keys(cpu, '146940')
@@ -2401,6 +2399,88 @@ def test_auto_shift(cpu):            # SHIFT AUTO: the ARRL band plan's repeater
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])
     keys(cpu, ['EXIT'] + list('146940'))   # V/M: from channel 1 to frequency mode
     assert any(t.startswith('FM LOW -0.6') for t in remote_texts(cpu)), 'fresh SHIFT is not AUTO'
+
+
+def shift_of(cpu, f):                      # slot A tuned to f: the shift (or WIDE, for none) its line shows
+    keys(cpu, f)
+    return [t for t in remote_texts(cpu) if t.startswith('FM ')][0].split()[2]
+
+
+def test_offset_per_band(cpu):             # OFFSET is one per band: a repeater setting on 70 cm leaves 2 m's alone
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    menu(cpu, 'SHIFT', ['UP', 'UP', 'EXIT'])   # OFF, +, -
+    assert shift_of(cpu, '446000') == '-5', 'UHF is not 5.0 by default'
+    menu(cpu, 'OFFS', ['UP', 'EXIT'])      # 5.00 to 5.05, on 70 cm
+    assert shift_of(cpu, '446000') == '-5.05'
+    assert shift_of(cpu, '145580') == '-0.6', "70 cm's OFFSET moved 2 m's"
+    cpu.key = 'PTT'                        # the report: 145.580, SHIFT -, must not try for 140.580
+    cpu.run(600_000)
+    assert freq(cpu) == 14498000 and pins(cpu)['TXV'], freq(cpu)
+    cpu.key = None
+    cpu.run(2_000_000)
+    menu(cpu, 'OFFS', ['DOWN', 'EXIT'])    # 0.60 to 0.55, on 2 m
+    assert shift_of(cpu, '145580') == '-0.55'
+    assert shift_of(cpu, '446000') == '-5.05', "2 m's OFFSET moved 70 cm's"
+
+
+def offset_row(cpu):                       # OFFSET's value in the menu, then out
+    menu(cpu, 'OFFS')
+    cpu.run(1_000_000)
+    row = [t for t in remote_texts(cpu) if t.startswith('OFFSET')]
+    keys(cpu, ['EXIT'])
+    cpu.run(1_000_000)
+    return row[0].split()[-1]
+
+
+def test_offset_old_settings(cpu):         # settings from before OFFSET was per band: each band starts on its standard
+    for old in (0, 1, 4, 6):
+        ee = eeprom(); ee[0x1FC3] = 0x49; ee[0x1FC5] = old << 4   # SHIFT -, the old single OFFSET
+        cpu = boot(ee=ee)
+        menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+        assert shift_of(cpu, '145580') == '-0.6' and offset_row(cpu) == '0.60', old
+        assert shift_of(cpu, '446000') == '-5' and offset_row(cpu) == '5.00', old
+
+
+def test_offset_dial(cpu):                 # 50 kHz steps, 0.05 to 12.75 MHz, round past either end
+    ee = eeprom(); ee[0x1FC3] = 0x49; ee[0x1FCA] = 255   # SHIFT -, VHF 12.75
+    cpu = boot(ee=ee)
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    assert shift_of(cpu, '145580') == '-12.75' and offset_row(cpu) == '12.75'
+    menu(cpu, 'OFFS', ['UP', 'EXIT'])
+    assert shift_of(cpu, '145580') == '-0.05'
+    menu(cpu, 'OFFS', ['DOWN', 'EXIT'])
+    assert shift_of(cpu, '145580') == '-12.75'
+
+
+def test_shift_digits(cpu):                # a shift of 10 MHz or more shows in full, not its last digit
+    ee = eeprom(); ee[0x1FC3] = 0x49; ee[0x1FCB] = 200   # SHIFT -, UHF 10.00
+    cpu = boot(ee=ee)
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    assert shift_of(cpu, '446000') == '-10'
+    cpu.ee.mem[0x44:0x48] = bcd(14610000, 4)   # channel 4: 446.100, transmits on 146.100
+    press(cpu, 'EXIT')                     # V/M: memory mode
+    keys(cpu, '004')
+    cpu.run(1_000_000)
+    line = [t for t in remote_texts(cpu) if t.startswith('FM ')][0]
+    assert line.split()[2] == '-300', line
+
+
+def test_ch_to_vfo_offset(cpu):            # CH TO VFO: any 50 kHz multiple comes over; anything else is simplex
+    for tx, shift, off in ((44610000 - 765000, '-', '7.65'), (44610000 - 60001, 'OFF', '5.00')):
+        cpu = boot()
+        cpu.ee.mem[0x44:0x48] = bcd(tx, 4)
+        menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+        press(cpu, 'EXIT')                 # V/M: memory mode
+        keys(cpu, '004')
+        cpu.run(1_000_000)
+        menu(cpu, 'TOVFO', ['UP'])
+        cpu.run(1_000_000)
+        assert offset_row(cpu) == off, tx
+        menu(cpu, 'SHIFT')
+        cpu.run(1_000_000)
+        row = [t for t in remote_texts(cpu) if t.startswith('SHIFT')]
+        assert row and row[0].split()[-1] == shift, (tx, row)
+        keys(cpu, ['EXIT'])
 
 
 def test_entry_rxonly(cpu):                # RX-only: 'RXONLY' made the info line overflow into entry
@@ -3357,6 +3437,11 @@ INDEPENDENT = [
     ('menu times out after 20 s', test_menu_times_out),
     ('REMOTE: screen mirror, keys, status, no PTT', test_remote),
     ('SHIFT AUTO follows the band plan', test_auto_shift),
+    ('OFFSET is one per band', test_offset_per_band),
+    ('settings saved with one OFFSET load right', test_offset_old_settings),
+    ('a shift of 10 MHz or more shows in full', test_shift_digits),
+    ('OFFSET dials 0.05 to 12.75 MHz and goes round', test_offset_dial),
+    ('CH TO VFO brings any 50 kHz offset, else simplex', test_ch_to_vfo_offset),
     ('typed digits show on the RX-only build', test_entry_rxonly),
     ('V/M leaves a remotely started PC LINK', test_remote_pc_link_exit),
     ('menu walk: every setting, its text and saved bytes', test_menu_walk),

@@ -17,12 +17,13 @@ typedef struct {
     uint8_t step:4, mic:4;                                              // 0x1FC2
     uint8_t power:2, shift:2, save:2, light:2;                          // 0x1FC3
     uint8_t narrow:1, att:1, dw:1, :1, beep:1, bt:1, remote:1, bell:1;   // 0x1FC4; bit 3: TAIL TONE OFF before 0xAC
-    uint8_t apo:2, theme:2, offs:3, klock:1;                            // 0x1FC5; klock: KEY LOCK stops PTT too
+    uint8_t apo:2, theme:2, :3, klock:1;                                // 0x1FC5; klock: KEY LOCK stops PTT too; bits 4-6: the old single OFFSET, not read (old radios still hold it)
     uint8_t pause:3, resume:3, :2;                                      // 0x1FC6
     uint8_t tot;
     uint8_t bright:3, vmode:4, :1;          // 0x1FC8; vmode: each VFO's MOD_* (A bits 4:3, B 6:5), 0 = by band
     uint8_t comp:2, tail:2, nar6:1, sstep:2, :1;   // 0x1FC9, read as bk_opt by bk4819.c and radio.c (BKO_* in fw.h); sstep: SSB's
-    uint8_t free_10[3];
+    uint8_t off[2];                         // 0x1FCA: OFFSET under 300 MHz, then from 300 MHz up (off_n)
+    uint8_t free_12;
     uint8_t act, prio, wx;
     uint8_t vox:4, voxd:3, :1;                                          // 0x1FD0: VOX 0 off or 1-9, VOX DELAY
     uint8_t txb, group;                     // txb: TX BANDS, bits HAM GMRS MURS FRS; group: bit g-1 = scan group g, 0 = scan list
@@ -78,8 +79,6 @@ static uint16_t index_of(uint16_t t) __reentrant   // inverse of tone_of
     for (uint16_t i = 1; i < NTONE_MENU; i++) if (tone_of(i) == t) return i;
     return 0;
 }
-static const __code uint32_t offsets[] = {10000, 60000, 100000, 160000, 500000, 760000, 1000000};  // 10 Hz
-static const __code char *const __code offs_s[] = {"0.1", "0.6", "1.0", "1.6", "5.0", "7.6", "10.0"};
 const __code uint8_t tots[] = {0, 30, 60, 120, 180};
 static const __code uint8_t light_s[] = {10, 30, 0};   // seconds on, 0 = always
 static const __code uint32_t wx_f[7] = {16240000, 16242500, 16245000, 16247500, 16250000, 16252500, 16255000};
@@ -94,7 +93,7 @@ static const __code uint8_t save_ms[] = {0, 24, 48, 96};  // battery saver sleep
 static const __code uint32_t bands[][2] = {
     {10800000, 13700000}, {14400000, 14800000}, {15600000, 16200000}, {16240000, 16255000},
     {42000000, 45000000}, {46255000, 46272500}, {46755000, 46772500},
-    {14520000, 14550000}, {14661000, 14697000}, {14700000, 14739000}, {44200000, 44499999},
+    {14510000, 14550000}, {14661000, 14697000}, {14700000, 14739000}, {44200000, 44499999},
     {44700000, 45000000}, {46255000, 46272500},
 };
 #define ARS_UP 0x2C                         // which of them shift up: 147.0, 442-445, GMRS
@@ -271,13 +270,19 @@ static const __code item_t items[M_N] = {   // SQUELCH 0-9, then S1-S9 (10-18): 
     [M_BW] = {4, 2, 0, 0x01, bw_s}, [M_ATT] = {4, 2, 0, 0x11, off_on}, [M_DW] = {4, 2, 1, 0x21, off_on}, [M_TAIL] = {9, 3, 0, 0x22, tail_s},
     [M_MODE] = {8, 3, 0, 0x32, mode_s},   // the selected slot's: A bits 4:3, B 6:5 (item_get adds 2 for B)
     [M_BEEP] = {4, 2, 1, 0x41, off_on}, [M_BT] = {4, 2, 0, 0x51, off_on}, [M_REM] = {4, 2, 0, 0x61, off_on}, [M_BELL] = {4, 2, 0, 0x71, off_on},
-    [M_APO] = {5, 4, 0, 0x02, apo_s}, [M_THEME] = {5, NTHEMES, 0, 0x22, theme_s}, [M_OFFS] = {5, 7, 1, 0x43, offs_s}, [M_KLOCK] = {5, 2, 0, 0x71, klock_s}, [M_VOX] = {16, 10, 0, 0x04, 0}, [M_VOXD] = {16, 5, 0, 0x43, voxd_s},
+    [M_APO] = {5, 4, 0, 0x02, apo_s}, [M_THEME] = {5, NTHEMES, 0, 0x22, theme_s}, [M_KLOCK] = {5, 2, 0, 0x71, klock_s}, [M_VOX] = {16, 10, 0, 0x04, 0}, [M_VOXD] = {16, 5, 0, 0x43, voxd_s},
     [M_COMP] = {9, 4, 0, 0x02, comp_s}, [M_NAR] = {9, 2, 0, 0x41, nar_s},
     [M_PAUSE] = {6, 5, 4, 0x03, pause_s}, [M_RESUME] = {6, 6, 2, 0x33, resume_s},
     [M_WX] = {O(wx), 8, 0, 0x08, 0},       // OFF, WX1-WX7: shown as its frequency (menu_value)
 };
 typedef char cfg_layout[O(tot) == 7 && O(act) == 13 && O(txb) == 17 && O(fcal) == 20 && O(s) == 29 ? 1 : -1];   // saved blocks keep reading right
 #define CFGB ((__xdata uint8_t *)&cfg)
+
+static uint8_t ch_uhf(void) { return ch.rx >= 30000000UL; }   // the tuned frequency is 300 MHz or more
+// OFFSET per band, as the big rigs keep it: cfg.off[0] under 300 MHz, [1] from 300 MHz up, in 50 kHz steps
+// (0.05-12.75 MHz). 0, what older settings hold, means the band's standard: 0.6 or 5.0 MHz.
+static uint8_t off_n(uint8_t u) __reentrant { uint8_t v = cfg.off[u]; return v ? v : u ? 100 : 12; }
+static uint32_t off_d(uint8_t n) __reentrant { return (uint32_t)n * 5000; }   // n steps in 10 Hz
 
 static uint8_t item_get(uint8_t i) __reentrant
 {
@@ -378,22 +383,22 @@ static void fill_ch(uint8_t i) __reentrant
 {
     __xdata slot_t *x = &cfg.s[i];
     int8_t b;
-    uint8_t sh, o;
+    uint8_t sh, o, u;
     if (wxm && i == cfg.act) { wx_fill(wx_ch); return; }   // weather mode: the slot itself is left as it was
     if (!(x->mem && chan_load(x->chn))) {
         x->mem = 0;
         ch.rx = x->vfo;
-        sh = cfg.shift; o = cfg.offs;
+        sh = cfg.shift; u = ch_uhf(); o = off_n(u);
         if (sh == 3) {                      // AUTO: the band plan's shift and offset, or simplex
             b = range_of(ch.rx, NBANDS) - NBANDS;
             // GMRS: only the 8 main channels have repeaters; the interstitials 12.5 kHz between them are
             // simplex. In 10 Hz units the main channels are multiples of 4 and the interstitials 2 more.
             if (b == 5 && (uint8_t)ch.rx & 3) b = -1;
             sh = b < 0 ? 0 : (uint8_t)ARS_UP >> (uint8_t)b & 1 ? 1 : 2;
-            o = b < 3 ? 1 : 4;              // offsets[]: 0.6 and 5.0
+            o = u ? 100 : 12;               // the band's standard: 0.6 or 5.0
         }
         {
-            uint32_t d = sh ? offsets[o] : 0;   // sh: 0 simplex, 1 up, 2 down
+            uint32_t d = sh ? off_d(o) : 0;   // sh: 0 simplex, 1 up, 2 down
             if (sh == 2) d = -d;
             ch.tx = ch.rx + d;
         }
@@ -582,7 +587,7 @@ shown_small:
         uint32_t d = dc.tx - dc.rx;         // both under 2^31: the sign bit is the shift's
         *p++ = '+';
         if ((int32_t)d < 0) { d = -d; p[-1] = '-'; }
-        p = dec(p, d, 6, 5) - 2;            // MHz to 10 Hz, its last two dropped: d / 100 without a long divide
+        p = dec(p, d, 6 + (d >= 1000000UL) + (d >= 10000000UL), 5) - 2;   // 1-3 digits of MHz, to 10 Hz, its last two dropped: d / 100 without a long divide
         while (p[-1] == '0') p--;           // 0.600 -> 0.6, 5.000 -> 5
         if (p[-1] == '.') p--;
     } else if (!tx_allowed(dc.tx)) p = cat(p, "RXONLY");
@@ -855,6 +860,7 @@ static void menu_value(uint8_t i) __reentrant   // into the back half of buf, bu
     __xdata char *const v = buf + 26;       // the other items have no VFO in front
     if (i == M_RXT || i == M_TXT) tone_s(p, tone_of(i == M_RXT ? cfg.rxt : cfg.txt));
     else if (i == M_GROUP || i == M_GLINK) { if (cfg.group) groups_s(v, 1); else cat(v, "SCAN LIST"); }
+    else if (i == M_OFFS) dec(p, off_n(ch_uhf()) * 5, 4, 2);   // " 0.60": 10 kHz units
     else if (i == M_PRIO && cfg.prio) { cat(v, "CH"); u2s(v + 2, cfg.prio, 3); }
     else if (i == M_WX && cfg.wx) freq_s(v, wx_freq(cfg.wx - 1));
     else if ((uint8_t)(i - M_FCAL) < 3) cal_s(i - M_FCAL);
@@ -1280,18 +1286,18 @@ static void name_screen(void) __reentrant
 }
 
 // CH TO VFO, the big rigs' "MR to VFO": the selected slot's channel into its VFO, and the VFO
-// settings take its tones, shift, bandwidth and power. A shift not in OFFSET's list comes over as simplex.
+// settings take its tones, shift, bandwidth and power. A shift OFFSET can't hold (not a multiple of 50 kHz, or over 12.75 MHz) comes over as simplex.
 static void to_vfo(void) __reentrant
 {
     uint32_t d = ch.tx - ch.rx;
-    uint8_t o, up = (int32_t)d > 0;         // frequencies are under 2^31
+    uint8_t o, u = ch_uhf(), up = (int32_t)d > 0;   // frequencies are under 2^31
     if (!up) d = -d;
     cfg.rxt = index_of(ch.rx_tone);
     cfg.txt = index_of(ch.tx_tone);
     cfg.narrow = ch.narrow;
     cfg.power = ch.power;
     cfg.shift = 0;
-    for (o = 0; o < 7; o++) if (offsets[o] == d) { cfg.offs = o; cfg.shift = 2 - up; }
+    for (o = 1; o; o++) if (off_d(o) == d) { cfg.off[u] = o; cfg.shift = 2 - up; }
     set_vfo(ch.rx);
 }
 
@@ -1302,6 +1308,7 @@ static void menu_change(int8_t d) __reentrant
 
     if (it->n) { item_step(menu, d); theme_apply(); tx_prefs(); BT_ON = cfg.bt; }
     else switch (menu) {
+    case M_OFFS: { uint8_t u = ch_uhf(); cfg.off[u] = wrap(off_n(u) - 1, d, 255) + 1; break; }
     case M_RXT: case M_TXT: { __xdata uint16_t *t = menu == M_RXT ? &cfg.rxt : &cfg.txt; *t = wrap(*t, d, NTONE_MENU); break; }
     case M_GROUP: {                         // one at a time, as always: SCAN LIST, GROUP 1-8
         uint8_t i = 0;
