@@ -56,7 +56,7 @@ key press with `wait` for the screen it expects rather than guessing how long to
 
 ## Tell your agent about it
 
-Put something like this in the project's `CLAUDE.md` or `AGENTS.md`, or paste it into the chat:
+The manual has [a fuller prompt to paste](https://github.com/limehawk/td-h3-fw/wiki/The-tdh3-Program#using-it-with-an-ai-assistant). The short version: put something like this in the project's `CLAUDE.md` or `AGENTS.md`, or paste it into the chat:
 
 > The TD-H3 radio is plugged in over USB-C with REMOTE on. `./tdh3-linux-x64` in this folder
 > (put your flasher's name here) works it: `./tdh3-linux-x64 remote --help` lists the commands.

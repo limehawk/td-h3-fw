@@ -13,6 +13,7 @@ manages its channels and settings, and lets a computer see its screen and press 
 | Change channels | `tdh3 channels set 88-94 --power low` | PC LINK |
 | Back up the radio | `tdh3 eeprom backup my-radio.bin` | PC LINK |
 | See what the radio shows | `tdh3 remote screen` | REMOTE on |
+| Let an AI assistant use it | Paste the [prompt below](#using-it-with-an-ai-assistant) | REMOTE on |
 
 ## Getting ready
 
@@ -89,3 +90,52 @@ All of these need REMOTE on.
 | `tdh3 remote replay FILE` | Plays a recording back. `-o my.gif` makes an animated GIF. |
 
 More: [Recording the screen](Tools#recording-the-screen).
+
+## Using it with an AI assistant
+
+An assistant that can run commands on your computer (Claude Code, Codex and others) can work the
+radio with `tdh3`. Switch REMOTE on, then paste this into the chat. Change the first line to your flasher's name.
+
+```text
+You can operate my TIDRADIO TD-H3 radio, which runs td-h3-fw, with the command-line
+program ./tdh3-linux-x64 (called tdh3 below). It's connected by USB-C. For exact
+options run: tdh3 --help, and tdh3 COMMAND --help.
+
+How the radio connects:
+- REMOTE must be on for every `tdh3 remote` command.
+- PC LINK is needed for `tdh3 channels`, `eeprom`, `settings` and `reset`. To enter it run
+  `tdh3 remote keys MENU 4 4 MENU`, wait a few seconds, and try again if the radio doesn't
+  answer at first. While it's in PC LINK, `tdh3 remote` won't answer. Ask me to press V/M
+  on the radio to leave it.
+
+Working the radio:
+- After every step, read the result with `tdh3 remote screen`. Never assume a key worked.
+- Use `tdh3 remote wait "TEXT"` to wait for something rather than guessing a delay.
+- Go to menu items by number, never by scrolling: `tdh3 remote keys MENU 1 1` opens item 11.
+- In a menu item: MENU selects it, UP or DOWN changes the value, MENU confirms. Then press
+  V/M ONCE to leave the menu. A second V/M switches the slot between frequency and memory mode.
+- `tdh3 remote settings` walks the whole menu and is slow. Use it only when you need every
+  setting; to read one value, open that item by number and read the screen.
+
+Safety:
+- The radio refuses to transmit from the computer. Don't try to work around that.
+- Only with my say-so: `tdh3 flash`, `tdh3 update`, `tdh3 reset`, `tdh3 settings restore`,
+  `tdh3 channels clear`, `import`, `copy` or `lock`, and changing TX BANDS (item 13).
+  A flash also needs me to hold PTT.
+- `tdh3 channels` commands that change the radio save a backup in backups/ first. Before anything
+  else that writes to it, run `tdh3 eeprom backup FILE.bin`.
+- Leave the radio as you found it: on the home screen, same channel, same settings.
+```
+
+To keep it as a Claude Code skill, save it as `~/.claude/skills/td-h3-radio/SKILL.md` with these
+lines at the very top:
+
+```text
+---
+name: td-h3-radio
+description: Operate a TD-H3 radio running td-h3-fw with the tdh3 command-line program.
+---
+```
+
+More on what an assistant can do, and practising without a radio:
+[AI agents guide](https://github.com/limehawk/td-h3-fw/blob/main/docs/AI-AGENTS.md).
