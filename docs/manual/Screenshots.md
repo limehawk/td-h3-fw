@@ -21,7 +21,7 @@ Under each picture is a link to the page that explains it.
 <tr><td valign="top"><img src="img/boot.gif" width="320" alt="Starting up"><br><b>Starting up</b><br><a href="Home">The manual</a></td><td valign="top"><img src="img/home.png" width="320" alt="The home screen"><br><b>The home screen</b><br><a href="Home-Screen">What every part means</a></td></tr>
 <tr><td valign="top"><img src="img/memory.png" width="320" alt="On a memory channel"><br><b>On a memory channel</b><br><a href="Home-Screen">The home screen</a></td><td valign="top"><img src="img/typing.png" width="320" alt="Typing a frequency"><br><b>Typing a frequency</b><br><a href="Home-Screen#typing-a-frequency">Typing a frequency</a></td></tr>
 <tr><td valign="top"><img src="img/usb.png" width="320" alt="Listening to SSB"><br><b>Listening to SSB</b><br><a href="Home-Screen#listening-to-ssb">Listening to SSB</a></td></tr>
-<tr><td colspan="2"><img src="img/themes.png" width="660" alt="The four themes: Classic, Night Amber, Green, Night Red"><br><b>The four themes: Classic, Night Amber, Green, Night Red</b><br><a href="Menu#display--sound">Display and sound settings</a></td>
+<tr><td colspan="2"><img src="img/themes.png" width="660" alt="The four themes: Classic, Night Amber, Green, Night Red"><br><b>The four themes: Classic, Night Amber, Green, Night Red</b><br><a href="Menu#display--sound">Display and sound settings</a></td></tr>
 </table>
 
 ## The menu
@@ -68,8 +68,8 @@ Under each picture is a link to the page that explains it.
 ## On the computer
 
 <table>
-<tr><td colspan="2"><img src="img/term-flash.png" width="660" alt="The flasher when it has finished"><br><b>The flasher when it has finished</b><br><a href="Updating#flash">Flashing</a></td>
-<tr><td colspan="2"><img src="img/term-help.png" width="660" alt="Every tdh3 command"><br><b>Every tdh3 command</b><br><a href="The-tdh3-Program">The tdh3 program</a></td>
-<tr><td colspan="2"><img src="img/term-channels.png" width="660" alt="Listing your channels"><br><b>Listing your channels</b><br><a href="Channels-and-Scanning#changing-channels-from-the-computer">Changing channels from the computer</a></td>
-<tr><td colspan="2"><img src="img/term-set.png" width="660" alt="Every way to change a channel"><br><b>Every way to change a channel</b><br><a href="The-tdh3-Program#channels">The tdh3 program</a></td>
+<tr><td colspan="2"><img src="img/term-flash.png" width="660" alt="The flasher when it has finished"><br><b>The flasher when it has finished</b><br><a href="Updating#flash">Flashing</a></td></tr>
+<tr><td colspan="2"><img src="img/term-help.png" width="660" alt="Every tdh3 command"><br><b>Every tdh3 command</b><br><a href="The-tdh3-Program">The tdh3 program</a></td></tr>
+<tr><td colspan="2"><img src="img/term-channels.png" width="660" alt="Listing your channels"><br><b>Listing your channels</b><br><a href="Channels-and-Scanning#changing-channels-from-the-computer">Changing channels from the computer</a></td></tr>
+<tr><td colspan="2"><img src="img/term-set.png" width="660" alt="Every way to change a channel"><br><b>Every way to change a channel</b><br><a href="The-tdh3-Program#channels">The tdh3 program</a></td></tr>
 </table>
