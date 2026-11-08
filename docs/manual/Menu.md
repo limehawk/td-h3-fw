@@ -39,6 +39,16 @@ their values show **VFO** in front (`VFO LOW`): changing them doesn't change the
 8. **What the item does**, in a few words. The table below says more.
 9. **Keys** reminder: it changes to say what the keys do while you change a value.
 
+**Changing a setting.** Press **MENU** on an item and its row turns white: **UP** and **DOWN** now change
+the value, and the bottom line says so. **MENU** or **V/M** says you're done.
+
+![TX BANDS being changed](img/menuedit.png)
+
+**Typing an item's number.** The first digit shows at the top right while the radio waits a second
+for the second one; here `2-` after pressing **2**.
+
+![The first digit of an item's number, waiting for the second](img/menudigit.png)
+
 ## All items
 
 ### Receive
@@ -109,6 +119,10 @@ their values show **VFO** in front (`VFO LOW`): changing them doesn't change the
 | 42 | AUTO OFF | Put the radio to sleep after 30, 60 or 120 minutes with no key pressed, no signal heard and no scan running: the receiver, screen, backlight and flashlight go off. Any key wakes it (that key does nothing else). While it sleeps it hears nothing: no dual watch, priority or weather alert. The power switch is the volume knob, so this is the "off" a forgotten radio gets. OFF by default. |
 | 43 | BATT SAVE | While nothing is heard, the receiver naps between quick listens: OFF, SHORT, MIDDLE or LONG naps (0.12, 0.24, 0.48 s). Longer naps mean a longer battery but a slower catch: the first word of a call can be clipped. Starts at MIDDLE: about 5 days on a charge. |
 
+THEME (item 37), left to right: CLASSIC, NIGHT AMBER, GREEN, NIGHT RED.
+
+![The four themes](img/themes.png)
+
 ### Setup
 
 | # | Item | What it does |
@@ -120,3 +134,5 @@ their values show **VFO** in front (`VFO LOW`): changing them doesn't change the
 | 48 | METER CAL | Signal meter correction, -40 to +40 dB (default +0). |
 | 49 | BATT CAL | Battery voltage correction, -1.00 to +1.00 V in 0.02 V steps (default +0.00). |
 | 50 | VERSION | Firmware version, for example `0.55.2`. Nothing to change. |
+
+![The VERSION item](img/version.png)

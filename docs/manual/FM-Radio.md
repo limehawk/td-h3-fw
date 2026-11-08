@@ -61,6 +61,8 @@ emptied. When it's done it says how many it saved (`SAVED 12`) and plays M1. It 
 seconds. Press any key while it's sweeping to stop it: your old presets stay as they were. If it
 finds nothing (`NO STATIONS FOUND`) your presets aren't changed either.
 
+![The FM radio asking before it replaces your presets](img/fmauto.png)
+
 **About seek:** this radio's FM chip can't report signal strength back to the processor, so seek
 (and the automatic presets) listen with the main radio chip instead. It's less sensitive than the FM chip, so seek finds the
 stronger stations; for a weak one you can hear fine, tune to it with \* / # and save it as a preset.

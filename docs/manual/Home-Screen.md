@@ -95,6 +95,12 @@ until you let go of PTT.
 | `LOW BATTERY` | Under 6.8 V: charge it soon |
 | `TX NOT ALLOWED`, `TX LOCKED CHANNEL`, `BUSY: NO TX`, `BATTERY LOW: NO TX`, `PTT HELD: LET GO`, `LOCKED: NO TX` | PTT was refused: see [Transmitting](Transmitting) |
 
+On a memory channel the slot looks like this. `M4` replaces `VFO`, the channel's name sits above the
+frequency, and the line under the mode shows its tones: here `TD754I` is sent when you talk and
+`RD023N` is needed to hear the station.
+
+![Slot A on memory channel 4](img/memory.png)
+
 ## Typing a frequency
 
 ![Typing 146.5](img/typing.png)

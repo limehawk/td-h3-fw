@@ -394,7 +394,7 @@ func main() {
 	if img := builtIn(false); img != nil {
 		ver = "v" + imageVersion("", img)
 	}
-	err := fang.Execute(context.Background(), root, fang.WithVersion(ver))
+	err := fang.Execute(context.Background(), root, fang.WithVersion(ver), fang.WithColorSchemeFunc(classic))
 	closeWait(false)
 	if err != nil {
 		os.Exit(1)

@@ -65,6 +65,8 @@ the memory channel (`M12`) when it was one, the frequency, and how long ago (`<1
 UP/DOWN lights a row, MENU tunes the selected slot there, V/M goes back. The list is kept until you
 switch the radio off.
 
+![LAST HEARD after a scan found two stations](img/lastheard.png)
+
 Stopping a scan with **\*** between stations, after it found two or more, opens this list by itself (stopped while it's on a station, it stays there). The
 stations that scan stopped on are the top rows, the newest lit; there **V/M** goes back to where the
 scan started ([Scanning](Channels-and-Scanning#scanning)).
@@ -84,6 +86,8 @@ locked or the menu open:
 
 A tap waits about a third of a second to be sure it isn't the start of a double tap. The status
 bar shows the level (`MOON`, `LOW`, `MED`, `HIGH`) or `STROBE` or `SOS` while it's on.
+
+![The flashlight on moonlight: MOON in the status bar](img/flashlight.png)
 
 ## Keypad lock
 
@@ -115,6 +119,9 @@ someone how to do something.
 
 1. Switch on REMOTE: **MENU**, **4** **5**, **MENU**, **UP** so it says **ON**, **MENU**, then
    **V/M** to leave the menu.
+
+   ![REMOTE switched on](img/remote.png)
+
 2. On the computer, type `tdh3 remote record my.rec`. It starts recording at once.
 3. Use the radio as usual: press keys, change channels, let it receive. Every change on the screen
    is saved with the moment it happened.

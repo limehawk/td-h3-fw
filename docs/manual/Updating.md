@@ -74,6 +74,9 @@ and typing `tdh3 flash` do the same thing.
    **Once it has this firmware**, leave the radio on, with MENU → REMOTE (item 45) on: the flasher
    can then tell you which version it runs now, and you won't need to switch the radio off and on
    to flash it.
+
+   ![REMOTE switched on](img/remote.png)
+
 2. Open the flasher: double-click it (or type `tdh3 flash` in a terminal). It finds the radio's
    cable by itself and puts on the firmware it carries, the full build that can transmit
    (`tdh3 flash --rx` puts on the receive-only one), whatever other `.bin` files are in the folder;
@@ -119,28 +122,16 @@ and typing `tdh3 flash` do the same thing.
    the home screen), it missed flash mode: let go of PTT and try again.
    With this firmware it won't transmit while you hold PTT from switching on; the bottom line
    says **PTT HELD: LET GO**.
+
+   ![PTT HELD: LET GO](img/ptthold.png)
+
 4. The tower in the flasher's window acts out each step (the radio's own screen stays dark): waves out of the tip while it listens for
    the radio, a dim band wiping down the mast while the radio erases, then the mast filling amber
    from the ground up as the new firmware goes on (about 10 seconds; the percent and time left are
    beside it). When it's all on, the tower turns green and a last wave goes out. The radio restarts
    into the new firmware, and once it answers the screen says it's running:
 
-   ```
-            ⢀⡇    ⣸   ⢀⡀   ⣇    ⢸⡀         radio      /dev/ttyUSB0
-             ⡇    ⢸   ⢸⡇   ⡇    ⢸          flashing   v0.60.0  full (transmit)
-             ⢣     ⠓  ⢸⡇  ⠚     ⡜          image      td-h3-fw-0.60.0.bin (built in)
-             ⠈⢧       ⡎⢱       ⡼⠁
-               ⠑     ⢀⠏⠹⡀     ⠊            [ok] radio found, running v0.59.7
-                     ⢸⠉⠉⡇                  [ok] radio ready to restart into flash mode
-                     ⡎⠉⠉⢱                  [ok] flash mode
-                    ⢀⠏⠉⠉⠹⡀                 [ok] erased
-                    ⢸⠉⠉⠉⠉⡇                 [ok] v0.60.0 is running on your radio
-                    ⡎⠉⠉⠉⠉⢱                      (was v0.59.7, 7s, 7.4 KB/s)
-           ⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉
-               ⠈⢹⠉⢸⠉⢢⢀⣀⣀⢸⣀⣸⠈⠩⡋
-                ⠸ ⠸⠤⠊   ⠸ ⠸⠐⠤⠜
-              v0.60.0 running
-   ```
+   ![The flasher when it has finished](img/term-flash.png)
 
    **Ctrl-C** stops it at any step. Before the radio starts erasing nothing on it has changed;
    after that it stays in flash mode with its screen dark, so run `tdh3 flash` again.
@@ -163,6 +154,8 @@ PTT and switch it on (the old way in step 3), and it carries on by itself:
 
 If the last line is amber instead of green, the flash went through but the radio didn't
 answer over the cable (REMOTE off): check MENU → VERSION (item 50) yourself.
+
+![The VERSION item](img/version.png)
 
 Unplug the USB cable when you're done listening: plugged into a computer it puts noise on the
 receiver and weak stations cut out.
@@ -213,6 +206,9 @@ transmit calibration is never touched. Flashing doesn't do this: it keeps your s
 1. Switch the radio on and plug it into the computer with its USB-C cable.
 2. On the radio: press **MENU**, type **4** **4** (PC LINK), press **MENU**. The screen says
    *waiting for computer*.
+
+   ![PC LINK waiting for a computer](img/pclink.png)
+
 3. On the computer, in a terminal in the flasher's folder:
    ```bash
    tdh3 reset

@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"strings"
 	"time"
 
+	"charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -253,6 +255,17 @@ func (l *lcd) screen(named bool, caption string) []string {
 		out[i] = "  " + out[i]
 	}
 	return out
+}
+
+// classic is the radio's Classic theme for help and errors; fang's own is pink and purple.
+func classic(c lipgloss.LightDarkFunc) fang.ColorScheme {
+	s := fang.DefaultColorScheme(c)
+	s.Title, s.Program, s.Command = amber, amber, amber
+	s.Flag, s.QuotedString = green, green
+	s.DimmedArgument, s.Comment, s.FlagDefault = grey, grey, grey
+	s.Codeblock = c(lipgloss.Color("#EEEEEE"), lipgloss.Color("#2A2A2A"))
+	s.ErrorHeader = [2]color.Color{lipgloss.Color("#000000"), amber}
+	return s
 }
 
 // banner shows the radio's boot screen: animated on a terminal (~0.7 s, the radio's own timing),

@@ -63,6 +63,8 @@ groups. Needs a licence (no exam).
 **Memory mode**: the slot steps through your stored channels (`M12` on the screen). **V/M**
 switches between it and frequency mode (VFO).
 
+![A slot on memory channel 4](img/memory.png)
+
 **Monitor**: open the squelch on purpose to hear everything on a frequency, even faint signals
 and noise.
 
@@ -74,6 +76,8 @@ the gap (0.6 MHz on 2 m, 5 MHz on 70 cm and GMRS) and the shift (+/-) its direct
 handles it: memory channels carry their own, and in frequency mode SHIFT AUTO picks it from the US band
 plan. Outside the US, set SHIFT to + or - yourself; OFFSET keeps one gap for VHF and one for UHF (see the
 [Menu](Menu)).
+
+![A -0.6 shift on 146.940](img/repeater.png)
 
 **Priority channel**: one channel the radio checks every 2 seconds whatever else it's doing (every 5 seconds while you're listening to a call).
 
@@ -90,11 +94,15 @@ speaker before the noise. TAIL TONE → REVERSE sends it; see Tail tone for the 
 
 **S-meter / S-units**: signal strength, S0 (nothing) to S9 (strong); beyond that in dB over S9 (`S9+20`).
 
+![The signal meter across the middle of the screen](img/home.png)
+
 **Scan list / scan group**: the channels a scan visits. `*` next to a channel number means it's
 on the scan list; groups 1-8 are your own subsets. A channel off the scan list is *skipped*: no
 scan stops on it, group scans included (hold **V/M** while scanning).
 
 **Scope (spectrum)**: a picture of the signals on the frequencies around you, as bars (hold **3**).
+
+![The scope](img/scope.png)
 
 **Simplex**: talking radio to radio on one frequency, with no repeater and no shift.
 

@@ -35,9 +35,13 @@ To change them: **MENU**, type **1** **3** (TX BANDS), **MENU**, then **UP** or 
 mix of the four, shown as `HAM GMRS` (or `H G M F` with three or four on). **NONE** turns transmit
 off everywhere. **MENU** when it's right. Aircraft, marine, police and other government frequencies are never allowed.
 
+![TX BANDS being changed](img/menuedit.png)
+
 Anywhere else PTT shows **TX NOT ALLOWED**, and the home screen shows **RXONLY** on that slot
 (when it has no repeater shift). AM and USB never transmit either: PTT shows **TX NOT ALLOWED**. A full build on a radio
 without its factory calibration says **TX NOT ALLOWED** everywhere. Other refusals you might see:
+
+![TX NOT ALLOWED on 155.000](img/notallowed.png)
 
 - **TX LOCKED CHANNEL**: the channel is marked receive-only (CHIRP Duplex `off`, or `TXLOCK` in
   the CSV comment). Weather, marine and aircraft channels are usually set this way.
@@ -68,6 +72,11 @@ In the FM radio, PTT and side key 1 leave it and transmit.
    status light on its side red), so you can see it from across the room.
 5. **Touch-tones sent** while you hold PTT (here 1, 4, 6): see below.
 
+On a repeater, the home screen shows which way you'll transmit before you press anything. Here
+SHIFT is on AUTO and 146.940 is a repeater's frequency, so `-0.6` says you'll transmit 0.6 MHz below it.
+
+![146.940 with a -0.6 shift](img/repeater.png)
+
 **PTT** transmits on slot A; **side key 1** (the small one) transmits on slot B. The slot you
 transmit on becomes the selected one, and stays selected after you let go (reverse goes off, and
 weather mode ends, when that moves you to the other slot). In dual watch, PTT answers whichever
@@ -95,6 +104,8 @@ listening once you've been quiet for VOX DELAY. Handy when your hands are busy. 
 [Menu](Menu): VOX (item 17) from 1, which needs a loud voice close to the radio, to 9, which picks
 up a quiet one (and more wind and noise); VOX DELAY (item 18) for how long it waits after you stop.
 `VOX` shows in the status bar while it's on.
+
+![VOX being set](img/vox.png)
 
 So it can't transmit by surprise, VOX keys up only:
 
@@ -124,6 +135,8 @@ connect to a node, switch something on, or open an autopatch. To send them:
 The radio keeps 8 codes of up to 7 digits, for the ones you send often. To send one, hold **PTT**,
 press **MENU** (the bottom line says `DTMF CODE 1-8?`), then the code's number, **1** to **8**. Its
 digits go out by themselves. An empty code sends nothing.
+
+![The radio asking which code to send](img/dtmfask.png)
 
 To store them: **MENU**, **1** **9** (DTMF CODES), **MENU**.
 

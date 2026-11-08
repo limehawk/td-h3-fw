@@ -8,6 +8,7 @@ capture: boots fw/build/td-h3-rx.bin (and td-h3.bin for the transmit screen), dr
 annotate: adds numbered callouts and writes docs/manual/img/<name>.png at 3x. The numbers match
          the legends in docs/manual/*.md: change one, change the other. The boot frames become
          docs/manual/img/boot.gif, framed like the stills.
+terms:   runs the real tdh3 in a pseudo-terminal and draws what it prints as docs/manual/img/term-*.png.
 """
 import os
 import sys
@@ -35,6 +36,12 @@ CALLOUTS = {
     'alert': [(1, 50, 30)],
 }
 
+# Framed the same way, with no numbers: the page's own words say what to look at.
+PLAIN = ['memory', 'menuedit', 'menudigit', 'saveask', 'replace', 'deletelist', 'deleteask', 'chgroups', 'glink',
+         'chname', 'weather', 'lastheard', 'flashlight', 'remote', 'version', 'notallowed', 'repeater', 'dtmfask',
+         'ptthold', 'vox', 'fmauto']
+THEMES = 4          # MENU, THEME: the four side by side make themes.png
+
 
 def capture():
     sys.path.insert(0, os.path.join(ROOT, 'fw'))
@@ -43,13 +50,15 @@ def capture():
     from lcdshot import png
     os.makedirs(RAW, exist_ok=True)
 
-    def save(cpu, name):
+    def save(cpu, name, image=None):
         # wait for the next key scan: the firmware is between draws, so no half-drawn frequency
-        cpu.run(3_000_000, until=lambda: cpu.pc == scan_at)
+        at = t.symbol(image, '_key_scan') if image else scan_at
+        cpu.run(3_000_000, until=lambda: cpu.pc == at)
         open(os.path.join(RAW, name + '.png'), 'wb').write(png(cpu.lcd, scale=1))
     scan_at = t.symbol(t.FW_RX, '_key_scan')
 
     ee = t.eeprom()
+    open(os.path.join(RAW, 'my-radio.bin'), 'wb').write(b'P31183\0\0' + ee)   # made-up channels, for the tdh3 pictures
     for n, f in ((1, 1019), (2, 887), (3, 1043), (5, 975)):    # FM presets for the FM screen
         ee[0x0CD0 + 4 * (n - 1):0x0CD0 + 4 * n] = bytes([f % 10 | (f // 10 % 10) << 4, f // 100 % 10 | (f // 1000 % 10) << 4, 0, 0])
 
@@ -171,6 +180,128 @@ def capture():
     cpu.run(9_000_000)
     save(cpu, 'alert')
 
+    def full():                            # the transmit build, for what only it shows
+        cpu = t.boot(t.FW, ee=bytearray(ee))
+        cpu.adc = 3985
+        cpu.run(400_000)
+        return cpu
+
+    def memory():                          # the selected slot on a memory channel
+        cpu = fresh()
+        t.keys(cpu, ['EXIT'])
+        return cpu
+
+    def opened(name, item):                # a list or tool from the menu, on a memory channel
+        cpu = memory()
+        t.menu(cpu, item, ['UP'])
+        cpu.run(1_000_000)
+        save(cpu, name)
+        return cpu
+
+    def editing(name, item, *more):        # a setting being changed: its row is white
+        cpu = fresh()
+        t.menu(cpu, item)
+        t.keys(cpu, ['MENU', *more])
+        save(cpu, name)
+
+    cpu = memory()                         # channel 4 has its own tones
+    t.keys(cpu, ['0', '0', '4'])
+    cpu.run(1_000_000)
+    save(cpu, 'memory')
+
+    editing('menuedit', 'TXB')
+    editing('vox', 'VOX', 'UP')
+
+    cpu = fresh()
+    t.keys(cpu, ['MENU'])
+    cpu.run(1_000_000)
+    t.press(cpu, '2')
+    save(cpu, 'menudigit')
+
+    for n in range(THEMES):
+        cpu = memory()
+        if n:
+            t.menu(cpu, 'THEME', ['UP'] * n + ['EXIT'])
+        cpu.run(2_000_000)
+        save(cpu, 'theme%d' % n)
+
+    cpu = fresh()
+    t.longpress(cpu, 'MENU')
+    save(cpu, 'saveask')
+    t.keys(cpu, ['0', '0', '3', 'MENU'])
+    cpu.run(600_000)
+    save(cpu, 'replace')
+
+    cpu = opened('deletelist', 'DEL')
+    t.keys(cpu, ['DOWN', 'MENU'])
+    cpu.run(600_000)
+    save(cpu, 'deleteask')
+    opened('chgroups', 'GRP')
+    opened('glink', 'GLINK')
+    opened('chname', 'NAME')
+
+    cpu = fresh()
+    t.longpress(cpu, '#')
+    cpu.run(8_000_000)
+    save(cpu, 'weather')
+
+    cpu = full()                           # a scan that found two stations, stopped: LAST HEARD opens
+    t.scan_hits(cpu, True, 2)
+    t.stop_scan(cpu)
+    cpu.run(1_500_000)
+    save(cpu, 'lastheard', t.FW)
+
+    cpu = fresh()
+    t.press(cpu, 'SIDE2', hold=700_000)    # held from off: moonlight
+    cpu.run(1_000_000)
+    save(cpu, 'flashlight')
+
+    cpu = fresh()
+    t.menu(cpu, 'REMOTE', ['UP'])
+    cpu.run(1_000_000)
+    save(cpu, 'remote')
+
+    cpu = fresh()
+    t.menu(cpu, 'VER')
+    cpu.run(1_000_000)
+    save(cpu, 'version')
+
+    cpu = full()                           # PTT on a frequency no service in TX BANDS covers
+    t.keys(cpu, list('155000'))
+    cpu.key = 'PTT'
+    cpu.run(2_000_000)
+    save(cpu, 'notallowed', t.FW)
+    cpu.key = None
+
+    cpu = full()                           # SHIFT AUTO on a repeater output
+    t.menu(cpu, 'SHIFT', ['UP'] * 3 + ['EXIT'])
+    t.keys(cpu, list('146940'))
+    cpu.run(1_000_000)
+    save(cpu, 'repeater', t.FW)
+
+    cpu = full()                           # holding PTT, MENU: which stored code?
+    t.keys(cpu, list('446000'))
+    cpu.key = 'PTT'
+    cpu.run(3_000_000)
+    cpu.key = ('PTT', 'MENU')
+    cpu.run(400_000)
+    cpu.key = 'PTT'
+    cpu.run(400_000)
+    save(cpu, 'dtmfask', t.FW)
+    cpu.key = None
+
+    cpu = t.CPU(open(t.FW, 'rb').read(), bytearray(ee))   # switched on with PTT already down
+    cpu.adc, cpu.key, cpu.key_held_at = 3985, 'PTT', t.symbol(t.FW, '_key_held')
+    cpu.run(16_000_000)
+    save(cpu, 'ptthold', t.FW)
+
+    cpu = fresh()
+    t.menu(cpu, 'FM', ['UP'])
+    cpu.run(4_000_000)
+    t.longpress(cpu, '0')
+    cpu.run(600_000)
+    save(cpu, 'fmauto')
+
 
 def annotate():
     """Numbers sit in the margins level with their row; nothing is drawn over the screen itself.
@@ -183,6 +314,18 @@ def annotate():
     except OSError:
         font = ImageFont.load_default()
     amber, black = (255, 176, 0), (0, 0, 0)
+    for name in PLAIN:
+        src = Image.open(os.path.join(RAW, name + '.png')).convert('RGB')
+        img = Image.new('RGB', (128 * k + 2 * pad, 128 * k + 2 * pad), (28, 28, 28))
+        img.paste(src.resize((128 * k, 128 * k), Image.NEAREST), (pad, pad))
+        img.save(os.path.join(OUT, name + '.png'), optimize=True)
+        print('docs/manual/img/%s.png' % name)
+    img = Image.new('RGB', (THEMES * (128 * 2 + pad) + pad, 128 * 2 + 2 * pad), (28, 28, 28))
+    for n in range(THEMES):
+        src = Image.open(os.path.join(RAW, 'theme%d.png' % n)).convert('RGB')
+        img.paste(src.resize((128 * 2, 128 * 2), Image.NEAREST), (pad + n * (128 * 2 + pad), pad))
+    img.save(os.path.join(OUT, 'themes.png'), optimize=True)
+    print('docs/manual/img/themes.png')
     for name, marks in CALLOUTS.items():
         src = Image.open(os.path.join(RAW, name + '.png')).convert('RGB')
         img = Image.new('RGB', (128 * k + 2 * m, 128 * k + 2 * pad), (28, 28, 28))
@@ -213,5 +356,133 @@ def annotate():
     print('docs/manual/img/boot.gif')
 
 
+def terms():
+    """tdh3's own output, from a real run in a pseudo-terminal, drawn cell by cell like a terminal.
+    The flash picture needs a radio, so a test draws its finished screen with the flasher's own code."""
+    import fcntl
+    import pty
+    import re
+    import struct
+    import subprocess
+    import termios
+    from PIL import Image, ImageDraw, ImageFont
+    BLACK, WHITE = (28, 28, 28), (220, 220, 220)
+    BASIC = [(0, 0, 0), (205, 49, 49), (13, 188, 121), (229, 229, 16), (36, 114, 200), (188, 63, 188), (17, 168, 205), (229, 229, 229)]
+    FILE = subprocess.run(['fc-match', '-f', '%{file}', 'monospace:spacing=mono'], capture_output=True, text=True).stdout
+    font = ImageFont.truetype(FILE, 16)
+    w, h, pad = round(font.getlength('M')), 20, 12
+
+    def run(*args, cols=100):
+        master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 60, cols, 0, 0))
+        env = dict(os.environ, TERM='xterm-256color', COLORTERM='truecolor')
+        p = subprocess.Popen((os.path.join(ROOT, 'fw', 'build', 'tdh3-shots'),) + args, stdin=slave, stdout=slave, stderr=slave, env=env, cwd=RAW)
+        os.close(slave)
+        got = b''
+        while True:
+            try:
+                more = os.read(master, 65536)
+            except OSError:
+                break
+            if not more:
+                break
+            got += more
+        p.wait()
+        return got.decode()
+
+    def color(v):
+        if v[0] == 5:
+            n = v[1]
+            if n < 8:
+                return BASIC[n]
+            if n < 16:
+                return tuple(min(255, c + 50) for c in BASIC[n - 8])
+            if n >= 232:
+                return ((n - 232) * 10 + 8,) * 3
+            n -= 16
+            return tuple(0 if d == 0 else d * 40 + 55 for d in (n // 36, n // 6 % 6, n % 6))
+        return tuple(v[1:4])
+
+    def cells(text):
+        rows, x, fg, bg, bold = [{}], 0, WHITE, BLACK, False
+        for m in re.finditer(r'\x1b\[([0-9;:?]*)([A-Za-z])|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b.|(.)', text, re.S):
+            ch = m.group(3)
+            if ch == '\n':
+                rows.append({})
+                x = 0
+            elif ch == '\r':
+                x = 0
+            elif ch is not None and ch >= ' ':
+                rows[-1][x] = (ch, fg, bg, bold)
+                x += 1
+            elif m.group(2) == 'm':
+                v = [int(a) for a in re.split('[;:]', m.group(1)) if a] or [0]
+                while v:
+                    a = v.pop(0)
+                    if a == 0:
+                        fg, bg, bold = WHITE, BLACK, False
+                    elif a == 1:
+                        bold = True
+                    elif a == 22:
+                        bold = False
+                    elif 30 <= a <= 37:
+                        fg = BASIC[a - 30]
+                    elif a == 39:
+                        fg = WHITE
+                    elif 40 <= a <= 47:
+                        bg = BASIC[a - 40]
+                    elif a == 49:
+                        bg = BLACK
+                    elif 90 <= a <= 97:
+                        fg = tuple(min(255, c + 50) for c in BASIC[a - 90])
+                    elif a in (38, 48):
+                        n = 2 if v[0] == 5 else 4
+                        c, v = color(v[:n]), v[n:]
+                        if a == 38:
+                            fg = c
+                        else:
+                            bg = c
+        while rows and not rows[-1]:
+            rows.pop()
+        return rows
+
+    def glyph(d, x, y, ch, fg):            # the block and dot characters, drawn so any font will do
+        o = ord(ch)
+        if 0x2800 <= o <= 0x28FF:
+            for bit, (cx, cy) in enumerate([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (0, 3), (1, 3)]):
+                if o >> bit & 1:
+                    px, py = x + 1 + cx * w // 2, y + 1 + cy * h // 4
+                    d.rectangle((px, py, px + 2, py + 2), fill=fg)
+        elif ch == '█':
+            d.rectangle((x, y, x + w - 1, y + h - 1), fill=fg)
+        elif ch == '▀':
+            d.rectangle((x, y, x + w - 1, y + h // 2 - 1), fill=fg)
+        elif ch == '▄':
+            d.rectangle((x, y + h // 2, x + w - 1, y + h - 1), fill=fg)
+        else:
+            return False
+        return True
+
+    def draw(name, typed, text):
+        rows = ([{i: (c, (150, 150, 150), BLACK, False) for i, c in enumerate('$ ' + typed)}, {}] if typed else []) + cells(text)
+        cols = max(max(r, default=0) for r in rows) + 1
+        img = Image.new('RGB', (cols * w + 2 * pad, len(rows) * h + 2 * pad), BLACK)
+        d = ImageDraw.Draw(img)
+        for j, r in enumerate(rows):
+            for i, (ch, fg, bg, bold) in r.items():
+                x, y = pad + i * w, pad + j * h
+                if bg != BLACK:
+                    d.rectangle((x, y, x + w - 1, y + h - 1), fill=bg)
+                if ch != ' ' and not glyph(d, x, y, ch, fg):
+                    d.text((x, y + 1), ch, fill=fg, font=font)
+        img.save(os.path.join(OUT, name + '.png'), optimize=True)
+        print('docs/manual/img/%s.png' % name)
+
+    draw('term-help', 'tdh3 --help', run('--help'))
+    draw('term-channels', 'tdh3 channels list --file my-radio.bin', run('channels', 'list', '--file', 'my-radio.bin'))
+    draw('term-set', 'tdh3 channels set --help', run('channels', 'set', '--help'))
+    draw('term-flash', 'tdh3 flash', open(os.path.join(RAW, 'flash.ans'), encoding='utf-8', newline='').read())
+
+
 if __name__ == '__main__':
-    {'capture': capture, 'annotate': annotate}[sys.argv[1]]()
+    {'capture': capture, 'annotate': annotate, 'terms': terms}[sys.argv[1]]()

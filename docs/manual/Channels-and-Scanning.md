@@ -31,6 +31,9 @@ downloaded ([Updating the firmware](Updating#get-the-flasher); type `.\tdh3.exe`
 1. On the radio: **MENU**, then type **4** **4** to reach **PC LINK**, then **MENU**. The
    screen says *waiting for computer*. Plug in the USB-C cable. (With BLUETOOTH on in the menu, a
    phone app can talk to it over Bluetooth too.)
+
+   ![PC LINK waiting for a computer](img/pclink.png)
+
 2. In CHIRP: choose *TIDRADIO TD-H3*, then *Radio → Download*, edit, *Radio → Upload*.
    Or from a CHIRP CSV file:
    ```bash
@@ -82,6 +85,8 @@ file in `backups/`, and it reads back what it wrote. If one channel in the list 
 wrong, it says so and changes nothing at all. `list` and `export` also read a backup file: add
 `--file my-radio-backup.bin`, no radio needed.
 
+![tdh3 listing the channels in a backup file](img/term-channels.png)
+
 Power is `ulow`, `low`, `mid`, `high`, or watts like `5W`.
 
 ## Copy channels from another radio
@@ -131,12 +136,16 @@ Group channels so you can scan just the ones you care about: repeaters, GMRS, we
   **MENU**. Move with **UP/DOWN**, **MENU** puts the lit group on or off for this channel
   (`[*]` = in it), **V/M** goes back and saves your changes (a short chime).
 
+![CH GROUPS: this channel is in group 1](img/chgroups.png)
+
 Pick a group under **MENU → SCAN GROUP** and it works like a bank on the big rigs: in memory mode
 **UP** and **DOWN** step only through that group's channels, and a scan covers just that group. To
 scan several groups at once, use **MENU → GROUP LINK** (item 25) instead and put each one on. With
 SCAN GROUP on **SCAN LIST**, UP and DOWN step through all your channels. A group scan, like every
 scan, passes channels that are off the scan list (no `*`). A group with no channels to scan says
 **GROUP IS EMPTY**.
+
+![GROUP LINK, for scanning several groups at once](img/glink.png)
 
 ## Scanning
 
@@ -211,6 +220,8 @@ WX1 to WX7 (162.400 to 162.550 MHz). One or two of them reach most places.
 2. **UP / DOWN** changes channel, WX1 to WX7.
 3. **Hold #** again to go back. The slot is exactly as you left it.
 
+![Weather mode on WX1](img/weather.png)
+
 Typing a frequency, **V/M**, **\*** (scan) and **#** (A/B) also leave weather mode first, then do
 their usual job, and so does PTT or side key 1 on the other slot. You can't transmit on a weather
 channel (`TX LOCKED CHANNEL`). If **WX ALERT** is on (see [Tools](Tools#weather-alert)), it switches
@@ -226,9 +237,13 @@ two rising notes. With all 199 channels in use you hear the "not possible" sound
 alone for 20 seconds, the question goes away without saving. The channel is named after its frequency; to give it a name
 of your own, see [Naming a channel](#naming-a-channel).
 
+![The radio offering channel 5](img/saveask.png)
+
 If the number you typed already holds a channel, the radio warns you first: the bottom line turns
 red and asks `REPLACE 005? MENU=YES`. Press **MENU** again to write over it, or **V/M** to leave it
 as it was. Typing another number instead starts over.
+
+![The red warning before it writes over channel 3](img/replace.png)
 
 ## Deleting a channel
 
@@ -241,6 +256,8 @@ To empty a memory channel you no longer want, right on the radio:
 3. **MENU**: the row turns red and the radio asks `DELETE 002 GMRS1?`. Nothing is deleted yet.
    **MENU** again (YES) deletes it, with a short chime. **V/M** (NO) leaves it as it was.
 4. The list stays up on the next channel, so you can delete more. **V/M** goes back to the menu.
+
+![The list of channels](img/deletelist.png) ![The radio asking before it deletes channel 2](img/deleteask.png)
 
 The channel is emptied the same way CHIRP empties one, so CHIRP and the radio both show it as
 empty. UP and DOWN in memory mode skip it from then on. A slot that was on it goes to frequency
@@ -268,6 +285,9 @@ frequency. To change it on the radio:
 1. Go to the channel in memory mode (the slot shows `M` and the channel number, `*M` when it's on the scan list).
 2. **MENU**, type **3** **2** (CH NAME), then **MENU**. The name shows large, with a line under the
    letter you are on.
+
+   ![Naming a channel](img/chname.png)
+
 3. Type the new name the way you would text on an old phone. Each number key has letters on it:
 
    | Key | Gives, one press after another |

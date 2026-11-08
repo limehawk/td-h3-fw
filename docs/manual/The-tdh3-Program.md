@@ -33,6 +33,12 @@ cable, `tdh3` finds it by itself.
 **Every command explains itself.** `tdh3 --help` lists them, and `tdh3 channels set --help` shows
 every option of one command.
 
+![tdh3 --help](img/term-help.png)
+
+PC LINK looks like this on the radio, and REMOTE like this once it's on:
+
+![PC LINK waiting for a computer](img/pclink.png) ![REMOTE switched on](img/remote.png)
+
 ## Firmware
 
 | Command | What it does | Radio needs |
@@ -40,6 +46,8 @@ every option of one command.
 | `tdh3 flash` | Puts on the firmware this flasher carries. `--rx` for the receive-only build. | Hold **PTT** when it asks |
 | `tdh3 update` | Downloads the newest flasher, checks its signature, replaces itself, then flashes. `--no-flash` stops before the flash. | Internet |
 | `tdh3 firmware flash FILE.bin` | Flashes a firmware file you have. | Hold **PTT** when it asks |
+
+![The flasher when it has finished](img/term-flash.png)
 
 More: [Updating the firmware](Updating).
 
@@ -70,6 +78,10 @@ More: [Saving and restoring your settings](Updating#saving-and-restoring-your-se
 `CHANNELS` can be a list and ranges, like `1-39,41,88-94`. More:
 [Changing channels from the computer](Channels-and-Scanning#changing-channels-from-the-computer).
 
+![tdh3 channels list](img/term-channels.png)
+
+![Every option of tdh3 channels set](img/term-set.png)
+
 ## Remote control
 
 All of these need REMOTE on.
@@ -87,6 +99,10 @@ All of these need REMOTE on.
 | `tdh3 remote wait "squelch open"` | Waits until that text shows on the screen. `--gone` waits for it to go; `--timeout 30m` gives up. |
 | `tdh3 remote record FILE` | Saves everything the screen shows until **Ctrl-C**. |
 | `tdh3 remote replay FILE` | Plays a recording back. `-o my.gif` makes an animated GIF. |
+
+`tdh3 remote screen -o shot.png` saves a picture of the radio's screen, like this one:
+
+![A picture of the radio's screen](img/memory.png)
 
 More: [Recording the screen](Tools#recording-the-screen).
 

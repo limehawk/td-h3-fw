@@ -47,8 +47,12 @@ each screen says what the keys do there.
 PTT doesn't transmit while the menu, a list or the save question (`SAVE CH 005? MENU=YES`) is open:
 close it with **V/M** first.
 
+![The save question on the bottom line](img/saveask.png)
+
 Anything that can't be undone asks first, in words: `DELETE 002 GMRS1?`, `REPLACE 005? MENU=YES`.
 Blue MENU is yes, red V/M is no.
+
+![The radio asking before it deletes a channel](img/deleteask.png)
 
 ## Long-press number keys
 
@@ -68,6 +72,8 @@ The legends printed on the keys:
 | 0 | **Wide / narrow** FM (frequency mode). |
 
 ## While scanning
+
+![Scanning group 1](img/scanning.png)
 
 | Key | Does |
 |---|---|

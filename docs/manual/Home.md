@@ -63,6 +63,8 @@ See [Updating the firmware](Updating).
 - **Plays FM broadcast radio** with presets and seek.
 - **Has a flashlight** with four brightness levels (moonlight to high), strobe and SOS.
 
+![The four colour themes](img/themes.png)
+
 ## Start here
 
 1. **[The home screen](Home-Screen)**: what every part of the display means.
@@ -86,6 +88,8 @@ For people working on the firmware: [Keeping this manual current](Keeping-This-M
 | Full | `td-h3.bin` | Only on the services on in TX BANDS (HAM and GMRS to start with), and only with the radio's factory calibration present. |
 
 MENU → VERSION (item 50) shows which version you're running, for example `0.55.2`.
+
+![The VERSION item at the bottom of the menu](img/version.png)
 
 ## About this firmware
 

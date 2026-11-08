@@ -81,6 +81,8 @@ screenshots: all rxonly
 	$(MAKE) VER=$(SHOTVER) DEFS=-DNO_TX OUT=td-h3-shots build/td-h3-shots.bin
 	FW_RX=build/td-h3-shots.bin $(PY) ../tools/screens.py capture
 	python3 ../tools/screens.py annotate
+	cd ../tools/tdh3 && go build -o ../../fw/build/tdh3-shots . && TDH3_SHOT=$(CURDIR)/build/screens/flash.ans TDH3_SHOT_VER=$(SHOTVER) go test -count=1 -run ManualPicture .
+	python3 ../tools/screens.py terms
 
 # The demo GIF (docs/img/demo.gif, and .mp4): the boot from the screenshots, then a tour (tools/demo.py).
 demo: screenshots
