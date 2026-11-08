@@ -114,7 +114,7 @@ func TestNameBytes(t *testing.T) {
 
 func TestPower(t *testing.T) {
 	for in, want := range map[string]byte{"": powerLow, "Low": powerLow, "high": powerHigh, "HIGH": powerHigh,
-		"Mid": powerMid, "ULow": powerULow, "Ultra Low": powerULow, "5.0W": powerHigh, "4W": powerHigh,
+		"Mid": powerMid, "ULow": powerULow, "ULP": powerULow, "Ultra Low": powerULow, "5.0W": powerHigh, "4W": powerHigh,
 		"3.9W": powerMid, "3.0W": powerMid, "2.4W": powerLow, "1.0W": powerLow, "0.5W": powerULow, "0.24W": powerULow} {
 		if got, err := power(in); err != nil || got != want {
 			t.Errorf("power(%q) = %v, %v; want %v", in, got, err, want)

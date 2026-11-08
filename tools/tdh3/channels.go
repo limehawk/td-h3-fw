@@ -181,7 +181,7 @@ func power(s string) (byte, error) {
 		return powerMid, nil
 	case "high":
 		return powerHigh, nil
-	case "ulow", "ultralow":
+	case "ulow", "ultralow", "ulp":
 		return powerULow, nil
 	default:
 		w, err := strconv.ParseFloat(strings.TrimSuffix(p, "w"), 64)
