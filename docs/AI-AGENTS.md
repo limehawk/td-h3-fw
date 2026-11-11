@@ -84,19 +84,21 @@ commands.
 ## What the firmware could add (proposals, not built)
 
 Everything above works with the firmware as it is: nothing new on the radio. The radio is
-tight (flash about 10,600 bytes free; XDATA RAM 1,143 of 1,280 bytes; 2 spare bytes in the
-settings block). So
-every proposal below uses no new RAM and no settings bytes. Flash numbers are estimates for
+tight (in 0.64: flash about 9,500 bytes free; XDATA RAM 849 of 1,280 bytes; 9 spare bytes in the
+settings block). So every proposal below uses no new RAM and no settings bytes. Flash numbers are estimates for
 SDCC's code here (a function call with arguments is 8-15 bytes).
 
 | Proposal | What it gives an agent | Flash | XDATA | EEPROM |
 |---|---|---|---|---|
-| **End marker after a redraw. (Built in 0.16: 46 bytes.)** The radio sends `E` when the redraw that `S` asked for is finished. A spare bit of `remote_req` remembers it for one loop. | Screen reads finish in 0.1-0.3 s instead of a fixed 1.5 s wait: `tune` drops from ~15 s to ~3 s. The biggest win. | 20-35 | 0 | 0 |
-| **Slot and memory in the status line.** `146.520 -112 O S 7400 A 12` (selected slot, memory number or `V`), built in the existing `buf`. | The agent knows where it is without reading screen positions. | 30-45 | 0 | 0 |
+| **Slot and memory in the status line.** `146.520 -112 O S 7400 0.64.1 A 12` (selected slot, memory number or `V`, after the version), built in the existing `buf`. | The agent knows where it is without reading screen positions. | 30-45 | 0 | 0 |
 | **Settings as numbers.** `R` answers with the settings block as hex on a `q` line. | `settings` in under a second instead of 30. But the host must then know the settings layout of every firmware version, which the menu walk does not. | 35-50 | 0 | 0 |
-| **Direct tune.** `F` and 4 bytes put a frequency in the selected VFO through `set_vfo`, with the same band limits. | `tune` without typing 6 digits. Mostly made redundant by the end marker. | 60-90 | 0-5 | 0 |
+| **Direct tune.** `F` and 4 bytes put a frequency in the selected VFO through `set_vfo`, with the same band limits. | `tune` without typing 6 digits. Mostly made redundant by the end marker (below). | 60-90 | 0-5 | 0 |
 
-Recommendation: only the end marker was worth its bytes, and it is built. Add the status-line slot if
+Already built: the **end marker after a redraw**. The radio sends `E` when the redraw that `S`
+asked for is finished, so screen reads take 0.1-0.3 s instead of a fixed 1.5 s wait (`tune` went
+from about 15 s to about 3 s).
+
+Recommendation: add the status-line slot if
 agents keep tripping over screen positions. Skip the other two.
 
 ### If agents should ever transmit
