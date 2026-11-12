@@ -2072,7 +2072,7 @@ static uint8_t call_id(void) __reentrant    // PTT let go: the ID if it's due; 1
 {
     uint8_t i, m = band_of(ch.tx);
     __xdata char *p = cat(buf, "ID ");      // nothing draws into buf meanwhile: it holds the callsign throughout
-    if (id_sent && up10 - id_at < 60 || m != 1 && m != 4 || !call_load(p)) return 0;   // 2M and 70CM: the ham bands
+    if (id_sent && (uint16_t)(up10 - id_at) < 60 || m != 1 && m != 4 || !call_load(p)) return 0;   // 2M and 70CM: the ham bands
     draw_bottom(buf, P_HI);
     bk_write(0x71, TONE_HZ(800));
     bk_write(0x50, 0xBB20);                 // the mic muted

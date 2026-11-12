@@ -393,6 +393,25 @@ def test_call_id(cpu):                     # CALL ID: typed in CH NAME's editor;
     assert freq(cpu) == 46256250 and morse_sent(cpu, n) == '', 'ID sent on GMRS'
 
 
+def test_call_id_wrap(cpu):                # CALL ID: up10 wrapping (7.5 days on) doesn't stop the ID
+    ee = eeprom()
+    ee[0x1E00:0x1E08] = b'E\0\0\0\0\0\0\0'
+    cpu = boot(ee=ee)
+    cpu.bk.writes = Stamped(cpu)
+    ptt_tap(cpu, after=2_000_000)          # the first ID since power-on
+    up10, at = rst_addr('_up10'), rst_addr('_id_at')
+    def put(a, v): cpu.xram[a], cpu.xram[a + 1] = v & 0xFF, v >> 8 & 0xFF
+    put(at, 0xFFF0)
+    put(up10, 0xFFF0 + 59 & 0xFFFF)        # 9 m 50 s later, past the wrap: not yet
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu, after=2_000_000)
+    assert morse_sent(cpu, n) == '', 'ID before 10 minutes'
+    put(up10, 0xFFF0 + 60 & 0xFFFF)        # 10 minutes, up10 now 0x002C
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu, after=2_000_000)
+    assert morse_sent(cpu, n) == 'E', 'no ID after up10 wrapped'
+
+
 def test_call_id_cut(cpu):                 # CALL ID: PTT during it cuts it off and you're talking; TX TIMEOUT still ends it
     ee = eeprom()
     ee[0x1E00:0x1E08] = b'K0ABC\0\0\0'
@@ -3642,6 +3661,7 @@ INDEPENDENT = [
     ('CALL ID: OFF by default, item 20, sends nothing', test_call_id_off),
     ('CALL ID: typed, Morse once in 10 minutes, never on GMRS', test_call_id),
     ('CALL ID: PTT cuts it off, TX TIMEOUT ends it', test_call_id_cut),
+    ('CALL ID: still sent after the 10 s clock wraps', test_call_id_wrap),
     ('PTT wakes the backlight', test_ptt_wakes_backlight),
     ('screen dark: the first key only wakes it', test_dark_key_only_wakes),
     ('basics: decimal point, no such channel, empty group, torch when locked', test_basics),
