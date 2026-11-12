@@ -6,12 +6,12 @@
 |---|---|
 | See the band around me (scope) | Hold **3**; **MENU** tunes to the cursor, **V/M** leaves |
 | Find a nearby radio's frequency (freq find) | Hold **7**; **MENU** takes it, **V/M** leaves |
-| See who was on lately | **MENU**, **3** **1** (LAST HEARD), **MENU** |
-| Watch for weather alerts | **MENU**, **4** **1** (WX ALERT), **MENU**, **UP** / **DOWN** to your channel, **MENU** |
+| See who was on lately | **MENU**, **3** **2** (LAST HEARD), **MENU** |
+| Watch for weather alerts | **MENU**, **4** **2** (WX ALERT), **MENU**, **UP** / **DOWN** to your channel, **MENU** |
 | Stop the weather alarm | Any key |
 | Flashlight on / off | Tap **side key 2** |
 | Lock / unlock the keys | Hold **\*** (**PTT**, **side key 1** and the flashlight still work locked, unless KEY LOCK is KEYS+PTT) |
-| Connect to a computer | **MENU**, **4** **4** (PC LINK), **MENU** |
+| Connect to a computer | **MENU**, **4** **5** (PC LINK), **MENU** |
 | Record the screen on a computer, as a GIF | REMOTE on, then `tdh3 remote record my.rec` and `tdh3 remote replay my.rec -o my.gif` ([below](#recording-the-screen)) |
 
 ## Scope (hold 3)
@@ -59,7 +59,7 @@ silences it for good even while the tone goes on. AUTO OFF's sleep stops the che
 
 ## Last heard
 
-MENU → LAST HEARD (item 31), MENU: the last 8 stations the radio heard, newest first
+MENU → LAST HEARD (item 32), MENU: the last 8 stations the radio heard, newest first
 (`nothing heard yet` until it has heard one). Each row shows
 the memory channel (`M12`) when it was one, the frequency, and how long ago (`<1m`, `14m`, `2h`).
 UP/DOWN lights a row, MENU tunes the selected slot there, V/M goes back. The list is kept until you
@@ -120,7 +120,7 @@ With the radio plugged into a computer, `tdh3` (the flasher you downloaded) can 
 screen shows while you use the radio, and turn it into an animated picture to share or to show
 someone how to do something.
 
-1. Switch on REMOTE: **MENU**, **4** **5**, **MENU**, **UP** so it says **ON**, **MENU**, then
+1. Switch on REMOTE: **MENU**, **4** **6**, **MENU**, **UP** so it says **ON**, **MENU**, then
    **V/M** to leave the menu.
 
    ![REMOTE switched on](img/remote.png)

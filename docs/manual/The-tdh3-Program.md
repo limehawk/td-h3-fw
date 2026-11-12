@@ -22,9 +22,9 @@ type `.\tdh3.exe` on Windows and `./tdh3` on a Mac or Linux. See [Updating the f
 
 **Two ways the radio talks to a computer.** Each command needs one of these:
 
-- **PC LINK**: press **MENU**, type **4** **4** (PC LINK), press **MENU**. The screen says
+- **PC LINK**: press **MENU**, type **4** **5** (PC LINK), press **MENU**. The screen says
   *waiting for computer*. **V/M** leaves it when you're done. The radio doesn't receive while it's in PC LINK.
-- **REMOTE**: press **MENU**, type **4** **5** (REMOTE), press **MENU**, set it to **ON**, press
+- **REMOTE**: press **MENU**, type **4** **6** (REMOTE), press **MENU**, set it to **ON**, press
   **MENU**. It stays on, and the radio works normally. It can never make the radio transmit.
 
 **Several radios plugged in?** Add `-p` and the port, like `-p /dev/ttyUSB1` or `-p COM5`. With one
@@ -120,7 +120,7 @@ options run: tdh3 --help, and tdh3 COMMAND --help.
 How the radio connects:
 - REMOTE must be on for every `tdh3 remote` command.
 - PC LINK is needed for `tdh3 channels`, `eeprom`, `settings` and `reset`. To enter it run
-  `tdh3 remote keys MENU 4 4 MENU`, wait a few seconds, and try again if the radio doesn't
+  `tdh3 remote keys MENU 4 5 MENU`, wait a few seconds, and try again if the radio doesn't
   answer at first. While it's in PC LINK, `tdh3 remote` won't answer. Ask me to press V/M
   on the radio to leave it.
 

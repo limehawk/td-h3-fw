@@ -224,7 +224,7 @@ static void no_wait(void) { t_open = now() - 1000; }   // past the longest resum
 
 static uint8_t slot_ok(const __xdata slot_t *x) __reentrant { return x->vfo >= 1800000UL && x->vfo <= 99999999UL && x->chn <= 199 && x->mem < 2; }   // mem 2-255: V/M's ^= 1 never reached 0
 
-enum { M_SQL, M_ATT, M_COMP, M_NAR, M_BW, M_MODE, M_STEP, M_RXT, M_POW, M_SHIFT, M_OFFS, M_TXT, M_TXB, M_TOT, M_TAIL, M_MIC, M_VOX, M_VOXD, M_DTMF,   // the menu's order
+enum { M_SQL, M_ATT, M_COMP, M_NAR, M_BW, M_MODE, M_STEP, M_RXT, M_POW, M_SHIFT, M_OFFS, M_TXT, M_TXB, M_TOT, M_TAIL, M_MIC, M_VOX, M_VOXD, M_DTMF, M_CALL,   // the menu's order
        M_GROUP, M_PAUSE, M_RESUME, M_DW, M_PRIO, M_GLINK, M_GRP, M_SCOPE, M_FF, M_FM, M_WXM, M_LH, M_NAME, M_TOVFO, M_DEL,
        M_LIGHT, M_BRIGHT, M_THEME, M_BEEP, M_KLOCK, M_BELL, M_WX, M_APO, M_SAVE, M_PC, M_REM, M_BT, M_FCAL, M_MCAL, M_BCAL, M_VER, M_N };
 static const __code char *const __code theme_s[NTHEMES] = {"CLASSIC", "NIGHT AMBER", "GREEN", "NIGHT RED"};
@@ -813,9 +813,23 @@ static void draw_main(void)
     draw_status();
 }
 
+// CALL ID: a callsign, sent in Morse when PTT is let go on a ham band, at most once in 10 minutes
+// (the first time after power-on). 8 characters at CALL_ADDR, NUL after the last, as CH NAME saves a
+// name; blank (a new radio's FF too) is OFF. 0x1E00 is in a gap that stock never reads and CHIRP's
+// TD-H3 map leaves out.
+#define CALL_ADDR 0x1E00
+static uint8_t call_load(__xdata char *s) __reentrant   // the callsign into s, NUL after: its length
+{
+    uint8_t n = 0;
+    ee_read(CALL_ADDR, (__xdata uint8_t *)s, 8);
+    while (n < 8 && (uint8_t)(s[n] - 1) < 0x7E) n++;   // 0 or FF ends it
+    s[n] = 0;
+    return n;
+}
+
 // ---------- menu ----------
 static const __code char *const __code mnames[M_N] = {
-    "SQUELCH", "ATTENUATOR", "COMPANDER", "NARROW kHz", "BANDWIDTH", "MODE", "STEP kHz", "RX TONE", "POWER", "SHIFT", "OFFSET MHz", "TX TONE", "TX BANDS", "TX TIMEOUT", "TAIL TONE", "MIC GAIN", "VOX", "VOX DELAY", "DTMF CODES",
+    "SQUELCH", "ATTENUATOR", "COMPANDER", "NARROW kHz", "BANDWIDTH", "MODE", "STEP kHz", "RX TONE", "POWER", "SHIFT", "OFFSET MHz", "TX TONE", "TX BANDS", "TX TIMEOUT", "TAIL TONE", "MIC GAIN", "VOX", "VOX DELAY", "DTMF CODES", "CALL ID",
     "SCAN GROUP", "SCAN PAUSE", "SCAN RESUME", "DUAL WATCH", "PRIORITY", "GROUP LINK", "CH GROUPS",
     "SCOPE", "FREQ FIND", "FM RADIO", "WEATHER", "LAST HEARD", "CH NAME", "CH TO VFO", "DELETE CH",
     "LIGHT", "BRIGHTNESS", "THEME", "KEY BEEP", "KEY LOCK", "BELL", "WX ALERT", "AUTO OFF", "BATT SAVE",
@@ -864,6 +878,7 @@ static void menu_value(uint8_t i) __reentrant   // into the back half of buf, bu
     else if (i == M_PRIO && cfg.prio) { cat(v, "CH"); u2s(v + 2, cfg.prio, 3); }
     else if (i == M_WX && cfg.wx) freq_s(v, wx_freq(cfg.wx - 1));
     else if ((uint8_t)(i - M_FCAL) < 3) cal_s(i - M_FCAL);
+    else if (i == M_CALL) { if (!call_load(v)) cat(v, "OFF"); }
     else cat(v, i == M_VER ? VERSION : i == M_PRIO || i == M_WX ? "OFF" : ">");   // ">": the actions, SCOPE, CH NAME ...
 }
 
@@ -875,7 +890,7 @@ static void menu_value(uint8_t i) __reentrant   // into the back half of buf, bu
 // Two digits jump to that item (Kenwood). UP/DOWN move, MENU selects: a setting's value lights
 // <like this> and UP/DOWN change it until MENU or V/M; an action (value ">") starts. V/M goes back.
 #define MROWS 6
-#define M_ACT(i) ((i) >= M_GLINK && (i) <= M_DEL || (i) == M_PC || (i) == M_DTMF)
+#define M_ACT(i) ((i) >= M_GLINK && (i) <= M_DEL || (i) == M_PC || (uint8_t)((i) - M_DTMF) < 2)   // DTMF CODES, CALL ID
 static uint8_t mlast;
 static __bit medit;                       // the selected item's value is being changed
 
@@ -1241,19 +1256,21 @@ static void delete_screen(void) __reentrant   // reentrant: its temporaries on t
 // CH NAME: the 8 name characters typed as on a phone. A key's letters, then its digit, one per
 // press; another key, or the same one after a second, moves on. UP/DOWN step the letter under the
 // cursor through ABC, and * and # move the cursor left and right, where they sit on the keypad.
-// Saved to the name bytes only, as CHIRP writes them (NUL after the last character).
+// Saved to the name bytes only, as CHIRP writes them (NUL after the last character). CALL ID
+// types its callsign with it too.
 static const __code char *__code keyset[10] = {" 0", "-/.1", "ABC2", "DEF3", "GHI4", "JKL5", "MNO6", "PQRS7", "TUV8", "WXYZ9"};
 static const __code char abc[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/.";
 
-static void name_screen(void) __reentrant
+static const __code label_t name_l[] = {{0, BOT_Y - 24, 1, P_DIM, "0-9 or \x7f\x80 letter"}, {0, BOT_Y - 12, 1, P_DIM, "* < > #  MENU save"}, {0, BOT_Y, 1, P_DIM, "V/M back"},
+    {0, 0, 1, P_ACC, "CH NAME"}, {0, 0, 1, P_ACC, "CALL ID"}};
+static void name_screen(uint16_t at, uint8_t t) __reentrant   // ch.name, saved to EEPROM at; t: name_l's title. The menu reloads ch after
 {
-    static const __code label_t l[] = {{0, 0, 1, P_ACC, "CH NAME"}, {0, BOT_Y - 24, 1, P_DIM, "0-9 or \x7f\x80 letter"}, {0, BOT_Y - 12, 1, P_DIM, "* < > #  MENU save"}, {0, BOT_Y, 1, P_DIM, "V/M back"}};
     uint8_t i, k, last = 0, n = 0, age = 0;     // age: 10 ms rounds left to tap the same key again
     for (i = 0; ch.name[i]; i++) ;
     while (i < 8) ch.name[i++] = ' ';
     list_open();
     for (;;) {
-        if (list_redraw()) draw_labels(l, 4);
+        if (list_redraw()) { draw_labels(name_l, 3); draw_labels(name_l + t, 1); }
         if (lrows) {
             lcd_text(16, 50, ch.name, 2, P_FG);
             lcd_fillp(16, 68, 96, 2, P_BG);
@@ -1282,7 +1299,7 @@ static void name_screen(void) __reentrant
         }
     }
     for (i = 8; i && ch.name[i - 1] == ' '; ) ch.name[--i] = 0;
-    if (ee_write(0x0D40 + 8 * (sl_chn() - 1), (uint8_t *)ch.name, 8)) chime_ok();
+    if (ee_write(at, (uint8_t *)ch.name, 8)) chime_ok();
 }
 
 // CH TO VFO, the big rigs' "MR to VFO": the selected slot's channel into its VFO, and the VFO
@@ -1329,7 +1346,7 @@ static void menu_change(int8_t d) __reentrant
     case M_GRP: case M_TOVFO: case M_NAME:   // the channel afresh: ch may be reversed or weather
         if (!sl_mem() || !chan_load(sl_chn())) { note = "MEMORY CHANNELS ONLY"; chime_no(); leave = 1; }
         else if (menu == M_GRP) groups_screen();
-        else if (menu == M_NAME) name_screen();
+        else if (menu == M_NAME) name_screen(0x0D40 + 8 * (sl_chn() - 1), 3);
         else to_vfo();
         break;
     case M_LH: {
@@ -1340,6 +1357,7 @@ static void menu_change(int8_t d) __reentrant
     }
     case M_DEL: delete_screen(); break;
     case M_DTMF: codes_screen(); break;
+    case M_CALL: call_load(ch.name); name_screen(CALL_ADDR, 4); break;
     case M_FF: set_vfo(freq_find()); break;
     case M_FM: fm_screen(); break;
     case M_WXM: wx_mode(); break;
@@ -2022,6 +2040,55 @@ static void codes_screen(void)
     }
 }
 
+// CALL ID sent: 20 words a minute (a dot 60 ms, PARIS), 800 Hz. Each character of abc (CH NAME's)
+// as ITU Morse, one element a bit from bit 0 (1 a dash) and a 1 above the last; the space a word gap.
+// The last entry, for a character not in abc: nothing.
+static const __code uint8_t morse[] = {0x01, 0x06, 0x11, 0x15, 0x09, 0x02, 0x14, 0x0B, 0x10, 0x04, 0x1E, 0x0D, 0x12, 0x07,
+    0x05, 0x0F, 0x16, 0x1B, 0x0A, 0x08, 0x03, 0x0C, 0x18, 0x0E, 0x19, 0x1D, 0x13, 0x3F, 0x3E, 0x3C, 0x38, 0x30, 0x20,
+    0x21, 0x23, 0x27, 0x2F, 0x61, 0x29, 0x6A, 0x01};
+typedef char morse_fits[sizeof morse == sizeof abc ? 1 : -1];
+#define DIT 12                              // ticks: 60 ms
+static __bit id_sent;                       // an ID since power-on (internal RAM: cleared at every start)
+// ponytail: up10 stops while a full-screen tool (FM, SCOPE ...) or AUTO OFF holds the main loop, so
+// an ID can come late after one; a clock in the tick interrupt if that ever matters on the air.
+static __xdata uint16_t id_at;              // up10 when it went
+
+static uint8_t tot_up(void) { uint8_t tt = tots[cfg.tot]; return tt && secs(&t_tx) >= tt; }   // TX TIMEOUT reached
+
+static uint8_t id_tone(uint8_t v) __reentrant   // REG_70's high byte (0xD0: tone 1 on at gain 0x50, as DTMF's; 0 off) | dots long. 1: PTT or TX TIMEOUT cut it
+{
+    bk_write(0x70, (uint16_t)(v & 0xF0) << 8);
+    stamp(&t_dt);                           // DTMF send's: no touch-tone meanwhile
+    v = (v & 7) * DIT;
+    do {
+        delay_ms(5);
+        key_event();
+        if ((uint8_t)(key_held - K_PTT) < 2 || tot_up()) return 1;
+    } while (since(&t_dt) < v);
+    return 0;
+}
+
+static uint8_t call_id(void) __reentrant    // PTT let go: the ID if it's due; 1: PTT pressed during it, still talking
+{
+    uint8_t i, m = band_of(ch.tx);
+    __xdata char *p = cat(buf, "ID ");      // nothing draws into buf meanwhile: it holds the callsign throughout
+    if (id_sent && up10 - id_at < 60 || m != 1 && m != 4 || !call_load(p)) return 0;   // 2M and 70CM: the ham bands
+    draw_bottom(buf, P_HI);
+    bk_write(0x71, TONE_HZ(800));
+    bk_write(0x50, 0xBB20);                 // the mic muted
+    for (; *p; p++) {
+        for (i = 0; abc[i] && abc[i] != *p; i++) ;
+        for (m = morse[i]; m > 1; m >>= 1)
+            if (id_tone(m & 1 ? 0xD3 : 0xD1) || id_tone(1)) goto cut;
+        if (id_tone(i ? 2 : 4)) goto cut;   // 3 dots between letters, 7 between words
+    }
+    id_sent = 1; id_at = up10;
+cut:
+    bk_dtmf_tx(0xFF);                       // tone off, the mic back on
+    dirty = 1;
+    return (uint8_t)(key_held - K_PTT) < 2;
+}
+
 static __bit tot_warned;
 // VOX: the chip finds a voice (BK_IRQ_VOXF) and loses it (BK_IRQ_VOXL; main). It keys the selected
 // slot through ptt(), so every refusal there holds, and only from the home screen, with nothing
@@ -2067,7 +2134,8 @@ static void ptt(void) __reentrant
     } else if (tx && tt && !tot_warned && secs(&t_tx) + 10 >= tt) {
         tot_warned = 1;                     // 10 s before the timeout cuts you off
         BEEP(1800, 120);
-    } else if (tx && (want == 2 || (tt && secs(&t_tx) >= tt))) {
+    } else if (tx && (want == 2 || tot_up())) {
+        if (want == 2 && call_id()) return;   // the ID, still keyed; PTT again during it: talking
         bk_dtmf_tx(0xFF);                   // a DTMF tone off with the carrier
         dtmf_n = 0;
         vox_arm = vox_tx = 0;
@@ -2234,13 +2302,14 @@ void main(void)
         if (t_voice && since(&t_voice) > 800) t_voice = 0;   // a prompt has 4 s of speaker
         remote_req &= REQ_END;
 
-        if (!tx && secs(&t_batt) >= 10) {   // a 2S pack: warn once at 6.8 V, TX refused under 6.5 V
-            int16_t mv = batt_cal();
+        if (secs(&t_batt) >= 10) {
             stamp(&t_batt);
-            up10++;                         // last heard's clock
-            if (mv < 6800 && !low_batt) { low_batt = 1; note = low_s; bk_chime(snd_batt); dirty = 1; }
-            else if (mv > 7000) low_batt = 0;
-            {                               // AUTO OFF, counted in these 10 s checks
+            up10++;                         // last heard's and CALL ID's clock, counted while transmitting too
+            if (!tx) {                      // a 2S pack: warn once at 6.8 V, TX refused under 6.5 V
+                int16_t mv = batt_cal();
+                if (mv < 6800 && !low_batt) { low_batt = 1; note = low_s; bk_chime(snd_batt); dirty = 1; }
+                else if (mv > 7000) low_batt = 0;
+                // AUTO OFF, counted in these 10 s checks
                 if (!cfg.apo || scanning || secs(&t_key) < 10) idle10 = 0;
                 else if (++idle10 >= (uint16_t)90 << cfg.apo) { doze(); lit = 0; }       // 30, 60, 120 min
             }

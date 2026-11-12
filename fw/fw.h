@@ -91,6 +91,7 @@ uint8_t ee_write(uint16_t addr, const __xdata uint8_t *buf, uint8_t n);
 
 // bk4819.c
 void bk_write(uint8_t reg, uint16_t v) __reentrant;
+#define TONE_HZ(hz) ((uint16_t)((hz) * 1032444UL / 100000))   // REG_71/72: a tone generator's pitch
 uint16_t bk_read(uint8_t reg) __reentrant;
 void bk_init(void);
 void bk_freq(uint32_t f) __reentrant;                  // 10 Hz units

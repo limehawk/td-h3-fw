@@ -291,6 +291,135 @@ def test_dtmf_codes(cpu):                  # DTMF CODES: type a code, V/M delete
     assert all(not (0x1F50 <= a < 0x1F80 or a >= 0x1FF0) for a in cpu.ee.writes)
 
 
+MORSE = {'.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E', '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I',
+         '.---': 'J', '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O', '.--.': 'P', '--.-': 'Q', '.-.': 'R',
+         '...': 'S', '-': 'T', '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y', '--..': 'Z', '-----': '0',
+         '.----': '1', '..---': '2', '...--': '3', '....-': '4', '.....': '5', '-....': '6', '--...': '7', '---..': '8',
+         '----.': '9', '-..-.': '/', '-....-': '-', '.-.-.-': '.'}
+
+
+class Stamped(list):                       # BK4819 writes with the tick each was made on
+    def __init__(self, cpu):
+        super().__init__(cpu.bk.writes)
+        self.cpu, self.at, self.t = cpu, symbol(FW, '_ticks'), [0] * len(cpu.bk.writes)
+    def append(self, x):
+        self.t.append(self.cpu.xram[self.at] | self.cpu.xram[self.at + 1] << 8)
+        super().append(x)
+
+
+def morse_sent(cpu, since, until=None):                # CALL ID's Morse from REG_70's tone 1 alone on and off, 20 WPM: a dot 12 ticks
+    near = lambda d, n: n <= d <= n + 6    # the emulator's bit-banged writes run ~25x slow: a few ticks late
+    w, t = cpu.bk.writes, cpu.bk.writes.t
+    edges = [(t[i], v == 0xD000) for i in range(since, until or len(w)) for r, v in [w[i]]
+             if r == 0x70 and v in (0xD000, 0)]
+    out, sym, last_off, on = '', '', None, None
+    for tick, up in edges:
+        if up and on is None:
+            if last_off is not None:
+                gap = (tick - last_off) & 0xFFFF
+                assert near(gap, 12) or near(gap, 36) or near(gap, 84), 'gap of %d ticks' % gap
+                if gap > 24: out += MORSE[sym] + (' ' if gap > 60 else ''); sym = ''
+            assert cpu.bk.regs.get(0x71) == 800 * 1032444 // 100000 and (0x50, 0xBB20) in w[since:], 'not 800 Hz, mic on'
+            on = tick
+        elif not up and on is not None:
+            d = (tick - on) & 0xFFFF
+            assert near(d, 12) or near(d, 36), 'element of %d ticks' % d
+            sym += '.' if d < 24 else '-'
+            on, last_off = None, tick
+    return out + MORSE.get(sym, '?') if sym else out   # ? : cut off mid-letter
+
+
+def ptt_tap(cpu, hold=800_000, after=9_000_000):   # talk, let go, wait out the ID (N0CALL/4: 7.6 s) and the tail
+    cpu.key = 'PTT'
+    cpu.run(hold)
+    assert pins(cpu)['TXV'] or pins(cpu)['TXU'], 'not transmitting'
+    cpu.key = None
+    cpu.run(after)
+
+
+def test_call_id_off(cpu):                 # CALL ID: OFF on a new radio (EEPROM FF), no Morse sent
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    keys(cpu, ['MENU', '2', '0'])
+    cpu.run(1_000_000)
+    rows = remote_texts(cpu)
+    assert any(r.startswith('TRANSMIT') and r.endswith('20/51') for r in rows), rows
+    assert any(r.startswith('CALL ID') and r.endswith('OFF') for r in rows), rows
+    keys(cpu, ['EXIT'])
+    cpu.bk.writes = Stamped(cpu)
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu)
+    assert not pins(cpu)['TXV'] and morse_sent(cpu, n) == '', 'Morse sent with CALL ID OFF'
+
+
+def test_call_id(cpu):                     # CALL ID: typed in CH NAME's editor; Morse on PTT release, once in 10 minutes
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    menu(cpu, 'CALL', ['UP'])
+    cpu.run(1_000_000)
+    tap = lambda k: press(cpu, k, hold=100_000, after=100_000)
+    for k in ['66', '00', '222', '2', '555', '555', '11', '4444']:   # N 0 C A L L / 4, all 8: a key's letters, then its digit
+        for c in k: tap(c)
+        cpu.run(1_500_000)                 # over a second: the next press starts a new character
+    keys(cpu, ['MENU'])
+    cpu.run(1_000_000)
+    assert bytes(cpu.ee.mem[0x1E00:0x1E08]) == b'N0CALL/4', bytes(cpu.ee.mem[0x1E00:0x1E08])
+    assert all(not (0x1F50 <= a < 0x1F80 or a >= 0x1FF0) for a in cpu.ee.writes)
+    rows = remote_texts(cpu)
+    assert any(r.startswith('CALL ID') and r.endswith('N0CALL/4') for r in rows), rows
+    keys(cpu, ['EXIT'])                    # saved: back in the menu; V/M home
+    cpu.bk.writes = Stamped(cpu)
+    n = len(cpu.bk.writes)
+    cpu.uart_out.clear()
+    ptt_tap(cpu)
+    assert morse_sent(cpu, n) == 'N0CALL/4', morse_sent(cpu, n)
+    assert b'ID N0CALL/4' in bytes(cpu.uart_out), 'ID not on the screen'
+    assert not pins(cpu)['TXV'] and cpu.bk.regs[0x70] == 0, 'still keyed, or the tone on'
+    w = cpu.bk.writes[n:]
+    assert w.index((0x51, 0x903E)) > max(i for i, x in enumerate(w) if x == (0x70, 0xD000)), 'tail tone before the ID'
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu)                           # again within 10 minutes: nothing
+    assert morse_sent(cpu, n) == '', 'ID again within 10 minutes'
+    up10 = rst_addr('_up10')
+    v = (cpu.xram[up10] | cpu.xram[up10 + 1] << 8) + 60   # 10 minutes later
+    cpu.xram[up10], cpu.xram[up10 + 1] = v & 0xFF, v >> 8
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu)
+    assert morse_sent(cpu, n) == 'N0CALL/4', 'no ID after 10 minutes'
+    keys(cpu, list('462562'))              # GMRS 1: never an ID
+    cpu.run(1_000_000)
+    v += 60
+    cpu.xram[up10], cpu.xram[up10 + 1] = v & 0xFF, v >> 8
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu)
+    assert freq(cpu) == 46256250 and morse_sent(cpu, n) == '', 'ID sent on GMRS'
+
+
+def test_call_id_cut(cpu):                 # CALL ID: PTT during it cuts it off and you're talking; TX TIMEOUT still ends it
+    ee = eeprom()
+    ee[0x1E00:0x1E08] = b'K0ABC\0\0\0'
+    cpu = boot(ee=ee)
+    cpu.bk.writes = Stamped(cpu)
+    n = len(cpu.bk.writes)
+    ptt_tap(cpu, after=600_000)            # into the ID: K sent (144 ticks with its gap), 0 going
+    assert cpu.bk.regs[0x50] == 0xBB20 and pins(cpu)['TXV']
+    cut = len(cpu.bk.writes)
+    cpu.key = 'PTT'
+    cpu.run(400_000)
+    assert pins(cpu)['TXV'] and cpu.bk.regs[0x50] == 0x3B20 and cpu.bk.regs[0x70] == 0, 'not talking again'
+    m = len(cpu.bk.writes)
+    cpu.run(800_000)
+    assert (0x70, 0xD000) not in cpu.bk.writes[m:], 'the ID went on'
+    sent = morse_sent(cpu, n, cut)
+    assert sent[:1] == "K" and len(sent) <= 2, sent   # K, maybe part of 0
+    cpu.key = None                         # let go: the ID is still due
+    cpu.run(300_000)
+    t = symbol(FW, '_t_tx')                # TX TIMEOUT 120 s reached during it: unkeyed
+    v = (cpu.xram[t] | cpu.xram[t + 1] << 8) - 121 * 200
+    cpu.xram[t], cpu.xram[t + 1] = v & 0xFF, v >> 8 & 0xFF
+    cpu.run(1_500_000)
+    assert not pins(cpu)['TXV'] and cpu.bk.regs[0x70] == 0, 'TX TIMEOUT ignored'
+    assert cpu.bk.writes[m:].count((0x70, 0xD000)) < 18, 'the whole ID sent past TX TIMEOUT'   # K0ABC: 18 elements
+
+
 def tx_refused(cpu):
     n = len(cpu.bk.writes)
     cpu.key = 'PTT'
@@ -448,7 +577,7 @@ def test_dcs(cpu):
     press(cpu, 'EXIT')
 
 
-MENU = ['SQUELCH', 'ATT', 'COMP', 'NARKHZ', 'BW', 'MODE', 'STEP', 'RXT', 'POWER', 'SHIFT', 'OFFS', 'TXT', 'TXB', 'TOT', 'TAIL', 'MIC', 'VOX', 'VOXD', 'DTMF',   # fw/main.c's M_ order
+MENU = ['SQUELCH', 'ATT', 'COMP', 'NARKHZ', 'BW', 'MODE', 'STEP', 'RXT', 'POWER', 'SHIFT', 'OFFS', 'TXT', 'TXB', 'TOT', 'TAIL', 'MIC', 'VOX', 'VOXD', 'DTMF', 'CALL',   # fw/main.c's M_ order
         'GROUP', 'PAUSE', 'RESUME', 'DW', 'PRIO', 'GLINK', 'GRP', 'SCOPE', 'FF', 'FM', 'WEATHER', 'LH', 'NAME', 'TOVFO', 'DEL',
         'LIGHT', 'BRIGHT', 'THEME', 'BEEP', 'KLOCK', 'BELL', 'WX', 'APO', 'SAVE', 'PC', 'REMOTE', 'BT', 'FCAL', 'MCAL', 'BCAL', 'VER']
 
@@ -457,7 +586,7 @@ def num(item):                             # the two digits that jump to an item
     return list('%02d' % (MENU.index(item) + 1))
 
 
-ACTIONS = {'DTMF', 'SCOPE', 'FF', 'FM', 'WEATHER', 'PC', 'LH', 'GRP', 'GLINK', 'DEL', 'TOVFO', 'NAME'}
+ACTIONS = {'DTMF', 'CALL', 'SCOPE', 'FF', 'FM', 'WEATHER', 'PC', 'LH', 'GRP', 'GLINK', 'DEL', 'TOVFO', 'NAME'}
 
 
 def menu(cpu, item, action=()):            # go to an item by its number; action: UP/DOWN changes it, EXIT leaves
@@ -3510,6 +3639,9 @@ INDEPENDENT = [
     ('keys read while PTT or PTT-B is held, no row driven high', test_keys_with_ptt),
     ('DTMF send: keys with PTT and PTT-B, MENU 1-8 a stored code, a blank one nothing', test_dtmf_send),
     ('DTMF CODES: typed, a digit deleted, saved as stock stores them, 7 at most', test_dtmf_codes),
+    ('CALL ID: OFF by default, item 20, sends nothing', test_call_id_off),
+    ('CALL ID: typed, Morse once in 10 minutes, never on GMRS', test_call_id),
+    ('CALL ID: PTT cuts it off, TX TIMEOUT ends it', test_call_id_cut),
     ('PTT wakes the backlight', test_ptt_wakes_backlight),
     ('screen dark: the first key only wakes it', test_dark_key_only_wakes),
     ('basics: decimal point, no such channel, empty group, torch when locked', test_basics),

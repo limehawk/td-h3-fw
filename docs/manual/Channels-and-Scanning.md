@@ -13,7 +13,7 @@
 | Scan one group only | While scanning your channels (memory mode), **1**-**8**; **0** for the whole scan list |
 | Put this channel on or off the scan list (un-skip it) | Hold **V/M** (memory mode, not scanning) |
 | Save this frequency as a channel | Hold **MENU**, then **MENU** (yes) or **V/M** (no). While scanning, it stops as **\*** does and offers to save that channel |
-| Name, delete or copy a channel | **MENU**, **3** **2** (CH NAME), **3** **4** (DELETE CH) or **3** **3** (CH TO VFO), then **MENU** |
+| Name, delete or copy a channel | **MENU**, **3** **3** (CH NAME), **3** **5** (DELETE CH) or **3** **4** (CH TO VFO), then **MENU** |
 | Listen to NOAA weather | Hold **#**; hold **#** again to go back |
 | Copy channels from another radio | `tdh3 eeprom backup` on that one, then `tdh3 channels copy FILE` on this one ([below](#copy-channels-from-another-radio)) |
 | See, change, move or empty channels from the computer | PC LINK, then `tdh3 channels list`, `set`, `move`, `clear` ([below](#changing-channels-from-the-computer)) |
@@ -28,7 +28,7 @@ The easiest way is from a computer with [CHIRP](https://chirp.danplanet.com) or 
 downloaded ([Updating the firmware](Updating#get-the-flasher); type `.\tdh3.exe` on Windows and
 `./tdh3` on a Mac or Linux where these steps say `tdh3`).
 
-1. On the radio: **MENU**, then type **4** **4** to reach **PC LINK**, then **MENU**. The
+1. On the radio: **MENU**, then type **4** **5** to reach **PC LINK**, then **MENU**. The
    screen says *waiting for computer*. Plug in the USB-C cable. (With BLUETOOTH on in the menu, a
    phone app can talk to it over Bluetooth too.)
 
@@ -61,7 +61,7 @@ USB (MENU → MODE).
 ## Changing channels from the computer
 
 `tdh3` (the flasher you downloaded) can show and change your channels one at a time, or many at
-once. Put the radio in PC LINK first: **MENU**, type **4** **4**, **MENU**. **V/M** leaves it when you're done.
+once. Put the radio in PC LINK first: **MENU**, type **4** **5**, **MENU**. **V/M** leaves it when you're done.
 
 | I want to… | Type |
 |---|---|
@@ -98,14 +98,14 @@ settings, its calibration and everything else. Its old channels 1-199 are replac
 
 You need one USB-C cable. Run the commands in the firmware's folder.
 
-1. **Save radio 1's memory to a file.** Plug radio 1 in. On it: **MENU**, type **4** **4** (PC LINK),
+1. **Save radio 1's memory to a file.** Plug radio 1 in. On it: **MENU**, type **4** **5** (PC LINK),
    **MENU**. The screen says *waiting for computer*. On the computer:
    ```bash
    tdh3 eeprom backup radio1.bin
    ```
    It finds the cable by itself (with two radio cables plugged in, name one: `-p /dev/ttyUSB0`).
    When it says *saved*, press **V/M** on radio 1 and unplug it.
-2. **Plug radio 2 in** and put it in PC LINK the same way: **MENU**, **4** **4** (PC LINK), **MENU**.
+2. **Plug radio 2 in** and put it in PC LINK the same way: **MENU**, **4** **5** (PC LINK), **MENU**.
 3. **Copy:**
    ```bash
    tdh3 channels copy radio1.bin
@@ -133,7 +133,7 @@ Group channels so you can scan just the ones you care about: repeaters, GMRS, we
 - Then load it with `tdh3 channels import`. (CHIRP's own Upload clears the groups, so import the
   CSV after any CHIRP upload. An import turns busy lockout off on the channels it writes, and
   channels on the radio that aren't in the file stay as they are; `--clear` empties those.)
-- **Or on the radio:** go to the channel in memory mode, then **MENU**, type **2** **6** (CH GROUPS),
+- **Or on the radio:** go to the channel in memory mode, then **MENU**, type **2** **7** (CH GROUPS),
   **MENU**. Move with **UP/DOWN**, **MENU** puts the lit group on or off for this channel
   (`[*]` = in it), **V/M** goes back and saves your changes (a short chime).
 
@@ -141,7 +141,7 @@ Group channels so you can scan just the ones you care about: repeaters, GMRS, we
 
 Pick a group under **MENU → SCAN GROUP** and it works like a bank on the big rigs: in memory mode
 **UP** and **DOWN** step only through that group's channels, and a scan covers just that group. To
-scan several groups at once, use **MENU → GROUP LINK** (item 25) instead and put each one on. With
+scan several groups at once, use **MENU → GROUP LINK** (item 26) instead and put each one on. With
 SCAN GROUP on **SCAN LIST**, UP and DOWN step through all your channels. A group scan, like every
 scan, passes channels that are off the scan list (no `*`). A group with no channels to scan says
 **GROUP IS EMPTY**.
@@ -250,7 +250,7 @@ as it was. Typing another number instead starts over.
 
 To empty a memory channel you no longer want, right on the radio:
 
-1. **MENU**, type **3** **4** (DELETE CH), then **MENU**. The screen lists your channels: number,
+1. **MENU**, type **3** **5** (DELETE CH), then **MENU**. The screen lists your channels: number,
    name and frequency (`002 GMRS1    462.562`). The lit one is the channel the selected slot is on,
    or your first channel if the slot is in frequency mode.
 2. **UP / DOWN** to light the channel to delete.
@@ -270,7 +270,7 @@ Bigger radios call this "MR to VFO". It copies a memory channel into frequency m
 tune up and down from it, or change its tone, without touching the channel itself.
 
 1. Go to the channel in memory mode (the slot shows `M` and the channel number, `*M` when it's on the scan list).
-2. **MENU**, type **3** **3** (CH TO VFO), then **MENU**.
+2. **MENU**, type **3** **4** (CH TO VFO), then **MENU**.
 
 The slot switches to frequency mode on the channel's frequency, and the frequency-mode settings
 (RX TONE, TX TONE, SHIFT, OFFSET, BANDWIDTH, POWER) take the channel's values. The channel stays as
@@ -284,7 +284,7 @@ A channel's name (up to 8 letters, numbers or spaces) shows on the home screen a
 frequency. To change it on the radio:
 
 1. Go to the channel in memory mode (the slot shows `M` and the channel number, `*M` when it's on the scan list).
-2. **MENU**, type **3** **2** (CH NAME), then **MENU**. The name shows large, with a line under the
+2. **MENU**, type **3** **3** (CH NAME), then **MENU**. The name shows large, with a line under the
    letter you are on.
 
    ![Naming a channel](img/chname.png)

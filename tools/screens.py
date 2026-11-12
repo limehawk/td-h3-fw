@@ -39,7 +39,7 @@ CALLOUTS = {
 # Framed the same way, with no numbers: the page's own words say what to look at.
 PLAIN = ['memory', 'menuedit', 'menudigit', 'saveask', 'replace', 'deletelist', 'deleteask', 'chgroups', 'glink',
          'chname', 'weather', 'lastheard', 'flashlight', 'remote', 'version', 'notallowed', 'repeater', 'dtmfask',
-         'ptthold', 'vox', 'fmauto']
+         'ptthold', 'vox', 'fmauto', 'callid']
 THEMES = 4          # MENU, THEME: the four side by side make themes.png
 
 
@@ -289,6 +289,14 @@ def capture():
     cpu.run(400_000)
     save(cpu, 'dtmfask', t.FW)
     cpu.key = None
+
+    cpu = full()                           # PTT let go with CALL ID on: the callsign going out in Morse
+    cpu.ee.mem[0x1E00:0x1E08] = b'N0CALL\0\0'   # the usual made-up callsign
+    cpu.key = 'PTT'
+    cpu.run(1_500_000)
+    cpu.key = None
+    cpu.run(1_500_000)
+    save(cpu, 'callid', t.FW)
 
     cpu = t.CPU(open(t.FW, 'rb').read(), bytearray(ee))   # switched on with PTT already down
     cpu.adc, cpu.key, cpu.key_held_at = 3985, 'PTT', t.symbol(t.FW, '_key_held')

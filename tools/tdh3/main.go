@@ -70,7 +70,7 @@ func main() {
 		Use:   "backup FILE",
 		Short: "Read the whole EEPROM into FILE (read-only: never writes to the radio)",
 		Long: "Uses the clone protocol at 38400. Works with stock firmware, and with td-h3-fw once\n" +
-			"the radio is in PC LINK (MENU, 4 4, MENU). FILE is the 8-byte ident followed by\n" +
+			"the radio is in PC LINK (MENU, 4 5, MENU). FILE is the 8-byte ident followed by\n" +
 			"the 8192 EEPROM bytes. -p is found by itself when there is one radio cable.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -160,7 +160,7 @@ func main() {
 	reset := &cobra.Command{
 		Use:   "reset",
 		Short: "Put every setting back to its default (the channels stay; --channels clears them too)",
-		Long: "Over PC LINK (MENU, 4 4, MENU): clears the settings' check byte so the radio loads every\n" +
+		Long: "Over PC LINK (MENU, 4 5, MENU): clears the settings' check byte so the radio loads every\n" +
 			"default, and td-h3-fw restarts by itself to use them. Shows what it will do and waits for\n" +
 			"Enter. The memory channels stay unless --channels; the factory TX calibration is never\n" +
 			"written. -p is found by itself when there is one radio cable.",
@@ -175,7 +175,7 @@ func main() {
 	restore := &cobra.Command{
 		Use:   "restore BACKUP.bin",
 		Short: "Put the settings from a `tdh3 eeprom backup` file back (the channels stay)",
-		Long: "Over PC LINK (MENU, 4 4, MENU): writes only the settings (0x1FC0-0x1FEF) from BACKUP.bin,\n" +
+		Long: "Over PC LINK (MENU, 4 5, MENU): writes only the settings (0x1FC0-0x1FEF) from BACKUP.bin,\n" +
 			"which may come from another TD-H3, reads them back, and td-h3-fw restarts with them. Shows\n" +
 			"what it will do and waits for Enter. The memory channels and the factory TX calibration on\n" +
 			"the radio are never written. -p is found by itself when there is one radio cable.",

@@ -63,7 +63,7 @@ func runReset(portName string, channels, ask bool) error {
 	row("never", "the factory TX calibration")
 	if ask {
 		end := watchStop()
-		err := enter(ambS.Render("Enter") + " resets" + noteS.Render(" (radio in PC LINK: MENU, 4 4, MENU), Ctrl-C stops"))
+		err := enter(ambS.Render("Enter") + " resets" + noteS.Render(" (radio in PC LINK: MENU, 4 5, MENU), Ctrl-C stops"))
 		end()
 		if err != nil {
 			return err
@@ -76,7 +76,7 @@ func runReset(portName string, channels, ask bool) error {
 	defer p.Close()
 	if _, err := importBlocks(p, resetPlan(channels), resetWritable, func(m string, kv ...any) { logger.Debug(m, kv...) }); err != nil {
 		if errors.Is(err, errNoHello) {
-			return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 4, MENU), then run this again")
+			return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 5, MENU), then run this again")
 		}
 		return err
 	}

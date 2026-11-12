@@ -186,6 +186,7 @@ TIDRADIO's own map (as nicsure tabulated it in `H3.xlsx`), confirmed by stock re
 | 0x1940 | FM preset-used bitmap (CHIRP `fmusedflags`, bit n-1 = preset n): CHIRP shows and keeps only presets with their bit set, so this firmware sets and clears it with each preset |
 | 0x1950 / 0x1960 | VFO A / B, channel format |
 | 0x1C00 | power-on messages |
+| 0x1E00-0x1E07 | **ours**: CALL ID's callsign, up to 8 characters, NUL after the last (as a channel name); a NUL or FF first byte (a new radio's) is OFF. In the gap 0x1C30-0x1F1F: stock's EEPROM reads at boot and in the menu (logged in the emulator) never touch it and its code has no address there, CHIRP's TD-H3 map defines nothing there (it writes back the bytes it read), and a radio's backup holds FF there |
 | 0x1F20 / 0x1F30 | mic gain / Bluetooth |
 | **0x1F50-0x1F7F** | **factory TX power calibration — never written by this firmware** |
 | 0x1FC0-0x1FEF | this firmware's settings (`cfg` in `main.c`, magic 0xAD; `group` is a mask of scan groups): small settings share bytes 0x1FC2-0x1FC9 (`tools/budget.py` counts the free bytes and bits); 0xAB and 0xAC blocks are moved over on boot (0xAC: POWER 0 low, 1 high, 2 ULP becomes 1, 3, 0), an out-of-range value gets its default, an older or bad magic loads defaults |

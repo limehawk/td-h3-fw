@@ -2020,6 +2020,7 @@ mem MIC 5
 mem VOX OFF
 mem VOXD 1 s
 mem DTMF >
+mem CALL OFF
 mem GROUP SCAN LIST
 mem PAUSE BUSY
 mem RESUME 5 s

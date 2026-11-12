@@ -21,7 +21,7 @@ you don't talk over someone (`BUSY: NO TX`).
 **Channel / memory**: a stored frequency with its name, tones and power, numbered 1-199.
 
 **CHIRP**: free programming software for many radios, used from a computer to edit the channel list.
-The radio talks to it in PC LINK (item 44).
+The radio talks to it in PC LINK (item 45).
 
 **Compander**: a pair of tricks that cut hiss on a weak signal: the sending radio squeezes loud and soft
 parts of your voice closer together, and the receiving radio stretches them back out. It only works

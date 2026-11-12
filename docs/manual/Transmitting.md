@@ -10,10 +10,11 @@
 | Send a stored DTMF code | Keep holding **PTT**, press **MENU**, then the code's number **1**-**8** |
 | Talk without pressing PTT (VOX) | **MENU**, **1** **7** (VOX), **MENU**, **UP** to a level, **MENU** |
 | Store DTMF codes | **MENU**, **1** **9** (DTMF CODES), **MENU** |
+| Send my callsign by itself (Morse) | **MENU**, **2** **0** (CALL ID), **MENU**, type it, **MENU** |
 | Choose where I may transmit | **MENU**, **1** **3** (TX BANDS), **MENU**, **UP** / **DOWN**, **MENU** |
 | Change power | Hold **2**: low → mid → high → ultra-low. On a memory channel it's saved with the channel. In frequency mode **MENU**, **0** **9** (POWER) does it too |
 | Set the longest transmission | **MENU**, **1** **4** (TX TIMEOUT; 120 s to start with) |
-| Check which build I have | **MENU**, **5** **0** (VERSION) |
+| Check which build I have | **MENU**, **5** **1** (VERSION) |
 
 **You need a licence to transmit**, and following the rules for each service is up to you, as on any
 radio. In the US: an amateur (ham) licence for the 2 m and 70 cm bands, a GMRS licence (no exam,
@@ -151,3 +152,29 @@ To store them: **MENU**, **1** **9** (DTMF CODES), **MENU**.
 
 CHIRP can set the same 8 codes (Settings, DTMF, "1" to "8"). CHIRP shows a stored **\*** as `E` and
 **#** as `F`, and can't type them itself: enter codes with **\*** or **#** on the radio.
+
+## Call ID: your callsign in Morse
+
+Hams must say who they are: in the US, your callsign at the end of a contact and at least every 10
+minutes during one. Saying it out loud is fine. CALL ID can do it for you instead, as beeps in
+Morse code. It is OFF until you give it a callsign.
+
+To set it: **MENU**, **2** **0** (CALL ID), **MENU**, then type your callsign on the keypad the way
+you'd name a channel (see [Naming a channel](Channels-and-Scanning#naming-a-channel); key **1**
+twice gives `/`), and **MENU** to save. To switch it off again, delete every character and save it empty.
+
+When it's on and you let go of PTT on a ham frequency (2 m or 70 cm), the radio keeps
+transmitting for a few seconds and sends the callsign as beeps, at 20 words a minute and about
+800 Hz; the bottom line shows `ID` and the callsign meanwhile. Then it stops transmitting as usual.
+
+![Sending the callsign after letting go of PTT](img/callid.png)
+It does this the first time you transmit after switching on, and after that only once 10 minutes
+have passed since the last one; the other times, letting go stops at once.
+
+- **Press PTT during it** to cut it short: you're talking again. It sends the whole callsign the
+  next time you let go.
+- **Never on GMRS, MURS or FRS**: those services don't use it.
+- **TX TIMEOUT** still applies: if your time runs out during it, the radio stops transmitting.
+- The 10 minutes are counted while the radio is on its home screen or in the menu. Time spent in
+  the FM radio, SCOPE, a list or asleep (AUTO OFF) doesn't count, so after one of those it can wait
+  longer than 10 minutes to send it again.

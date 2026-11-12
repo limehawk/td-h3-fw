@@ -65,7 +65,7 @@ func runRestore(portName, file string, ask bool) error {
 	row("never", "the factory TX calibration")
 	if ask {
 		end := watchStop()
-		err := enter(ambS.Render("Enter") + " restores" + noteS.Render(" (radio in PC LINK: MENU, 4 4, MENU), Ctrl-C stops"))
+		err := enter(ambS.Render("Enter") + " restores" + noteS.Render(" (radio in PC LINK: MENU, 4 5, MENU), Ctrl-C stops"))
 		end()
 		if err != nil {
 			return err
@@ -79,7 +79,7 @@ func runRestore(portName, file string, ask bool) error {
 	n, err := importBlocks(p, es, restoreWritable, func(m string, kv ...any) { logger.Debug(m, kv...) })
 	if err != nil {
 		if errors.Is(err, errNoHello) {
-			return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 4, MENU), then run this again")
+			return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 5, MENU), then run this again")
 		}
 		return err
 	}

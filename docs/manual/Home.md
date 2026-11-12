@@ -37,14 +37,14 @@ triple tap for strobe · any tap stops strobe or SOS.
 
 | # | Item | # | Item |
 |---|---|---|---|
-| 1 | SQUELCH | 29 | FM RADIO |
-| 2 | ATTENUATOR | 30 | WEATHER |
-| 13 | TX BANDS (where you may transmit) | 31 | LAST HEARD (who was on) |
-| 15 | TAIL TONE | 41 | WX ALERT |
-| 20 | SCAN GROUP | 42 | AUTO OFF |
-| 23 | DUAL WATCH | 44 | PC LINK (for CHIRP) |
-| 25 | GROUP LINK (scan several groups) | 45 | REMOTE (for the computer) |
-| 26 | CH GROUPS (a channel's scan groups) | 50 | VERSION |
+| 1 | SQUELCH | 30 | FM RADIO |
+| 2 | ATTENUATOR | 31 | WEATHER |
+| 13 | TX BANDS (where you may transmit) | 32 | LAST HEARD (who was on) |
+| 15 | TAIL TONE | 42 | WX ALERT |
+| 21 | SCAN GROUP | 43 | AUTO OFF |
+| 24 | DUAL WATCH | 45 | PC LINK (for CHIRP) |
+| 26 | GROUP LINK (scan several groups) | 46 | REMOTE (for the computer) |
+| 27 | CH GROUPS (a channel's scan groups) | 51 | VERSION |
 
 **Flashing new firmware:** download the flasher for your computer from the newest release (the
 firmware is inside it) and open it with the radio plugged in. With the radio on and REMOTE on, press and hold
@@ -88,7 +88,7 @@ For people working on the firmware: [Keeping this manual current](Keeping-This-M
 | Receive-only | `td-h3-rx.bin` | Never. PTT shows **TX NOT ALLOWED**. |
 | Full | `td-h3.bin` | Only on the services on in TX BANDS (HAM and GMRS to start with), and only with the radio's factory calibration present. |
 
-MENU → VERSION (item 50) shows which version you're running, for example `0.55.2`.
+MENU → VERSION (item 51) shows which version you're running, for example `0.55.2`.
 
 ![The VERSION item at the bottom of the menu](img/version.png)
 

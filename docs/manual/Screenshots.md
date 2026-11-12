@@ -62,7 +62,7 @@ Under each picture is a link to the page that explains it.
 <tr><td valign="top"><img src="img/tx.png" width="320" alt="Transmitting"><br><b>Transmitting</b><br><a href="Transmitting">Transmitting</a></td><td valign="top"><img src="img/repeater.png" width="320" alt="A repeater shift"><br><b>A repeater shift</b><br><a href="Transmitting">Transmitting</a></td></tr>
 <tr><td valign="top"><img src="img/notallowed.png" width="320" alt="Where it won't transmit"><br><b>Where it won't transmit</b><br><a href="Transmitting">Transmitting</a></td><td valign="top"><img src="img/vox.png" width="320" alt="Setting VOX"><br><b>Setting VOX</b><br><a href="Transmitting#vox-talk-without-pressing-ptt">VOX</a></td></tr>
 <tr><td valign="top"><img src="img/dtmfask.png" width="320" alt="Sending a stored touch-tone code"><br><b>Sending a stored touch-tone code</b><br><a href="Transmitting#stored-codes">Stored codes</a></td><td valign="top"><img src="img/dtmfcodes.png" width="320" alt="The stored touch-tone codes"><br><b>The stored touch-tone codes</b><br><a href="Transmitting#stored-codes">Stored codes</a></td></tr>
-<tr><td valign="top"><img src="img/ptthold.png" width="320" alt="PTT held while switching on"><br><b>PTT held while switching on</b><br><a href="Updating#flash">Flashing</a></td></tr>
+<tr><td valign="top"><img src="img/callid.png" width="320" alt="Sending the callsign in Morse"><br><b>Sending the callsign in Morse</b><br><a href="Transmitting#call-id-your-callsign-in-morse">Call ID</a></td><td valign="top"><img src="img/ptthold.png" width="320" alt="PTT held while switching on"><br><b>PTT held while switching on</b><br><a href="Updating#flash">Flashing</a></td></tr>
 </table>
 
 ## On the computer

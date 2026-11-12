@@ -3,6 +3,14 @@
 What changed on the radio and in the tdh3 flasher, newest release first. Each release's page
 starts with its part of this list.
 
+## Next release
+
+- New: CALL ID (MENU 20) sends your ham callsign in Morse code when you let go of PTT, on 2 m and
+  70 cm only, the first time after you switch on and then at most every 10 minutes. It stays off
+  until you type a callsign.
+- The menu items from SCAN GROUP on each moved down one place: SCAN GROUP is now 21, PC LINK 45,
+  REMOTE 46 and VERSION 51.
+
 ## 0.65.0
 
 - The screen switches off while the backlight is out, to save battery. A key press brings both

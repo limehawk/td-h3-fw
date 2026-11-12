@@ -362,7 +362,6 @@ uint32_t bk_fscan_result(void)              // 10 Hz units, 0 while still counti
 }
 
 // Tone generators: REG_71/REG_72 = frequency x 10.32444.
-#define TONE_HZ(hz) ((uint16_t)((hz) * 1032444UL / 100000))
 
 uint16_t bk_mic(void) { return bk_read(0x64) & 0x7FFF; }   // mic amplitude while transmitting
 

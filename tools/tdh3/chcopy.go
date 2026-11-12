@@ -239,7 +239,7 @@ func runCopy(portName, from string, fm, ask bool) error {
 	row("backup", "this radio first, to "+valS.Render(backupPath))
 	if ask {
 		end := watchStop()
-		err := enter(ambS.Render("Enter") + " copies" + noteS.Render(" (radio in PC LINK: MENU, 4 4, MENU), Ctrl-C stops"))
+		err := enter(ambS.Render("Enter") + " copies" + noteS.Render(" (radio in PC LINK: MENU, 4 5, MENU), Ctrl-C stops"))
 		end()
 		if err != nil {
 			return err

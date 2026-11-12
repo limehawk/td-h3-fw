@@ -353,7 +353,7 @@ func exportCSV(w io.Writer, chans []channel) error {
 
 func pcLinkErr(err error) error {
 	if errors.Is(err, errNoHello) {
-		return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 4, MENU), then run this again")
+		return errors.New("the radio didn't answer: put it in PC LINK first (MENU, 4 5, MENU), then run this again")
 	}
 	return err
 }
@@ -587,7 +587,7 @@ func chanCmds(port *string) []*cobra.Command {
 	set := &cobra.Command{
 		Use:   "set CHANNELS",
 		Short: "Change only the fields you give, on one channel or many (1-78,81)",
-		Long: "Radio in PC LINK (MENU, 4 4, MENU). Reads the radio, saves a backup to backups/, changes only\n" +
+		Long: "Radio in PC LINK (MENU, 4 5, MENU). Reads the radio, saves a backup to backups/, changes only\n" +
 			"the fields given and reads them back. A bad value or an empty channel writes nothing.\n" +
 			"  tdh3 channels set 88-94 --power ulow --bw narrow\n" +
 			"  tdh3 channels set 11 --name \"CROSS MT\" --tone 156.7\n" +
