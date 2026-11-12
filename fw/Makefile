@@ -107,6 +107,7 @@ bump:
 	 set -- $$(echo $${v#v} | tr . ' '); \
 	 case $(BUMP) in major) n=$$(($$1 + 1)).0.0;; minor) n=$$1.$$(($$2 + 1)).0;; patch) n=$$1.$$2.$$(($$3 + 1));; \
 	 *) echo "BUMP is patch, minor or major"; exit 1;; esac; \
+	 [ "$$(grep -m1 '^## ' ../CHANGELOG.md)" = "## $$n" ] || { echo "CHANGELOG.md: rename its \"## Next release\" to \"## $$n\" in a PR first"; exit 1; }; \
 	 git tag -a v$$n -m v$$n && echo "tagged v$$n"
 	@$(MAKE) --no-print-directory all rxonly   # rebuild: the images built before the tag say "-1"
 

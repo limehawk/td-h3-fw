@@ -139,7 +139,7 @@ jobs:
 
   # The tag's release: both images and the tdh3 flasher for Windows, macOS and Linux, attached to the
   # Forgejo release (made if missing, files replaced on a re-run) with SHA256SUMS and its signature; the text is
-  # .forgejo/release-notes.md. A tag with a "-" (v0.0.0-test) makes a pre-release.
+  # .forgejo/release-notes.md under the tag's part of CHANGELOG.md (tools/relnotes.py). A tag with a "-" (v0.0.0-test) makes a pre-release.
   release:
     needs: [firmware, cli, secrets]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -188,7 +188,7 @@ jobs:
         run: |
           [ -n "$TOKEN" ] || { echo "RELEASE_TOKEN secret missing: the release would be published as Ghost"; exit 1; }
           python3 - <<'EOF'
-          import json, os, urllib.request, urllib.error
+          import json, os, subprocess, urllib.request, urllib.error
           api = '%s/api/v1/repos/%s' % (os.environ['GITHUB_SERVER_URL'], os.environ['GITHUB_REPOSITORY'])
           tag = os.environ['GITHUB_REF_NAME']
           def call(method, path, body=None, ctype='application/json'):
@@ -197,7 +197,7 @@ jobs:
               with urllib.request.urlopen(req) as r:
                   data = r.read()
                   return json.loads(data) if data else None
-          notes = open('.forgejo/release-notes.md').read().replace('{ver}', tag[1:])   # for users, never a commit message
+          notes = subprocess.check_output(['python3', 'tools/relnotes.py', tag], text=True)   # CHANGELOG.md's part, then the install text
           try:
               rel = call('GET', '/releases/tags/' + tag)
               call('PATCH', '/releases/%d' % rel['id'], json.dumps({'body': notes}).encode())

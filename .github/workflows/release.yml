@@ -2,7 +2,7 @@ name: Release
 
 # The GitHub copy's releases. The forge (where CI runs on every PR) mirrors main and the release tags
 # here; each vX.Y.Z tag builds the same files as the forge's release job (tools/dist.sh) and
-# publishes them with the same notes (.forgejo/release-notes.md).
+# publishes them with the same notes (tools/relnotes.py: CHANGELOG.md's part, then .forgejo/release-notes.md).
 on:
   push:
     tags: ['v*']
@@ -44,7 +44,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sed "s/{ver}/${GITHUB_REF_NAME#v}/g" .forgejo/release-notes.md > /tmp/notes.md
+          python3 tools/relnotes.py "$GITHUB_REF_NAME" > /tmp/notes.md
           pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease;; esac
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             && gh release upload "$GITHUB_REF_NAME" dist/* --clobber && gh release edit "$GITHUB_REF_NAME" --notes-file /tmp/notes.md \

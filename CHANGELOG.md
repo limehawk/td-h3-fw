@@ -1,0 +1,16 @@
+# What's new
+
+What changed on the radio and in the tdh3 flasher, newest release first. Each release's page
+starts with its part of this list.
+
+## Next release
+
+- The screen switches off while the backlight is out, to save battery. A key press brings both
+  back, showing anything that changed meanwhile.
+- PC LINK: the backlight follows your LIGHT setting, and PC LINK closes by itself after 10 minutes
+  with nothing from the computer, so a radio left on the cable goes back to listening.
+- The radio no longer shows touch-tone digits it hears: its tone listener is set to Morse code
+  pitches, to read the call signs repeaters send in Morse. Sending touch-tones works as before.
+- tdh3: `tdh3 firmware extract` saves the firmware the flasher carries as `.bin` files.
+- tdh3: a channel file that gives the power as `ULP` loads it as ULTRA LOW.
+- Manual: a Screenshots page with every screen in one place, and pictures on every page.

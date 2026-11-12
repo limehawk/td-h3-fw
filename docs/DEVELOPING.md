@@ -49,8 +49,13 @@ cd fw && make && make rxonly
 pushes to main directly (the forge refuses it). CI runs once per push to the PR; main isn't run
 again after the merge, because the PR tested that commit.
 
+**Every change someone using the radio or tdh3 would notice adds a line to `CHANGELOG.md`**, under
+`## Next release` at the top, in the same PR: what changed for them, in their words, never the
+commit message.
+
 **A release is a tag on main**, made when there is something worth putting on radios, not after
-every merge:
+every merge. First a PR renames `## Next release` to the version `make bump` will tag (`## 0.65.0`);
+`make bump` refuses without it. Then:
 
 ```bash
 git switch main && git pull
@@ -277,8 +282,8 @@ and puts all of it with `SHA256SUMS` in `dist/`, signed into `SHA256SUMS.sig` by
 against the public key in `tools/tdh3/update.go`). The job attaches that to the Forgejo release for the
 tag (made if missing; a re-run replaces the files), as the account behind `RELEASE_TOKEN`. The
 forge's push mirror carries main and the tags to GitHub, where `.github/workflows/release.yml` runs
-the same build and `tools/dist.sh` and publishes the GitHub release. The release text is `.forgejo/release-notes.md`,
-written for people flashing their radio. A tag with a `-` makes a pre-release. To redo one, re-run
+the same build and `tools/dist.sh` and publishes the GitHub release. The release text is the tag's part of `CHANGELOG.md`
+above `.forgejo/release-notes.md` (`tools/relnotes.py`), written for people flashing their radio. A tag with a `-` makes a pre-release. To redo one, re-run
 its job.
 
 ## Reverse engineering stock
