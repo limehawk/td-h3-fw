@@ -176,7 +176,6 @@ uint8_t chan_delete(uint8_t n)
 
 uint8_t chan_load(uint8_t n)
 {
-    uint8_t i;
     if (!is_valid(n) || !rec_read(n)) return 0;
     ch.rx = bcd32(rec);
     ch.tx = (rec[4] & rec[5] & rec[6] & rec[7]) == 0xFF ? 0 : bcd32(rec + 4);   // FF..: no TX (CHIRP "off")
@@ -193,10 +192,17 @@ uint8_t chan_load(uint8_t n)
     ch.mode = (rec[13] & 3) == GRP_OURS ? rec[14] >> 2 & 1 | rec[13] >> 2 & 2 : 0;
     if (ch.mode > MOD_USB) ch.mode = 0;     // 3: no such mode
     if (!ch.mode && ch.rx - MHZ(108) < MHZ(137 - 108)) ch.mode = MOD_AM;
-    ee_read(NAME(n), (__xdata uint8_t *)ch.name, 8);
-    for (i = 0; i < 8 && (uint8_t)(ch.name[i] - 0x20) < 0x5F; i++) ;   // printable: 0x20-0x7E
-    ch.name[i] = 0;
+    name_read(NAME(n), ch.name);
     return 1;
+}
+
+uint8_t name_read(uint16_t a, __xdata char *s) __reentrant   // 8 name bytes at a into s, NUL after: its length
+{
+    uint8_t i;
+    ee_read(a, (__xdata uint8_t *)s, 8);
+    for (i = 0; i < 8 && (uint8_t)(s[i] - 0x20) < 0x5F; i++) ;   // printable: 0x20-0x7E
+    s[i] = 0;
+    return i;
 }
 
 // Next used channel: any, or only those on the scan list (inlist), or in any of these groups (bit

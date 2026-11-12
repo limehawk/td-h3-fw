@@ -186,6 +186,7 @@ extern uint8_t tx_bands;                   // TX BANDS: which services PTT works
 #define TXB_GMRS 2
 #define TXB_MURS 4
 #define TXB_FRS 8
+uint8_t name_read(uint16_t a, __xdata char *s) __reentrant;   // a channel name or the callsign, NUL after: its length
 uint8_t chan_load(uint8_t n);              // 1..199 from stock EEPROM layout, 1 = ok
 uint8_t chan_next(uint8_t n, int8_t dir, uint8_t inlist, uint8_t groups) __reentrant;  // inlist: scan list only; groups: bit g-1 = group g
 uint8_t chan_in_scan(uint8_t n) __reentrant;

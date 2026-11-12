@@ -818,14 +818,6 @@ static void draw_main(void)
 // name; blank (a new radio's FF too) is OFF. 0x1E00 is in a gap that stock never reads and CHIRP's
 // TD-H3 map leaves out.
 #define CALL_ADDR 0x1E00
-static uint8_t call_load(__xdata char *s) __reentrant   // the callsign into s, NUL after: its length
-{
-    uint8_t n = 0;
-    ee_read(CALL_ADDR, (__xdata uint8_t *)s, 8);
-    while (n < 8 && (uint8_t)(s[n] - 1) < 0x7E) n++;   // 0 or FF ends it
-    s[n] = 0;
-    return n;
-}
 
 // ---------- menu ----------
 static const __code char *const __code mnames[M_N] = {
@@ -878,7 +870,7 @@ static void menu_value(uint8_t i) __reentrant   // into the back half of buf, bu
     else if (i == M_PRIO && cfg.prio) { cat(v, "CH"); u2s(v + 2, cfg.prio, 3); }
     else if (i == M_WX && cfg.wx) freq_s(v, wx_freq(cfg.wx - 1));
     else if ((uint8_t)(i - M_FCAL) < 3) cal_s(i - M_FCAL);
-    else if (i == M_CALL) { if (!call_load(v)) cat(v, "OFF"); }
+    else if (i == M_CALL) { if (!name_read(CALL_ADDR, v)) cat(v, "OFF"); }
     else cat(v, i == M_VER ? VERSION : i == M_PRIO || i == M_WX ? "OFF" : ">");   // ">": the actions, SCOPE, CH NAME ...
 }
 
@@ -1261,16 +1253,15 @@ static void delete_screen(void) __reentrant   // reentrant: its temporaries on t
 static const __code char *__code keyset[10] = {" 0", "-/.1", "ABC2", "DEF3", "GHI4", "JKL5", "MNO6", "PQRS7", "TUV8", "WXYZ9"};
 static const __code char abc[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/.";
 
-static const __code label_t name_l[] = {{0, BOT_Y - 24, 1, P_DIM, "0-9 or \x7f\x80 letter"}, {0, BOT_Y - 12, 1, P_DIM, "* < > #  MENU save"}, {0, BOT_Y, 1, P_DIM, "V/M back"},
-    {0, 0, 1, P_ACC, "CH NAME"}, {0, 0, 1, P_ACC, "CALL ID"}};
-static void name_screen(uint16_t at, uint8_t t) __reentrant   // ch.name, saved to EEPROM at; t: name_l's title. The menu reloads ch after
+static void name_screen(uint16_t at) __reentrant   // ch.name, saved to EEPROM at; titled as its menu item (CH NAME, CALL ID). The menu reloads ch after
 {
+    static const __code label_t l[] = {{0, BOT_Y - 24, 1, P_DIM, "0-9 or \x7f\x80 letter"}, {0, BOT_Y - 12, 1, P_DIM, "* < > #  MENU save"}, {0, BOT_Y, 1, P_DIM, "V/M back"}};
     uint8_t i, k, last = 0, n = 0, age = 0;     // age: 10 ms rounds left to tap the same key again
     for (i = 0; ch.name[i]; i++) ;
     while (i < 8) ch.name[i++] = ' ';
     list_open();
     for (;;) {
-        if (list_redraw()) { draw_labels(name_l, 3); draw_labels(name_l + t, 1); }
+        if (list_redraw()) { draw_labels(l, 3); lcd_text(0, 0, mnames[menu], 1, P_ACC); }
         if (lrows) {
             lcd_text(16, 50, ch.name, 2, P_FG);
             lcd_fillp(16, 68, 96, 2, P_BG);
@@ -1346,7 +1337,7 @@ static void menu_change(int8_t d) __reentrant
     case M_GRP: case M_TOVFO: case M_NAME:   // the channel afresh: ch may be reversed or weather
         if (!sl_mem() || !chan_load(sl_chn())) { note = "MEMORY CHANNELS ONLY"; chime_no(); leave = 1; }
         else if (menu == M_GRP) groups_screen();
-        else if (menu == M_NAME) name_screen(0x0D40 + 8 * (sl_chn() - 1), 3);
+        else if (menu == M_NAME) name_screen(0x0D40 + 8 * (sl_chn() - 1));
         else to_vfo();
         break;
     case M_LH: {
@@ -1357,7 +1348,7 @@ static void menu_change(int8_t d) __reentrant
     }
     case M_DEL: delete_screen(); break;
     case M_DTMF: codes_screen(); break;
-    case M_CALL: call_load(ch.name); name_screen(CALL_ADDR, 4); break;
+    case M_CALL: name_read(CALL_ADDR, ch.name); name_screen(CALL_ADDR); break;
     case M_FF: set_vfo(freq_find()); break;
     case M_FM: fm_screen(); break;
     case M_WXM: wx_mode(); break;
@@ -2072,7 +2063,7 @@ static uint8_t call_id(void) __reentrant    // PTT let go: the ID if it's due; 1
 {
     uint8_t i, m = band_of(ch.tx);
     __xdata char *p = cat(buf, "ID ");      // nothing draws into buf meanwhile: it holds the callsign throughout
-    if (id_sent && (uint16_t)(up10 - id_at) < 60 || m != 1 && m != 4 || !call_load(p)) return 0;   // 2M and 70CM: the ham bands
+    if (id_sent && (uint16_t)(up10 - id_at) < 60 || m != 1 && m != 4 || !name_read(CALL_ADDR, p)) return 0;   // 2M and 70CM: the ham bands
     draw_bottom(buf, P_HI);
     bk_write(0x71, TONE_HZ(800));
     bk_write(0x50, 0xBB20);                 // the mic muted
@@ -2084,8 +2075,7 @@ static uint8_t call_id(void) __reentrant    // PTT let go: the ID if it's due; 1
     }
     id_sent = 1; id_at = up10;
 cut:
-    bk_dtmf_tx(0xFF);                       // tone off, the mic back on
-    dirty = 1;
+    dirty = 1;                              // ptt() turns the tone off and the mic back on
     return (uint8_t)(key_held - K_PTT) < 2;
 }
 
@@ -2135,7 +2125,7 @@ static void ptt(void) __reentrant
         tot_warned = 1;                     // 10 s before the timeout cuts you off
         BEEP(1800, 120);
     } else if (tx && (want == 2 || tot_up())) {
-        if (want == 2 && call_id()) return;   // the ID, still keyed; PTT again during it: talking
+        if (want == 2 && call_id()) { bk_dtmf_tx(0xFF); return; }   // the ID, still keyed; PTT again during it: talking, tone off
         bk_dtmf_tx(0xFF);                   // a DTMF tone off with the carrier
         dtmf_n = 0;
         vox_arm = vox_tx = 0;

@@ -361,8 +361,6 @@ uint32_t bk_fscan_result(void)              // 10 Hz units, 0 while still counti
     return (uint32_t)(hi & 0x07FF) << 16 | bk_read(0x0E);
 }
 
-// Tone generators: REG_71/REG_72 = frequency x 10.32444.
-
 uint16_t bk_mic(void) { return bk_read(0x64) & 0x7FFF; }   // mic amplitude while transmitting
 
 // ---- clear tones: the same sine generators, to the speaker instead of the air ----

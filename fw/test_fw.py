@@ -111,6 +111,14 @@ def keys(cpu, seq):
         press(cpu, k)
 
 
+def peek16(cpu, a):                        # a 16-bit XDATA variable, little-endian as SDCC lays it out
+    return cpu.xram[a] | cpu.xram[a + 1] << 8
+
+
+def poke16(cpu, a, v):
+    cpu.xram[a], cpu.xram[a + 1] = v & 0xFF, v >> 8 & 0xFF
+
+
 def pins(cpu):
     p4, p5 = cpu.sfr[0xC0], cpu.sfr[0xD8]
     return {'VRX': not p4 >> 4 & 1, 'URX': not p5 >> 5 & 1, 'TXV': not p4 >> 5 & 1, 'TXU': not p4 >> 7 & 1,
@@ -303,7 +311,7 @@ class Stamped(list):                       # BK4819 writes with the tick each wa
         super().__init__(cpu.bk.writes)
         self.cpu, self.at, self.t = cpu, symbol(FW, '_ticks'), [0] * len(cpu.bk.writes)
     def append(self, x):
-        self.t.append(self.cpu.xram[self.at] | self.cpu.xram[self.at + 1] << 8)
+        self.t.append(peek16(self.cpu, self.at))
         super().append(x)
 
 
@@ -379,15 +387,15 @@ def test_call_id(cpu):                     # CALL ID: typed in CH NAME's editor;
     ptt_tap(cpu)                           # again within 10 minutes: nothing
     assert morse_sent(cpu, n) == '', 'ID again within 10 minutes'
     up10 = rst_addr('_up10')
-    v = (cpu.xram[up10] | cpu.xram[up10 + 1] << 8) + 60   # 10 minutes later
-    cpu.xram[up10], cpu.xram[up10 + 1] = v & 0xFF, v >> 8
+    v = peek16(cpu, up10) + 60             # 10 minutes later
+    poke16(cpu, up10, v)
     n = len(cpu.bk.writes)
     ptt_tap(cpu)
     assert morse_sent(cpu, n) == 'N0CALL/4', 'no ID after 10 minutes'
     keys(cpu, list('462562'))              # GMRS 1: never an ID
     cpu.run(1_000_000)
     v += 60
-    cpu.xram[up10], cpu.xram[up10 + 1] = v & 0xFF, v >> 8
+    poke16(cpu, up10, v)
     n = len(cpu.bk.writes)
     ptt_tap(cpu)
     assert freq(cpu) == 46256250 and morse_sent(cpu, n) == '', 'ID sent on GMRS'
@@ -400,13 +408,12 @@ def test_call_id_wrap(cpu):                # CALL ID: up10 wrapping (7.5 days on
     cpu.bk.writes = Stamped(cpu)
     ptt_tap(cpu, after=2_000_000)          # the first ID since power-on
     up10, at = rst_addr('_up10'), rst_addr('_id_at')
-    def put(a, v): cpu.xram[a], cpu.xram[a + 1] = v & 0xFF, v >> 8 & 0xFF
-    put(at, 0xFFF0)
-    put(up10, 0xFFF0 + 59 & 0xFFFF)        # 9 m 50 s later, past the wrap: not yet
+    poke16(cpu, at, 0xFFF0)
+    poke16(cpu, up10, 0xFFF0 + 59)        # 9 m 50 s later, past the wrap: not yet
     n = len(cpu.bk.writes)
     ptt_tap(cpu, after=2_000_000)
     assert morse_sent(cpu, n) == '', 'ID before 10 minutes'
-    put(up10, 0xFFF0 + 60 & 0xFFFF)        # 10 minutes, up10 now 0x002C
+    poke16(cpu, up10, 0xFFF0 + 60)        # 10 minutes, up10 now 0x002C
     n = len(cpu.bk.writes)
     ptt_tap(cpu, after=2_000_000)
     assert morse_sent(cpu, n) == 'E', 'no ID after up10 wrapped'
@@ -432,8 +439,7 @@ def test_call_id_cut(cpu):                 # CALL ID: PTT during it cuts it off 
     cpu.key = None                         # let go: the ID is still due
     cpu.run(300_000)
     t = symbol(FW, '_t_tx')                # TX TIMEOUT 120 s reached during it: unkeyed
-    v = (cpu.xram[t] | cpu.xram[t + 1] << 8) - 121 * 200
-    cpu.xram[t], cpu.xram[t + 1] = v & 0xFF, v >> 8 & 0xFF
+    poke16(cpu, t, peek16(cpu, t) - 121 * 200)
     cpu.run(1_500_000)
     assert not pins(cpu)['TXV'] and cpu.bk.regs[0x70] == 0, 'TX TIMEOUT ignored'
     assert cpu.bk.writes[m:].count((0x70, 0xD000)) < 18, 'the whole ID sent past TX TIMEOUT'   # K0ABC: 18 elements
