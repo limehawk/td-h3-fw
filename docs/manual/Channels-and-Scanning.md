@@ -39,7 +39,8 @@ downloaded ([Updating the firmware](Updating#get-the-flasher); type `.\tdh3.exe`
    ```bash
    tdh3 channels import mylist.csv
    ```
-3. **V/M** leaves PC LINK. It stays open until you do, however long the cable or CHIRP takes.
+3. **V/M** leaves PC LINK. While the computer is working it stays open however long that takes;
+   after 10 minutes with nothing from the computer it closes by itself.
    If the computer wrote the radio's settings (a CHIRP Upload can), the radio restarts by itself
    when the computer is done, so it starts on the new settings.
 

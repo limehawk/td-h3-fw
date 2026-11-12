@@ -4,7 +4,8 @@
 //   PVOJH\x5C\x14 -> 06    02 -> 8-byte ident    06 -> 06
 //   R AH AL 20 -> W AH AL 20 [32] sum      W AH AL 20 [32] sum -> 06      E -> 06
 // Runs as a blocking loop: the UART has a one-byte buffer, so polling it from the
-// UI loop would drop bytes. Open until V/M, with no timeout. With Bluetooth on, the same
+// UI loop would drop bytes. Open until V/M, or 10 minutes with nothing from the computer; the
+// backlight goes out after LIGHT's time, as on the home screen. With Bluetooth on, the same
 // protocol is served on UART0 at 9600: stock's BT receive path expects this hello.
 #include "fw.h"
 
@@ -13,6 +14,7 @@ static const __code uint8_t ident[8] = {'P', '3', '1', '1', '8', '3', 0xFF, 0xFF
 
 static uint8_t link, bt;                    // port that last spoke; Bluetooth enabled
 static __bit cfg_hit;                       // the computer wrote the settings' first block (CFG_ADDR, their magic)
+static uint16_t idle;                       // tenths of a second with nothing from the computer
 
 static int16_t get(void)                    // -1 after 100 ms of nothing
 {
@@ -66,8 +68,14 @@ void clone_session(uint8_t bt_on) __reentrant
     bt = bt_on;
     maps_ok = 0;                            // the screen buffer holds radio.c's bitmaps too (fw.h)
     cfg_hit = 0;
-    while (key_scan() != K_EXIT) {          // open till V/M: no timeout, so cables and CHIRP can take their time
-        if ((c = get()) < 0) continue;
+    idle = 0;
+    while ((c = key_scan()) != K_EXIT) {
+        lights(c);                          // LIGHT's timeout; a key lights it again
+        if ((c = get()) < 0) {
+            if (++idle >= 6000) return;     // forgotten in PC LINK: back to listening
+            continue;
+        }
+        idle = 0;
         if (c == hello[h]) {
             if (++h == 7) { put(0x06); h = 0; }
             continue;

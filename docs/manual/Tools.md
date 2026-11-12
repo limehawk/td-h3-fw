@@ -109,7 +109,10 @@ as usual.
 ![PC LINK waiting for a computer](img/pclink.png)
 
 1. MENU → PC LINK → MENU hands the radio to a computer (CHIRP or `tdh3`). The receiver is off
-   while it waits; **V/M** leaves. See [Channels and scanning](Channels-and-Scanning).
+   while it waits; **V/M** leaves. The backlight goes out after the LIGHT time, as on the home
+   screen; any key lights it again. If the computer sends nothing for 10 minutes, the radio leaves
+   PC LINK by itself and goes back to listening, so one left there by mistake doesn't miss calls.
+   See [Channels and scanning](Channels-and-Scanning).
 
 ## Recording the screen
 

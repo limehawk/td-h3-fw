@@ -230,7 +230,7 @@ uint32_t wx_freq(uint8_t n) __reentrant;    // main.c: NOAA weather channel n (0
 __xdata char *dec(__xdata char *p, uint32_t v, uint8_t w, uint8_t frac) __reentrant;   // main.c: fixed-point decimal
 
 // clone.c
-void clone_session(uint8_t bt) __reentrant;            // PC LINK, returns on EXIT; bt: also listen on Bluetooth
+void clone_session(uint8_t bt) __reentrant;            // PC LINK, returns on EXIT or 10 quiet minutes; bt: also listen on Bluetooth
 
 // fm.c
 void fm_off(void);                         // RDA5807 powered down (REG02 = 0000)

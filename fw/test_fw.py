@@ -982,6 +982,36 @@ def test_pc_link_clone(cpu):
     assert remote_texts(cpu), 'REMOTE not back at 1 Mbaud after PC LINK'
 
 
+def test_pc_link_light_and_idle(cpu):       # PC LINK: dark after LIGHT, a key lights it, back to the radio after 10 quiet minutes
+    import emu51
+    menu(cpu, 'LIGHT', ['DOWN', 'EXIT'])   # 10 s
+    cpu.uart_baud = 38400                  # PC LINK's speed
+    menu(cpu, 'PC', ['UP'])
+    assert cpu.xram[0xF140] == 200, 'PC LINK opened dark'
+    cpu.run(12 * 800_000)
+    assert cpu.xram[0xF140] == 0, 'PC LINK screen still lit after LIGHT'
+    press(cpu, '5')
+    assert cpu.xram[0xF140] == 200, 'a key left the PC LINK screen dark'
+    cpu.uart_out.clear()
+    cpu.uart_in.extend(b'PVOJH\x5c\x14')
+    cpu.run(300_000)
+    assert bytes(cpu.uart_out) == b'\x06', 'left PC LINK too soon'
+    tick = emu51.TICK
+    emu51.TICK = 200                       # 10 minutes of 100 ms waits, quickly
+    try:
+        for _ in range(80):
+            cpu.run(1_000_000)
+            if cpu.bk.regs[0x30] == 0xBFF1: break
+    finally:
+        emu51.TICK = tick
+    assert cpu.bk.regs[0x30] == 0xBFF1, 'still in PC LINK after 10 quiet minutes'
+    cpu.run(2_000_000)
+    cpu.uart_out.clear()
+    cpu.uart_in.extend(b'PVOJH\x5c\x14')
+    cpu.run(600_000)
+    assert not cpu.uart_out, 'answered the clone hello after leaving PC LINK'
+
+
 def test_channel_power(cpu):                # hold 2 on a memory channel steps its own saved power, round; nothing
     press(cpu, 'EXIT')                     # else in the record changes (name, tones, groups, scan list)
     rec = lambda: bytes(cpu.ee.mem[0x10:0x20])
@@ -3413,6 +3443,7 @@ INDEPENDENT = [
     ('flash restart: a setting changed just before is saved first', test_flash_restart_saves),
     ('hold 2 on a memory channel steps its saved power', test_channel_power),
     ('PC LINK: settings reset restarts with every default', test_pc_link_settings_reset),
+    ('PC LINK: the light times out, 10 quiet minutes leave it', test_pc_link_light_and_idle),
     ('fresh settings start A/B on the first two channels, dual watch on', test_fresh_settings_use_channels),
     ('one bad settings byte keeps the rest', test_settings_survive_one_bad_value),
     ('a corrupt slot mode byte resets that slot', test_settings_bad_slot_mode),
