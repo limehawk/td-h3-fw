@@ -54,6 +54,9 @@ void lcd_init(void) __reentrant
 }
 
 void lcd_on(uint8_t on) __reentrant { cmd(on ? 0x29 : 0x28); }    // display on/off; the picture is kept
+// Sleep (0x10) while the backlight is out: an unlit panel shows nothing anyway. The panel keeps its
+// memory and takes draws while asleep (ST7735S), so waking (0x11) shows the current screen.
+void lcd_sleep(uint8_t s) __reentrant { cmd(s ? 0x10 : 0x11); }
 
 void window(uint8_t x, uint8_t y, uint8_t w, uint8_t h) __reentrant
 {

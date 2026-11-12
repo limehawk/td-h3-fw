@@ -1892,7 +1892,7 @@ static void torch_run(void) __reentrant
 // loop and of FM's. Screen dark: the first key only lights it, as on the big rigs. PTT and PTT-B
 // always work, and so does a watching computer (REMOTE), which can't see the light. Returns k, or 0
 // for a key that only lit the screen.
-static __xdata uint8_t lit;                 // the backlight duty now; 0xFF: unknown (boot, after AUTO OFF)
+static __xdata uint8_t lit;                 // the backlight duty now; 0xFF: unknown (boot)
 uint8_t lights(uint8_t k) __reentrant
 {
     static __bit eat;                       // the key went down on a dark screen: its press only lit it
@@ -1902,7 +1902,10 @@ uint8_t lights(uint8_t k) __reentrant
     if (k || key_held || tx || open || alert) stamp(&t_key);   // keys (lit while held, PTT too), a call, an alert
     light = light_s[cfg.light];             // seconds on after a key, 0 = always
     light = !light || tx || open || alert || secs(&t_key) < light ? bright_duty[cfg.bright] : 0;
-    if (light != lit) { lit = light; backlight(light); KEY_LED = light != 0; }   // a BRIGHTNESS change shows at once
+    if (light != lit) {                     // a BRIGHTNESS change shows at once
+        if (!light != !lit) lcd_sleep(!light);   // the panel sleeps while dark (lit 0xFF: unknown, so awake)
+        lit = light; backlight(light); KEY_LED = light != 0;
+    }
     torch_run();
     return k;
 }
@@ -2233,7 +2236,7 @@ void main(void)
             else if (mv > 7000) low_batt = 0;
             {                               // AUTO OFF, counted in these 10 s checks
                 if (!cfg.apo || scanning || secs(&t_key) < 10) idle10 = 0;
-                else if (++idle10 >= (uint16_t)90 << cfg.apo) { doze(); lit = 0xFF; }   // 30, 60, 120 min
+                else if (++idle10 >= (uint16_t)90 << cfg.apo) { doze(); lit = 0; }       // 30, 60, 120 min
             }
         }
 

@@ -3256,6 +3256,25 @@ def test_auto_off(cpu):                    # AUTO OFF 30 min: radio, screen and 
     assert freq(cpu) == 14652000 and pins(cpu)['VRX'], (freq(cpu), pins(cpu))
 
 
+def test_screen_sleep(cpu):                 # the panel sleeps while the backlight is out, wakes with it, after AUTO OFF too
+    menu(cpu, 'LIGHT', ['DOWN', 'EXIT'])   # 10 s
+    menu(cpu, 'APO', ['UP', 'EXIT'])       # 30 min
+    m = len(cpu.lcd)
+    cpu.run(12 * 800_000)
+    assert cpu.xram[0xF140] == 0 and (0, 0x10) in cpu.lcd[m:], 'panel not asleep with the backlight out'
+    m = len(cpu.lcd)
+    press(cpu, 'UP')                       # only lights it
+    assert cpu.xram[0xF140] == 200 and (0, 0x11) in cpu.lcd[m:], 'panel not woken with the backlight'
+    cpu.run(12 * 800_000)                  # dark and asleep again, then AUTO OFF on top
+    a = int(next(l.split()[0] for l in open(os.path.join(HERE, 'build', 'td-h3', 'main.rst')) if l.split()[-1:] == ['_idle10:']), 16)
+    cpu.xram[a], cpu.xram[a + 1] = 179, 0
+    cpu.run(9_000_000)
+    m = len(cpu.lcd)
+    press(cpu, 'UP')
+    cpu.run(1_000_000)
+    assert cpu.xram[0xF140] == 200 and (0, 0x11) in cpu.lcd[m:], 'panel left asleep after AUTO OFF'
+
+
 def test_bell(cpu):                        # BELL: a call after 10 s of quiet rings once; one soon after, or with BELL off, doesn't
     bell = (0x71, 1568 * 1032444 // 100000)   # G6 on voice 1 (TONE_HZ in bk4819.c)
     def call():
@@ -3414,6 +3433,7 @@ INDEPENDENT = [
     ('menu: digits jump to an item', test_menu_digit_jump),
     ('menu: a line says what the lit item does', test_menu_help),
     ('AUTO OFF sleeps, a key wakes it', test_auto_off),
+    ('the panel sleeps while dark, wakes with the light and after AUTO OFF', test_screen_sleep),
     ('scan pause: a never-ending station is left after the pause timer', test_scan_pause),
     ('scan stays on a long call (PAUSE BUSY)', test_scan_long_call_kept),
     ('scan hang time: a reply in 5 s keeps it, quiet moves on', test_scan_hang_time),

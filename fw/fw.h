@@ -57,6 +57,7 @@ void lcd_fill(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t c) __reentran
 void lcd_fillp(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t i) __reentrant;   // lcd_fill in palette colour i (P_*)
 void lcd_clear(void);
 void lcd_on(uint8_t on) __reentrant;                   // display on/off (AUTO OFF)
+void lcd_sleep(uint8_t s) __reentrant;                // panel asleep while the backlight is out
 // Draws text at scale s (1 = 6x8 cell). Returns x after the text.
 extern __xdata uint8_t text_pad;
 extern const __code uint16_t menu_help_bits[];   // help.c, made by tools/mkhelp.py

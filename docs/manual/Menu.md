@@ -109,7 +109,7 @@ for the second one; here `2-` after pressing **2**.
 
 | # | Item | What it does |
 |---|---|---|
-| 35 | LIGHT | How long the backlight stays on after a key: 10 s, 30 s (default) or ON (always). It stays on while a signal comes in or you talk. On a dark screen, the first key only lights it (PTT always transmits). How bright it is: BRIGHTNESS. |
+| 35 | LIGHT | How long the backlight stays on after a key: 10 s, 30 s (default) or ON (always). It stays on while a signal comes in or you talk. On a dark screen, the first key only lights it (PTT always transmits). When the light goes out, the screen switches off too, to save battery; it comes back with the light, showing what changed meanwhile. How bright it is: BRIGHTNESS. |
 | 36 | BRIGHTNESS | How bright the screen's backlight is: 1 (dimmest) to 5 (brightest, the default). The screen changes as you pick, so you can see it. A lower level saves battery and is easier on your eyes at night. LIGHT still decides how long it stays on. |
 | 37 | THEME | CLASSIC (default), NIGHT AMBER, GREEN, NIGHT RED (keeps your night vision). |
 | 38 | KEY BEEP | ON (default) or OFF. A soft click on key presses, and the sound at power-on. The radio's other sounds (errors, alerts) play either way. |
