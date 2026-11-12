@@ -1659,16 +1659,6 @@ static void on_key(uint8_t k) __reentrant
 // ---------- receive ----------
 // DTMF, every pass while receiving: digits heard as a run, shown for 10 s after the last (main)
 static __xdata uint16_t irqs;               // the BK4819's interrupts this pass of the main loop
-// CW PROBE: each tone the decoder finds, and the squelch opening and closing, as "q12345 7" lines
-// (5 ms ticks, then the symbol 0-F, or O / C) on the USB-C port at REMOTE's 1 Mbaud.
-static __xdata char cwb[9];
-static __xdata uint8_t cw_open;
-static void cw_log(char c) __reentrant          // only with REMOTE on: the port is at its 1 Mbaud then
-{
-    if (!remote) return;
-    u2s(cwb, now(), 5); cwb[5] = ' '; cwb[6] = c; cwb[7] = 0;
-    remote_puts(cwb);
-}
 static void dtmf_poll(void) __reentrant
 {
     uint16_t irq = irqs;         // read every pass (main) so a digit decoded from noise is cleared,
@@ -2192,8 +2182,6 @@ void main(void)
         }
         if (menu != 0xFF && entry_n && since(&t_key) > 200) menu_jump();   // one digit, then 1 s
         irqs = asleep ? 0 : bk_irq();
-        if (irqs & BK_IRQ_DTMF) cw_log(dtmf_chars[bk_read(0x0B) >> 8 & 15]);   // CW PROBE
-        if (open != cw_open) { cw_open = open; cw_log(open ? 'O' : 'C'); }
         if (irqs & BK_IRQ_VOXF) vox = 1;
         if (irqs & BK_IRQ_VOXL) { vox = 0; stamp(&t_vox); }
         ptt();

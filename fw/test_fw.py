@@ -3478,9 +3478,8 @@ INDEPENDENT = [
     ('saving over a used channel asks first', test_save_over_used_channel_asks),
     ('UP/DOWN stay in the scan group', test_up_down_stay_in_group),
     ('UP/DOWN: an all-groups channel is in every group', test_up_down_all_groups),
-    # off while the tone decoder listens for Morse pitches (bk4819.c cw_coef): back with DTMF receive
-    # ('DTMF digits shown, then cleared', test_dtmf),
-    # ('DTMF: keypad tones shown, speech and held tones not', test_dtmf_speech),
+    ('DTMF digits shown, then cleared', test_dtmf),
+    ('DTMF: keypad tones shown, speech and held tones not', test_dtmf_speech),
     ('AM: gain off in steps on strong signals, wide filter, AM AGC, no de-emphasis', test_am_gain),
     ('55 Hz squelch tail shuts the audio', test_squelch_tail),
     ('S-meter squelch S1-S9', test_smeter_squelch),

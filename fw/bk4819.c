@@ -82,8 +82,6 @@ static uint8_t md;                          // the MOD_* the chip is in (bk_init
 static uint8_t st;                          // BK_SLEEP, BK_RX or BK_TX: what bk_chime puts back
 enum { BK_SLEEP, BK_RX, BK_TX };
 
-static __bit cw_set;                        // the Morse table is in REG_09 (after the stock one at init)
-static const __code uint8_t cw_coef[16] = {115, 114, 113, 112, 110, 109, 107, 105, 103, 101, 98, 96, 93, 90, 87, 83};
 void bk_init(void)
 {
     bk_write(0x00, 0x8000);
@@ -92,7 +90,6 @@ void bk_init(void)
     bk_table(init_tab, sizeof init_tab);
     for (uint8_t i = 0; i < 16; i++)
         bk_write(0x09, (uint16_t)i << 12 | agc_tab[i]);
-    cw_set = 0;                                 // the reset above cleared the Morse table
     af_on = 0x6140;
     md = 0xFF;
 }
@@ -281,18 +278,10 @@ uint8_t bk_sql_open(void) { return ssb ? bk_sql_near() : bk_read(0x0C) >> 1 & 1;
 // CODE_TYPE_OFF): CTCSS on at 67.0 Hz (the caller's bk_tone(670),
 // REG_51 = 904A), REG_07 CTC2 = 25391 / 55 Hz = 462 (driver/bk4819.c BK4819_Set55HzTailDetection),
 // its interrupt on REG_3F bit 10.
-// CW PROBE (test build only): the decoder's single-tone (5-tone) mode instead of DTMF, its 16 symbols
-// at 600 Hz x 1.045^n (600-1161 Hz), coefficient 128 cos(2 pi f / 8430): fitted to the DTMF table's
-// low group. Each find goes to the computer (main.c cw_log) to see whether a Morse ID can be timed.
 void bk_dtmf_on(uint8_t tail) __reentrant
 {
-    if (!cw_set) {                              // once: every retune would slow dual watch
-        uint8_t i;
-        for (i = 0; i < 16; i++) bk_write(0x09, (uint16_t)i << 12 | cw_coef[i]);
-        cw_set = 1;
-    }
     bk_write(0x21, 0x06D8);
-    bk_write(0x24, 0xC16E);                 // CW PROBE: bit 4 clear, 5-tone not DTMF; threshold 130, not stock's 24, which
+    bk_write(0x24, 0xC17E);                 // decoder on, DTMF (not 5-tone); threshold 130, not stock's 24, which
                                             // misses other brands' radios (F4HWN's bk4819.c: 128-247 decode them)
     if (tail) bk_write(0x07, 1 << 13 | 462);
     bk_write(0x3F, (tail ? 0x0C00 : 0x0800) | (bk_vox ? BK_IRQ_VOX : 0));   // VOX found and lost too
