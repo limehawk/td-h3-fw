@@ -35,14 +35,10 @@ Both slots are laid out the same way, under a status bar. The meter sits between
    tuned, from the band plan (see SHIFT in the [Menu](Menu)): type 146.940 and it shows `-0.6`.
 6. **Bandwidth**: `WIDE`, or `NARR` (narrow FM). Match what the station uses.
 7. **Tones**: `T100.0` is sent when you talk, `R100.0` is needed to hear the station, `TSQL100.0`
-   (tone squelch) is both. See CTCSS/DCS in the [Glossary](Glossary). On the slot you're
-   hearing, this line shows touch-tone digits when someone sends them (`DTMF 5551234#`, bright,
-   for 10 seconds after the last digit; see DTMF in the [Glossary](Glossary)), from any brand of
-   radio or repeater. It waits for a run of
-   three or more, close together, and shows them once the sender pauses. A voice can sound like
-   touch-tones for a moment; the radio counts a digit only when it is one steady tone followed by a
-   short silence, the way a keypad sends it, so talking doesn't fill the line with digits. Holding
-   a key down on the other radio gives one digit. Or the tone a station is using (`HEARD 100.0 6:copy`).
+   (tone squelch) is both. See CTCSS/DCS in the [Glossary](Glossary). This version doesn't show
+   touch-tone digits it hears: the radio's tone listener is tuned to Morse code pitches instead, to
+   read the call signs repeaters send in Morse. Sending touch-tones works as before.
+   It also shows the tone a station is using (`HEARD 100.0 6:copy`).
 8. **Tuning step** for UP/DOWN in frequency mode (`25K` = 25 kHz; `0.05K` = 50 Hz in USB).
 9. **Signal meter**: one bar across the screen, filling to the right as the signal gets stronger.
     Dim amber while it's just noise (in the theme's own colour: dim red in NIGHT RED); green once the
