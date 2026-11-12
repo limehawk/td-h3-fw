@@ -2983,6 +2983,25 @@ def test_flash_restart_saves(cpu):        # a setting changed just before a flas
     cpu.key = None
 
 
+def test_flash_keeps_dw(cpu):             # DUAL WATCH on before a flash is on after it: the restart, PTT held
+    cpu.ee.mem[0x1FC4] |= 4                # through the reboot, the flasher's 'S' and 'Q' after
+    cpu = boot(ee=bytes(cpu.ee.mem))
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    cpu.run(3 * 800_000)
+    assert cpu.ee.mem[0x1FC4] & 4, 'DUAL WATCH lost before the flash: %02X' % cpu.ee.mem[0x1FC4]
+    cpu.uart_in.extend(b'B'); cpu.run(1_000_000)
+    cpu.key = 'PTT'; cpu.run(300_000)
+    assert cpu.resets == [0x55], cpu.resets
+    cpu = boot(ee=bytes(cpu.ee.mem), key="PTT")   # the loader's restart into the new firmware, PTT still down
+    cpu.run(2_000_000)
+    cpu.key = None
+    for b in (b'S', b'Q', b'S'):
+        cpu.uart_in.extend(b); cpu.run(1_000_000)
+    cpu.run(4 * 800_000)
+    assert cpu.ee.mem[0x1FC4] & 4, 'DUAL WATCH off after the flash: %02X' % cpu.ee.mem[0x1FC4]
+    assert any('DW' in t for t in remote_texts(cpu)), 'no DW on the screen: %r' % remote_texts(cpu)
+
+
 def test_flash_restart(cpu):               # 'B' arms; PTT down then restarts into the loader before it keys up
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])
     # Armed, then 10 s with nothing from the computer: disarmed, so PTT transmits as ever.
@@ -3462,6 +3481,7 @@ INDEPENDENT = [
     ('screen mirror lapses after 10 s of silence', test_mirror_lapses),
     ('flash restart: B arms, PTT restarts into the loader', test_flash_restart),
     ('flash restart: a setting changed just before is saved first', test_flash_restart_saves),
+    ('a flash keeps DUAL WATCH on', test_flash_keeps_dw),
     ('hold 2 on a memory channel steps its saved power', test_channel_power),
     ('PC LINK: settings reset restarts with every default', test_pc_link_settings_reset),
     ('PC LINK: the light times out, 10 quiet minutes leave it', test_pc_link_light_and_idle),

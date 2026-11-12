@@ -13,4 +13,5 @@ starts with its part of this list.
   pitches, to read the call signs repeaters send in Morse. Sending touch-tones works as before.
 - tdh3: `tdh3 firmware extract` saves the firmware the flasher carries as `.bin` files.
 - tdh3: a channel file that gives the power as `ULP` loads it as ULTRA LOW.
+- tdh3: in a narrow window, the flasher's waiting line stays on one line instead of scrolling.
 - Manual: a Screenshots page with every screen in one place, and pictures on every page.

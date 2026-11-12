@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/term"
 )
 
 var (
@@ -65,7 +67,13 @@ func spin(msg string) *spinner {
 		t := time.NewTicker(100 * time.Millisecond)
 		defer t.Stop()
 		for i := 0; ; i++ {
-			fmt.Fprintf(out, "\r\x1b[2K  %s %s", ambS.Render("["+frames[i%len(frames)]+"]"), s.msg.Load().(string))
+			line := "  " + ambS.Render("["+frames[i%len(frames)]+"]") + " " + s.msg.Load().(string)
+			if f, ok := out.(*os.File); ok { // wider than the window it wraps, and each \r redraw adds a line
+				if w, _, err := term.GetSize(f.Fd()); err == nil && w > 1 {
+					line = ansi.Truncate(line, w-1, "")
+				}
+			}
+			fmt.Fprint(out, "\r\x1b[2K"+line)
 			select {
 			case <-s.quit:
 				fmt.Fprint(out, "\r\x1b[2K")
