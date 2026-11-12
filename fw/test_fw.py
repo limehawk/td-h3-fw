@@ -3282,8 +3282,16 @@ def test_screen_sleep(cpu):                 # the panel sleeps while the backlig
     cpu.run(12 * 800_000)
     assert cpu.xram[0xF140] == 0 and (0, 0x10) in cpu.lcd[m:], 'panel not asleep with the backlight out'
     m = len(cpu.lcd)
-    press(cpu, 'UP')                       # only lights it
-    assert cpu.xram[0xF140] == 200 and (0, 0x11) in cpu.lcd[m:], 'panel not woken with the backlight'
+    cpu.key = 'UP'                         # only lights it: the panel wakes first, dark, so its white start isn't seen
+    for _ in range(100):
+        if (0, 0x11) in cpu.lcd[m:]: break
+        cpu.run(4_000)
+    assert (0, 0x11) in cpu.lcd[m:] and cpu.xram[0xF140] == 0, 'lit as the panel woke: a white flash'
+    cpu.run(40_000)                        # 50 ms
+    assert cpu.xram[0xF140] == 0, 'lit before the panel settled (120 ms)'
+    cpu.key = None
+    cpu.run(700_000)
+    assert cpu.xram[0xF140] == 200, 'backlight not on after the panel woke'
     cpu.run(12 * 800_000)                  # dark and asleep again, then AUTO OFF on top
     a = int(next(l.split()[0] for l in open(os.path.join(HERE, 'build', 'td-h3', 'main.rst')) if l.split()[-1:] == ['_idle10:']), 16)
     cpu.xram[a], cpu.xram[a + 1] = 179, 0

@@ -1903,6 +1903,7 @@ static void torch_run(void) __reentrant
 // always work, and so does a watching computer (REMOTE), which can't see the light. Returns k, or 0
 // for a key that only lit the screen.
 static __xdata uint8_t lit;                 // the backlight duty now; 0xFF: unknown (boot)
+static __xdata uint16_t t_lcdon;            // the panel was woken, its light not yet on
 uint8_t lights(uint8_t k) __reentrant
 {
     static __bit eat;                       // the key went down on a dark screen: its press only lit it
@@ -1913,8 +1914,13 @@ uint8_t lights(uint8_t k) __reentrant
     light = light_s[cfg.light];             // seconds on after a key, 0 = always
     light = !light || tx || open || alert || secs(&t_key) < light ? bright_duty[cfg.bright] : 0;
     if (light != lit) {                     // a BRIGHTNESS change shows at once
-        if (!light != !lit) lcd_sleep(!light);   // the panel sleeps while dark (lit 0xFF: unknown, so awake)
-        lit = light; backlight(light); KEY_LED = light != 0;
+        // The panel sleeps while dark (lit 0xFF: unknown, so awake). Woken, it shows white for its
+        // first 120 ms (ST7735S SLPOUT): the light waits that out, the loop runs on meanwhile.
+        if (light && !lit && !t_lcdon) { lcd_sleep(0); stamp1(&t_lcdon); }
+        if (!(light && !lit) || (int16_t)since(&t_lcdon) >= 24) {
+            if (!light && lit) lcd_sleep(1);
+            t_lcdon = 0; lit = light; backlight(light); KEY_LED = light != 0;
+        }
     }
     torch_run();
     return k;
