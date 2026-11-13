@@ -129,6 +129,24 @@ def table(m):
         print('%-9s %6d %6d %6d %7d %9.5f  %-7s %s' % (r, used, limit, limit - used, RESERVE[r],
                                                        price(r, used, limit), verdict(r, used, limit), note))
     print('pressure %.3f (lower is better; a trade is worth it when it lowers this)' % pressure(m))
+    print()
+    for r, (used, limit, _) in m.items():
+        if used is not None:
+            print('%-9s %s  %d B spendable' % (r, bar(used, limit, RESERVE[r]), limit - used - RESERVE[r]))
+    print('%-9s %s' % ('', '  '.join(bar(u, 1, r, 1) + t for u, r, t in ((1, 0, ' used'), (0, 0, ' free'), (0, 1, ' reserve'), (1, 1, ' used into the reserve')))))
+
+
+# On a terminal: free dim, the reserve amber, used into it red (none for a log or NO_COLOR)
+PAINT = {'\u2591': '2', '\u2592': '38;5;214', '\u2593': '31'} if sys.stdout.isatty() and not os.environ.get('NO_COLOR') else {}
+
+
+def bar(used, limit, res, w=40):
+    """The whole limit in w cells: used from the left, the reserve a block at the right end."""
+    out = ''
+    for i in range(w):
+        x = (i + 0.5) * limit / w
+        out += '\u2593' if x < used and x >= limit - res else '\u2588' if x < used else '\u2592' if x >= limit - res else '\u2591'
+    return ''.join('\033[%sm%s\033[0m' % (PAINT[c], c) if c in PAINT else c for c in out)
 
 
 def compare(rev):
