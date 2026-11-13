@@ -19,6 +19,10 @@ The menu opens on the item you used last. While you change a setting its row tur
 A change counts the moment you make it (and is saved two seconds after your last one), so going back
 never loses it. An open menu goes back to the radio after 20 seconds untouched.
 
+The radio keeps listening while the menu is open: a call plays through the speaker as usual, and the
+green light shows it. Dual watch and the priority channel wait until you leave the menu. Opening a
+tool (a `>` item) quiets the speaker until you're back in the list.
+
 To go straight to an item, type its number from the table below: **1** then **2** opens item 12.
 Items 6-9 open as soon as you type the digit. For items 1-5, type the one digit and wait a second
 (or type **0** first: **0 5** is item 5), because 1-5 can also start a two-digit number. The first

@@ -5,6 +5,8 @@ starts with its part of this list.
 
 ## Next release
 
+- The radio keeps receiving while the menu is open: a call no longer goes quiet when you press MENU.
+  Dual watch and the priority channel wait until you leave the menu.
 - New: five more colour themes in THEME (MENU 38): POCKET (dark green on pale green), NIXIE (warm
   orange on near-black), E-INK (black on off-white), FIELD (khaki on olive) and HIGH-VIS (black on
   bright yellow, for sunshine). Your theme stays as it was after the update.

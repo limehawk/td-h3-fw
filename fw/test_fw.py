@@ -3493,6 +3493,24 @@ def test_am_gain(cpu):                     # air band: gain off in steps on stro
         [hex(r.get(k, 0)) for k in (0x13, 0x49, 0x14, 0x2B, 0x43)]   # 3628: the weak-signal filter stays wide
 
 
+def test_menu_keeps_receiving(cpu):        # the receiver keeps on in the menu (Icom, Yaesu): open, close, open again
+    cpu.bk.busy = lambda f: True
+    cpu.run(500_000)
+    assert audio(cpu), 'squelch not open on the carrier'
+    keys(cpu, ['MENU'])
+    cpu.run(1_000_000)
+    assert audio(cpu), 'the menu cut the call off'
+    cpu.bk.busy = None
+    cpu.run(500_000)
+    assert not audio(cpu), 'the menu left the audio on with no carrier'
+    cpu.bk.busy = lambda f: True
+    cpu.run(500_000)
+    assert audio(cpu), 'a call in the menu not heard'
+    keys(cpu, ['EXIT'])
+    cpu.run(1_000_000)
+    cpu.bk.busy = None
+
+
 def test_squelch_tail(cpu):                # the 55 Hz tail shuts the audio before the noise burst
     r = cpu.bk.regs
     assert r[0x07] == 0x2000 | 462 and r[0x3F] == 0x0C00 and r[0x51] == 0x904A, (hex(r[0x07]), hex(r[0x3F]), hex(r[0x51]))
@@ -3865,6 +3883,7 @@ INDEPENDENT = [
     ('DTMF: keypad tones shown, speech and held tones not', test_dtmf_speech),
     ('AM: gain off in steps on strong signals, wide filter, AM AGC, no de-emphasis', test_am_gain),
     ('55 Hz squelch tail shuts the audio', test_squelch_tail),
+    ('the receiver keeps on in the menu', test_menu_keeps_receiving),
     ('S-meter squelch S1-S9', test_smeter_squelch),
     ('PTT works with the keypad locked', test_ptt_works_locked),
     ('no fixed text runs off the screen', test_no_clipped_text),

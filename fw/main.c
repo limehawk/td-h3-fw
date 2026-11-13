@@ -1410,7 +1410,7 @@ static void menu_change(int8_t d) __reentrant
     uint8_t leave = (uint8_t)(menu - M_SCOPE) <= M_WXM - M_SCOPE || menu == M_PC || menu == M_TOVFO;   // the tools and what tunes go home
 
     if (it->n) { item_step(menu, d); theme_apply(); tx_prefs(); BT_ON = cfg.bt; }
-    else switch (menu) {
+    else { open = 0; bk_af(0); switch (menu) {   // quiet first: a screen of its own doesn't run the squelch
     case M_OFFS: { uint8_t u = ch_uhf(); cfg.off[u] = wrap(off_n(u) - 1, d, 255) + 1; break; }
     case M_RXT: case M_TXT: { __xdata uint16_t *t = menu == M_RXT ? &cfg.rxt : &cfg.txt; *t = wrap(*t, d, NTONE_MENU); break; }
     case M_GROUP: {                         // one at a time, as always: SCAN LIST, GROUP 1-8
@@ -1454,7 +1454,7 @@ static void menu_change(int8_t d) __reentrant
         break;
     }
     case M_PC: pc_link(); break;
-    }
+    } }
     save_soon();
     stamp(&t_key);
     if (leave) {
@@ -1738,7 +1738,7 @@ static void on_key(uint8_t k) __reentrant
         if (wxm) { wx_ch = (uint8_t)(wx_ch + (k == K_UP ? 1 : 6)) % (uint8_t)7; wx_tuned(); }   // weather mode: WX1-WX7
         else step_freq(DIR(k));
         break;
-    case K_MENU: scanning = 0; open = 0; bk_af(0); menu = mlast; open_menu(); break;
+    case K_MENU: scanning = 0; menu = mlast; open_menu(); break;   // the receiver keeps on in the menu (Icom, Yaesu)
     case K_HASH: scanning = 0; rev = 0; cfg.act ^= 1; retune(); break;           // A/B
     case K_STAR:                                                               // scan, or stop it
         if (scanning) { scan_stop(); break; }
@@ -2350,7 +2350,7 @@ void main(void)
         else if (!t_note) stamp1(&t_note);
         else if (note != low_s && secs(&t_note) >= 3 && ptt_ok) { note = 0; dirty = 1; }   // PTT HELD stays till let go
 
-        if (!tx && menu == 0xFF) {
+        if (!tx) {                          // in the menu too, but no looks: the menu changes this slot's channel
             saver();
             if (!asleep) {
                 dtmf_poll();
@@ -2363,7 +2363,7 @@ void main(void)
                     else { tone_try = h; tone_n = 1; }
                 }
                 if (scanning) scan();
-                if (!entry_n && !saving) peeks();
+                if (menu == 0xFF && !entry_n && !saving) peeks();
             }
         }
 
