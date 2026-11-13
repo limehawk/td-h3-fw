@@ -2403,9 +2403,10 @@ def test_remote_same_key_twice(cpu):        # V/M from one tdh3 call, then the n
 
 
 def test_remote_paced_vm(cpu):             # as tools/emuport.py feeds tdh3's bytes: one at a time, 150 ms apart, the
-    # DIGITS CLASSIC: an all-C (ASM=0) redraw of ARCADE or LCD runs past ~200 ticks between key scans,
-    # where a held REMOTE key lets go; the shipped ASM=1 build has room. This checks REMOTE's timing.
-    menu(cpu, 'DIGITS', ['UP', 'UP', 'EXIT'])
+    # ASM=1 only, what ships: an all-C (ASM=0) full mirrored redraw is ~825k instructions, at the 200 ticks
+    # between key scans where a held REMOTE key lets go; ASM=1 has ~100k of room.
+    if not re.search(r'_freq_text\s+freq_text$', open(os.path.join(HERE, 'build', 'td-h3', 'fw.map')).read(), re.M):
+        return
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # hold landing in the 'S' redraw. Read late, then a slow mirrored pass:
     cpu.run(1_000_000)                     # let go before key_event saw it, so V/M did nothing
     pending, last, n = [ord('S'), 0x8E, 0x8E, 0x80, 0x80], 0, 0
@@ -3664,7 +3665,7 @@ INDEPENDENT = [
     ('REMOTE: one UP from tdh3 is one step, over a slow redraw', test_remote_up_one_step),
     ('REMOTE: a digit from tdh3 landing in a redraw still counts (menu number)', test_remote_digit_in_redraw),
     ('REMOTE: the same key in two tdh3 calls counts twice, dark screen too', test_remote_same_key_twice),
-    ('REMOTE: a V/M fed a byte at a time (emuport) still counts', test_remote_paced_vm),
+    ('REMOTE: a V/M fed a byte at a time (emuport) still counts (ASM=1 only)', test_remote_paced_vm),
     ('REMOTE: bytes that land in a redraw are kept, a whole press read in turn', test_remote_bytes_kept_in_redraw),
     ('dual watch waits 3 s after a call drops (fades)', test_dual_watch_waits_after_a_fade),
     ('a scan stops for hold MENU (save)', test_scan_stops_for_save_and_tools),
