@@ -65,8 +65,8 @@ def capture():
     # The boot animation: a frame at each delay_ms() in splash(), and the still it ends on. A frame
     # lasts its delay plus the drawing before it (the radio runs ~15 instructions a microsecond).
     cpu = t.CPU(open(t.FW_RX, 'rb').read(), bytearray(ee))
-    dl, bk = t.symbol(t.FW_RX, '_delay_ms'), t.symbol(t.FW_RX, '_bk_init')
-    cpu.run(5_000_000, until=lambda: cpu.pc == t.symbol(t.FW_RX, '_backlight'))   # lit just before splash()
+    dl, bk, lit = t.symbol(t.FW_RX, '_delay_ms'), t.symbol(t.FW_RX, '_bk_init'), t.symbol(t.FW_RX, '_backlight')
+    cpu.run(5_000_000, until=lambda: cpu.pc == lit)   # lit just before splash()
     ms, last, wait = [], cpu.icount, 0
     while True:
         cpu.run(30_000_000, until=lambda: cpu.pc in (dl, bk))
