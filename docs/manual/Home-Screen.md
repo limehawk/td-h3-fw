@@ -27,8 +27,8 @@ Both slots are laid out the same way, under a status bar. The meter sits between
    `VFO` in frequency mode. With MENU → DIGITS on CLASSIC it sits left of the frequency instead.
 4. **Frequency** in MHz. Green while a signal is coming through, red while transmitting. MENU →
    DIGITS picks how the numbers look: ARCADE (here), LCD or CLASSIC. Digits
-   below 1 kHz show small after it: GMRS channel 1 reads `462.562` with a small `5` (462.5625 MHz).
-   In USB the last two digits are always there.
+   below 1 kHz always show small after it: GMRS channel 1 reads `462.562` with a small `50`
+   (462.5625 MHz), and 146.520 MHz reads `146.520` with a small `00`.
 5. **Mode, power and shift**: `FM`, `AM` (aircraft) or `USB` ([SSB](#listening-to-ssb), with just `RXONLY` after it); transmit power `HIGH`, `MID`, `LOW` or
    `ULOW` (ultra-low); the repeater shift, `-0.6` (transmit 0.6 MHz below) or `+5` (5 MHz above), nothing
    when simplex, or `TXLOCK` / `RXONLY` when the channel can't transmit. In frequency mode with

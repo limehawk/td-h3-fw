@@ -1,8 +1,8 @@
 ; asm-for: main.c draw_slot
-; c-sha256: 6512ca6cc8f16998
+; c-sha256: 7299c9fd67a3fc2c
 ; draw_slot: slot A (i 0, y 14) or B (i 1, y 73): letter and name, memory number (slot_label), the
-; frequency in the DIGITS style (freq_text: only the digits that changed on a fast redraw), the small
-; digits below 1 kHz, the mode/power/shift/
+; frequency in the DIGITS style (freq_text: only the digits that changed on a fast redraw), the two
+; small digits below 1 kHz, the mode/power/shift/
 ; bandwidth row and the tones/step row (or DTMF digits, or the tone heard). main.c has the C original.
 ; void draw_slot(uint8_t i) __reentrant
 ; i in DPL; i is 0 or 1 (the C's 1 << i and y as for those). Every register, B and DPTR are the
@@ -31,7 +31,6 @@
 	.globl _pal
 	.globl _buf
 	.globl _tinted
-	.globl _small
 	.globl _shown
 	.globl _shown_c
 	.globl _dtmf
@@ -392,54 +391,12 @@ _draw_slot:
 	lcall	palrd
 	lcall	shc
 	lcall	wr2
-; The digits below 1 kHz small after it, kept at buf + 20: USB shows both always, other modes only
-; when there are any ("5 " for a 12.5 kHz channel); then small |= 1 << i. None: clear them once,
-; small &= ~(1 << i).
-	mov	dptr,#(_dc + CHAN_MODE)	; USB: both digits
-	movx	a,@dptr
-	cjne	a,#MOD_USB,00038$
-	sjmp	00039$
-00038$:	mov	dptr,#(_buf + 21)	; a 10 Hz digit: both
-	movx	a,@dptr
-	cjne	a,#0x30,00039$
-	mov	dptr,#(_buf + 20)	; neither: none
-	movx	a,@dptr
-	cjne	a,#0x30,00090$
-	sjmp	00036$
-00090$:	mov	dptr,#(_buf + 21)	; the 100 Hz digit alone: buf[21] = ' '
-	mov	a,#0x20
-	movx	@dptr,a
-00039$:	mov	dpl,#20			; freq_text(20, y, fc)
-	lcall	ftext
-	lcall	kbit
-	mov	r7,a
-	mov	dptr,#_small
-	movx	a,@dptr
-	orl	a,r7
-	movx	@dptr,a
-	sjmp	00037$
-00036$:	lcall	kbit
-	mov	r7,a
-	mov	dptr,#_small
-	movx	a,@dptr
-	anl	a,r7
-	jz	00037$
-	mov	a,r7
-	cpl	a
-	mov	r7,a
-	movx	a,@dptr
-	anl	a,r7
-	movx	@dptr,a
-	mov	dptr,#(_buf + 20)	; buf[20] = buf[21] = ' '; freq_text(20, y, fc)
-	mov	a,#' '
-	movx	@dptr,a
-	inc	dptr
-	movx	@dptr,a
+; freq_text(20, y, fc): the 100 Hz and 10 Hz digits, small after it, always (kept at buf + 20)
 	mov	dpl,#20
 	lcall	ftext
 
 ; The mode, power, shift ... bandwidth row: p = cat(buf, mode_s[dc.mode]); *p++ = ' ';   r5 = dc.mode
-00037$:	mov	dptr,#(_dc + CHAN_MODE)
+	mov	dptr,#(_dc + CHAN_MODE)
 	movx	a,@dptr
 	mov	r5,a
 	mov	dptr,#_mode_s
@@ -805,15 +762,6 @@ shc:	FR	FI+2
 	clr	a
 	addc	a,#(_shown_c >> 8)
 	mov	dph,a
-	ret
-; A = 1 << i, as a uint8_t
-kbit:	FR	FI+2
-	mov	r0,a
-	inc	r0
-	mov	a,#1
-	sjmp	00102$
-00101$:	add	a,acc
-00102$:	djnz	r0,00101$
 	ret
 ; r3:r2 = pal[A]
 palrd:	add	a,acc

@@ -2482,13 +2482,13 @@ def test_digits(cpu, style):               # DIGITS: the look's pixels in slot A
         assert px(17, y + 9) == px(18, y + 16) == px(5, y + 12) == px(18, y + 25) == bg, 'LCD 1: its corners, notch, foot'
         assert {px(x, yy) for x in range(128) for yy in range(y + 8, y + 27)} == {fg, bg}, 'more than two colours'
         assert px(53, y + 23) == px(55, y + 25) == fg and px(56, y + 25) == px(53, y + 22) == bg, 'the point not 3x3 on the bottom rows'
-    # A fast redraw (the digits that changed) and a 12.5 kHz small digit come and go cleanly: as a full redraw
+    # A fast redraw (the digits that changed) and the two small digits, always there, change cleanly: as a full redraw
     keys(cpu, ['EXIT'])                    # V/M: channel 1, 146.520
-    for k, f, small in (('UP', '462.562', '5 '), ('DOWN', '146.520', '  ')):
+    for k, f, small in (('UP', '462.562', '50'), ('DOWN', '146.520', '00')):
         keys(cpu, [k])
         cpu.run(1_000_000)
         fast, t = look()
-        assert t[(y + 9, 32)][3] == f and t.get((y + 17, 116), ('',) * 4)[3].strip() == small.strip(), (k, t[(y + 9, 32)], t.get((y + 17, 116)))
+        assert t[(y + 9, 32)][3] == f and t.get((y + 17, 116), ('',) * 4)[3] == small, (k, t[(y + 9, 32)], t.get((y + 17, 116)))
         keys(cpu, ['MENU', 'EXIT'])        # the whole screen again
         cpu.run(1_000_000)
         assert look()[0] == fast, 'a redraw of %s left pixels a full redraw has not' % f

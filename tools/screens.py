@@ -226,7 +226,7 @@ def capture():
         cpu.run(2_000_000)
         save(cpu, 'theme%d' % n)
 
-    for n in range(DIGITS):                # GMRS channel 1: 462.5625, a small 5
+    for n in range(DIGITS):                # GMRS channel 1: 462.5625, a small 50
         cpu = memory()
         t.keys(cpu, ['0', '0', '2'])
         if n:

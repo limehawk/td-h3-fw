@@ -520,7 +520,6 @@ void right(__xdata char *p, const __code char *a, const __code char *b) __reentr
 }
 
 __xdata uint8_t tinted[2];           // the tint each slot's block is on (0: none), so going back to bg fills it too
-uint8_t small;                       // bit i: slot i shows its 10 Hz digits
 // DIGITS: how the slots' frequencies look. CLASSIC is the 5x7 font at 2x (lcd_text). ARCADE and LCD
 // draw each character as fills, not mirrored: REMOTE gets CLASSIC's text instead, so a computer reads
 // the frequency, a picture shows it in the 5x7 font, and the wire carries no more. Big digits from x 5,
@@ -552,8 +551,8 @@ const __code uint8_t seg_r[] = {     // LCD segments a-g in px: big, three each 
 };
 const __code uint8_t seg7[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};   // bit 0 a (top) .. 6 g (middle)
 const __code uint8_t dots[] = {0x03, 0x6A, 0x03, 0x7A};   // the point, 3x3 on the bottom rows: ARCADE (at its row 13), LCD (15)
-// The frequency from buf + k (0-6: the big digits from the first that changed; 20: the small ones,
-// spaces to clear them) in slot y's frequency rows, colour fc.
+// The frequency from buf + k (0-6: the big digits from the first that changed; 20: the two small
+// ones) in slot y's frequency rows, colour fc.
 // asm/freq_text.asm; this C is the reference (make CFUN=freq_text builds it)
 void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant;
 #ifdef C_FREQ_TEXT
@@ -658,19 +657,7 @@ void draw_slot(uint8_t i) __reentrant
     if (fast && shown_c[i] == pal[fc]) while (k < 7 && buf[k] == shown[i][k]) k++;
     if (k < 7) freq_text(k, y, fc);
     xcat(shown[i], buf); shown_c[i] = pal[fc];   // the colour, not the index: as drawn
-    // The digits below 1 kHz, small after it: USB's 100 Hz and 10 Hz always; otherwise only when there
-    // are any, so a 12.5 kHz channel reads whole (462.562 and a small 5). Cleared only once gone (REMOTE
-    // mirrors each fill).
-    k = 1 << i;
-    if (dc.mode != MOD_USB && buf[21] == '0') {
-        if (buf[20] == '0') goto none;
-        buf[21] = ' ';                      // "5 ": the space wipes a 10 Hz digit left from before
-    }
-    freq_text(20, y, fc); small |= k;
-    goto shown_small;
-none:
-    if (small & k) { buf[20] = buf[21] = ' '; freq_text(20, y, fc); small &= ~k; }
-shown_small:
+    freq_text(20, y, fc);                   // the 100 Hz and 10 Hz digits, small after it, always: 146.520 00, 462.562 50
 
     p = cat(buf, mode_s[dc.mode]);          // mode, power, shift ... bandwidth; USB: receive only
     *p++ = ' ';

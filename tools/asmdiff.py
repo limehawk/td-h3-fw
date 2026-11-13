@@ -256,7 +256,7 @@ def gen_draw_slot(r):
     pk = {CFG('ACT'): [r.randrange(2)], 'peek': [r.randrange(4)], 'tx': bit(0.3), 'open': bit(), 'fast': bit(), 'wxm': bit(0.2),
           'ch': chan(r), 'main_ch': chan(r), 'other': chan(r), 'pal': r.randbytes(16), CFG('THEME'): [r.randrange(256)],
           S(0, 'SLOT_MEM'): [r.randrange(2)], S(1, 'SLOT_MEM'): [r.randrange(2)], S(0, 'SLOT_CHN'): [r.randrange(200)], S(1, 'SLOT_CHN'): [r.randrange(200)],
-          'tinted': [r.choice([0, 7, 8]), r.choice([0, 7, 8])], 'small': [r.randrange(4)], 'shown': r.randbytes(16), 'shown_c': r.randbytes(4),
+          'tinted': [r.choice([0, 7, 8]), r.choice([0, 7, 8])], 'shown': r.randbytes(16), 'shown_c': r.randbytes(4),
           'dtmf_n': [r.randrange(6)], 'dtmf': bytes(r.choice(b'0123456789ABCD*#') for _ in range(r.randrange(17))) + b'\0',
           'heard': r.choice([0, 0, 1000, r.randrange(0x10000)]).to_bytes(2, 'little'), 'mirror': bit(0.3),
           'cfg+%d' % K['CFG_DIGITS']: [r.randrange(256)]}   # DIGITS: freq_text's style, slot_label's place
@@ -270,7 +270,7 @@ def gen_draw_slot(r):
 
 def gen_freq_text(r):
     big = r.choice([b'146.520', b'446.006', b'462.562', b' 18.000', b'999.999', bytes(r.choice(b'0123456789. :') for _ in range(7))])
-    small = r.choice([b'25', b'5 ', b'  ', b'00', bytes(r.choice(b'0123456789 ') for _ in range(2))])
+    small = r.choice([b'25', b'50', b'00', b'  ', bytes(r.choice(b'0123456789 ') for _ in range(2))])
     buf = bytearray(r.randbytes(48))
     buf[0:8], buf[20:23] = big + b'\0', small + b'\0'
     pk = {'cfg+%d' % K['CFG_DIGITS']: [r.randrange(256)], 'buf': bytes(buf), 'pal': r.randbytes(16), 'mirror': [r.random() < 0.4]}

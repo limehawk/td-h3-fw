@@ -13,6 +13,8 @@ starts with its part of this list.
 - New: DIGITS (MENU 39) picks how the big frequency numbers look: ARCADE, chunky with a soft
   shadow (the new default); LCD, like a digital clock; or CLASSIC, the look from before. With ARCADE
   and LCD, `VFO` or the memory number sits at the top right of the slot.
+- The frequency always shows its last two digits, small after it: `146.520` with a small `00`,
+  GMRS channel 1 `462.562` with a small `50`. They used to show only when they weren't zero.
 - The menu items from SCAN GROUP on moved down one place, and those after THEME one more: SCAN
   GROUP is now 21, KEY BEEP 40, PC LINK 46, REMOTE 47 and VERSION 52.
 - tdh3: `tdh3 remote screen` reads the frequency and memory number in every DIGITS look.
