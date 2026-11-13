@@ -2139,6 +2139,98 @@ def test_meter_calm(cpu):                  # a fluttering signal: a new reading 
     press(cpu, '#')                        # back to A
 
 
+def redrawn(cpu, then=None):              # REMOTE's texts after a sync and full redraw; then(): more, before they're read
+    cpu.uart_out.clear()
+    cpu.uart_in.extend(b'S')
+    cpu.run(3_000_000)
+    if then:
+        then()
+        cpu.run(600_000)
+    return [r for r in remote_records(cpu.uart_out) if r[0] == 't']
+
+
+def meter_timer(cpu, then=None):           # the receive timer in the meter's middle (x 43, row 62), or None
+    t = [r[3] for r in redrawn(cpu, then) if r[1] == 43 and r[2] == 62]
+    return t[-1] if t else None
+
+
+def test_rx_timer(cpu):                    # a station heard: how long it has talked, " 0:42", between the S reading and dBm
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    rx_min, rx_sec = symbol(FW, '_rx_min'), symbol(FW, '_rx_sec')
+    try:
+        cpu.bk.dbm = lambda f: -60         # the bar past the timer: the timer is one run of text
+        assert meter_timer(cpu) is None, 'a timer with nothing heard'
+        cpu.bk.busy = lambda f: f == 14652000
+        t = meter_timer(cpu)
+        assert t and re.fullmatch(r' 0:0[1-4]', t), 'about 3 s heard: %r' % t
+        def at(m, sec): cpu.xram[rx_min], cpu.xram[rx_sec] = m, sec
+        t = meter_timer(cpu, lambda: at(9, 59))
+        assert t in ('10:00', '10:01'), 'the minute after 9:59: %r' % t
+        t = meter_timer(cpu, lambda: at(99, 59))
+        assert t in ('99:00', '99:01'), '99 minutes at most: %r' % t
+        cpu.key = 'PTT'
+        t = meter_timer(cpu)
+        assert t is None, 'transmitting: the TX clock has the meter, not %r' % t
+        cpu.key = None
+        cpu.run(2_000_000)
+        cpu.bk.busy = None
+        cpu.run(1_000_000)
+        assert meter_timer(cpu) is None, 'the timer stayed after the station went'
+        cpu.bk.busy = lambda f: f == 14652000
+        t = meter_timer(cpu)
+        assert t and re.fullmatch(r' 0:0[1-4]', t), 'a new station starts at 0:00: %r' % t
+    finally:
+        cpu.key = cpu.bk.busy = cpu.bk.dbm = None
+
+
+def slot_ages(cpu, then=None):             # after slot A's and B's letters (x 10, rows 14 and 73), or None
+    t = redrawn(cpu, then)
+    for r in t:                            # the age clears nothing it shouldn't: 3 characters, x 10-27, nothing else there
+        if r[1] == 10:
+            assert len(r[3]) == 3 and r[2] in (14, 73), r
+            assert not [o for o in t if o[2] == r[2] and o[1] != 10 and o[1] < 28 and o[1] + 6 * len(o[3]) > 10], ('overlap', r, t)
+    return tuple(([r[3] for r in t if r[1] == 10 and r[2] == y] or [None])[-1] for y in (14, 73))
+
+
+def test_slot_last_heard(cpu):             # after a quiet slot's letter, how long ago its frequency was last heard
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    lh, up10, t_batt, ticks = static_at(FW, 'lh'), static_at(FW, 'up10'), static_at(FW, 't_batt'), symbol(FW, '_ticks')
+    a_at = lambda spells: poke16(cpu, lh + 4, peek16(cpu, up10) - spells)   # lh[0].at (heard_t: f, at, chn)
+    try:
+        assert slot_ages(cpu) == (None, None), 'an age with nothing heard'
+        cpu.bk.busy = lambda f: f == 14652000
+        cpu.run(1_000_000)
+        assert slot_ages(cpu)[0] is None, 'A heard now: lit, no age'
+        cpu.bk.busy = None
+        cpu.run(1_000_000)
+        assert slot_ages(cpu) == ('<1m', None), slot_ages(cpu)
+        def tick():                        # 12 minutes ago, then the 10 s clock: it redraws the age by itself
+            a_at(6 * 12 - 1)
+            poke16(cpu, t_batt, peek16(cpu, ticks) - 2001)
+        assert slot_ages(cpu, tick) == ('12m', None), 'the 10 s clock left the age'
+        a_at(360 * 3)
+        assert slot_ages(cpu) == (' 3h', None)
+        a_at(0xFFFF)
+        assert slot_ages(cpu) == ('99h', None), 'past 99 hours'
+        a_at(360 * 50)
+        for n in (1, 2):                   # LCD and CLASSIC: the age where ARCADE has it, clear of the label
+            menu(cpu, 'DIGITS', ['UP', 'EXIT'])
+            got = slot_ages(cpu)
+            assert got == ('50h', None), (DIGITS[n], got)
+        menu(cpu, 'DIGITS', ['UP', 'EXIT'])
+        menu(cpu, 'DW', ['UP', 'EXIT'])    # watch B (446.000): heard there, its age after it
+        cpu.bk.busy = lambda f: f == 44600000
+        cpu.run(3_000_000)
+        cpu.bk.busy = None
+        cpu.run(3_000_000)
+        assert slot_ages(cpu) == ('50h', '<1m'), slot_ages(cpu)
+        keys(cpu, ['1', '4', '6', '5', '5', '0'])   # A to 146.550: nothing heard there
+        cpu.run(1_000_000)
+        assert slot_ages(cpu) == (None, '<1m'), slot_ages(cpu)
+    finally:
+        cpu.bk.busy = None
+
+
 def test_battery_saver_wakes_on_ptt(cpu):   # PTT refused while asleep: the receiver wakes (it slept 5 s more, deaf)
     menu(cpu, 'SAVE', ['UP', 'EXIT'])
     keys(cpu, '162550')                    # no TX here
@@ -3854,6 +3946,8 @@ INDEPENDENT = [
     ('save VFO to a memory channel', test_save_vfo_to_memory),
     ('the meter waits for the receiver to settle after a retune (no dips at every battery-saver wake)', test_meter_waits_for_retune),
     ('the meter: a new reading 3 times a second, a new channel\'s at once', test_meter_calm),
+    ('the meter: a station\'s receive timer, 99 minutes at most, gone when it stops', test_rx_timer),
+    ('each quiet slot: how long since its frequency was last heard, every DIGITS', test_slot_last_heard),
     ('hold UP repeats', test_hold_repeats),
     ('UP/DOWN land on the step raster', test_step_raster),
     ('8.33 and 15 kHz steps land on their rasters', test_air_band_steps),

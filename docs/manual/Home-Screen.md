@@ -10,6 +10,8 @@
 | Fix a typing mistake | **V/M** deletes the last digit |
 | See if a signal is coming in | The slot turns dark green, its frequency goes green |
 | See how strong it is | The meter bar, with `S5` and `-102dBm` inside it |
+| See how long a station has been talking | The middle of the meter bar (`0:42`) |
+| See when a slot last heard anyone | Just right of its letter (`12m`: 12 minutes ago) |
 | Clear a message on the bottom line | Any key (or wait 3 s) |
 | Listen to SSB or Morse code (USB) | **MENU**, **0** **6** (MODE), **MENU**, **UP** **UP** (until it says `USB`), **MENU**, **V/M** |
 
@@ -17,7 +19,7 @@ The radio has two **slots**, A and B. Each holds one frequency or one memory cha
 to the **selected** slot (bright); the other waits (dim) until you press **#** to swap, or use
 dual watch to listen to both.
 
-![The home screen, slot A hearing a station](img/home.png)
+![The home screen, dual watch hearing a station on slot B](img/home.png)
 
 Both slots are laid out the same way, under a status bar. The meter sits between them.
 
@@ -79,6 +81,14 @@ Both slots are laid out the same way, under a status bar. The meter sits between
 13. **Battery**: percent and an icon that fills with the charge, red at 20% and below. The percent
     follows how a lithium-ion pack really drains (it sits near 7.6 V for most of its charge), so it
     goes down evenly: 8.4 V is 100%, about 7.6 V is 40%, and 0% is 6.8 V, where `LOW BATTERY` warns.
+14. **Last heard**: how long ago a station was last heard on this slot's frequency. `<1m` is
+    under a minute, then `12m` (minutes) and `3h` (hours, up to `99h`). It counts from when you
+    switched the radio on, the same as LAST HEARD in the [Menu](Menu): nothing shows if no one has been
+    heard there since. While the slot is hearing a station or transmitting, it isn't shown.
+15. **Receive timer**: while you hear a station, how long it has been talking, minutes and
+    seconds (`0:42`, up to `99:59`). It starts again at `0:00` each time the squelch opens, so a
+    pause between two people talking starts a new count. While you transmit, the meter shows your
+    own time instead (see [Transmitting](Transmitting)).
 
 The bottom line is for messages (`TX LOCKED CHANNEL`, `LOW BATTERY`) and what you're typing.
 A message goes away by itself after 3 seconds, or when you press a key. `LOW BATTERY` is the

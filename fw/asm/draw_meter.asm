@@ -1,8 +1,8 @@
 ; asm-for: main.c draw_meter
-; c-sha256: 98346ed52120d47d
+; c-sha256: f0847c7b7fca6cb4
 ; draw_meter: the meter row between the slots, with its private helpers m_fill, m_text and bar_x
 ; (main.c has the C originals). On receive the S-meter bar and "S9+11 ... -102dBm", on transmit the
-; mic level and the TX clock "   116s".
+; mic level and the TX clock "   116s". A station heard: its receive timer " 0:42" in the middle.
 ; void draw_meter(void) __reentrant
 ; Every register, B and DPTR are the caller's to lose.
 ;
@@ -21,10 +21,13 @@
 	.globl _m_dbm
 	.globl _m_open
 	.globl _m_len
+	.globl _m_sec
 	.globl _m_col
 	.globl _m_trk
 	.globl _m_fg
 	.globl _t_tx
+	.globl _rx_min
+	.globl _rx_sec
 	.globl _tots
 	.globl _cfg
 	.globl _pal
@@ -141,8 +144,9 @@ _draw_meter:
 	lcall	wr2
 	ljmp	00300$
 
-; Receiving. Drawn 10 times a second: only when the reading or the squelch changed.
-; if (dbm == m_dbm && open == m_open) return; m_dbm = dbm; m_open = open;
+; Receiving. Drawn 3 times a second: only when the reading or the squelch changed, else (open) just the
+; timer once a second. if (dbm == m_dbm && open == m_open) { if (open && rx_sec != m_sec) rx_text(); return; }
+; m_dbm = dbm; m_open = open;
 00200$:	lcall	ldu
 	mov	dptr,#_m_dbm
 	movx	a,@dptr
@@ -161,7 +165,17 @@ _draw_meter:
 	rlc	a
 	xrl	a,r5
 	jnz	00201$
-	ret
+	jnb	_open,00209$
+	mov	dptr,#_rx_sec
+	movx	a,@dptr
+	mov	r3,a
+	mov	dptr,#_m_sec
+	movx	a,@dptr
+	xrl	a,r3
+	jz	00209$
+	lcall	rxtxt
+	ljmp	stick
+00209$:	ret
 00201$:	mov	dptr,#_m_dbm
 	mov	a,r6
 	movx	@dptr,a
@@ -322,6 +336,18 @@ _draw_meter:
 	mov	r7,#86
 	mov	r5,#0
 	lcall	mtext
+; if (!tx && open) { rx_text(); m_fill(a, 43, METER_Y); a = 73; }
+	jb	_tx,00310$
+	jnb	_open,00310$
+	lcall	rxtxt
+	mov	r0,sp
+	mov	ar7,@r0			; a
+	mov	r6,#43
+	mov	r5,#METER_Y
+	lcall	mfill
+	mov	r0,sp
+	mov	@r0,#73
+00310$:
 ; m_fill(0, W, METER_Y - 1); m_fill(0, 1, METER_Y); m_fill(a, 86, METER_Y);
 	mov	r7,#0
 	mov	r6,#W
@@ -338,8 +364,8 @@ _draw_meter:
 	lcall	mfill
 	dec	sp
 	dec	sp
-; if (cfg.sql >= 10 && !tx) { int8_t d = cfg.sql * 6 - 71; lcd_fillp(d < 0 ? 0 : bar_x(d), METER_Y - 1, 1, 9, P_FG); }
-	jb	_tx,00309$
+; sql_tick: if (cfg.sql >= 10 && !tx) { int8_t d = cfg.sql * 6 - 71; lcd_fillp(d < 0 ? 0 : bar_x(d), METER_Y - 1, 1, 9, P_FG); }
+stick:	jb	_tx,00309$
 	mov	dptr,#(_cfg + CFG_SQL)
 	movx	a,@dptr
 	cjne	a,#10,00302$
@@ -358,6 +384,44 @@ _draw_meter:
 	mov	r3,#P_FG
 	ljmp	fillr
 00309$:	ret
+
+; rx_text: buf[14-19] = " 0:42" (rx_min, its leading 0 a space; rx_sec), m_sec = rx_sec, m_text(43, buf + 14)
+rxtxt:	mov	dptr,#_rx_sec
+	movx	a,@dptr
+	mov	r3,a
+	mov	dptr,#_m_sec
+	movx	@dptr,a
+	mov	dptr,#_rx_min
+	movx	a,@dptr
+	mov	dptr,#(_buf + 14)
+	lcall	dig2
+	mov	a,#':'
+	movx	@dptr,a
+	inc	dptr
+	mov	a,r3
+	lcall	dig2
+	clr	a
+	movx	@dptr,a
+	mov	dptr,#(_buf + 14)
+	movx	a,@dptr
+	cjne	a,#'0',00701$
+	mov	a,#' '
+	movx	@dptr,a
+00701$:	mov	r7,#43
+	mov	r5,#14
+	ljmp	mtext
+
+; A as two digits at DPTR, then DPTR past them. Changes B.
+dig2:	mov	b,#10
+	div	ab
+	add	a,#'0'
+	movx	@dptr,a
+	inc	dptr
+	mov	a,b
+	add	a,#'0'
+	movx	@dptr,a
+	inc	dptr
+	ret
 
 ; r7:r6 = dbm with its sign bit flipped (u)
 ldu:	mov	dptr,#_dbm

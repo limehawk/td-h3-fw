@@ -230,7 +230,9 @@ def gen_draw_meter(r):
           'm_dbm': (dbm & 0xFFFF).to_bytes(2, 'little') if same else r.randbytes(2), 'm_open': [r.choice([0, 1, 0xFF])],
           CFG('TOT'): [r.randrange(5)], CFG('SQL'): [r.choice([r.randrange(19), r.randrange(256)])], CFG('THEME'): [r.randrange(256)],
           'pal': r.randbytes(16), 'ticks': r.randbytes(2), 't_tx': r.randbytes(2), 'mirror': bit(0.3),
-          '@bk64': r.choice([0, 1, r.randrange(0x10000), r.randrange(0x100)])}
+          '@bk64': r.choice([0, 1, r.randrange(0x10000), r.randrange(0x100)]),
+          'rx_min': [r.choice([0, 9, 10, 99, r.randrange(100), r.randrange(256)])], 'rx_sec': [r.choice([0, 9, 59, r.randrange(60), r.randrange(256)])],
+          'm_sec': [r.choice([0, 59, r.randrange(256)])], 'm_len': [r.randrange(129)], 'm_col': r.randbytes(2), 'm_trk': r.randbytes(2)}
     return pk, 0, b'', {}, {}
 
 

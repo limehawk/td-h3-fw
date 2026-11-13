@@ -217,9 +217,44 @@ def t_note():                               # a refusal on the bottom line goes 
     check('note gone after 3 s with no key', not any(msg in t for t in r.screen().values()))
     restore(state)
 
+def meter_mid(s):                           # the meter's middle, x 43-72: a station's receive timer ("0:42"), or ''
+    cells = [' '] * 5                       # the bar's edge can split it into two runs of text
+    for (y, x), t in s.items():
+        if y == 62 and 43 <= x < 73:
+            for i, c in enumerate(t.split('  (')[0]):
+                if (x - 43) // 6 + i < 5:
+                    cells[(x - 43) // 6 + i] = c
+    return ''.join(cells).strip()
+
+
+def t_times():                              # a station heard: its timer in the meter; quiet again, the slot's last heard
+    s = r.home()
+    ages = [s.get((y, 10), '').split('  (')[0] for y in SLOT_Y.values()]   # after each slot's letter
+    check('home: each slot\'s last heard is an age or blank', all(re.fullmatch(r'(<1m|\d{1,2}[mh])?', a) for a in ages), ' / '.join(ages))
+    seen, t0 = [], time.time()              # wait up to 90 s for a station (tune a busy channel first)
+    while time.time() - t0 < 90 and len(seen) < 3:
+        if 'squelch open' in status_line():
+            m = meter_mid(r.screen())
+            if m:
+                seen.append(m)
+        time.sleep(1)
+    if not seen:
+        check('receive timer: no station heard in 90 s (tune a busy channel, run again)', False)
+        return
+    secs = [int(a) * 60 + int(b) for a, b in (re.fullmatch(r'(\d{1,2}):(\d\d)', m).groups() for m in seen if re.fullmatch(r'\d{1,2}:\d\d', m))]
+    check('receive timer in the meter, counting', len(secs) == len(seen) and any(b > a for a, b in zip(secs, secs[1:])), ' | '.join(seen))
+    t0 = time.time()                        # the station stops: the slot it was on shows <1m after its letter
+    while time.time() - t0 < 120 and 'squelch open' in status_line():
+        time.sleep(1)
+    time.sleep(1)
+    s = r.home()
+    ages = [s.get((y, 10), '').split('  (')[0] for y in SLOT_Y.values()]
+    check('quiet again: no timer, <1m after the slot heard', not meter_mid(s) and '<1m' in ages, '%r / %s' % (meter_mid(s), ' / '.join(ages)))
+
+
 TESTS = {'version': t_version, 'home': t_home, 'menu': t_menu, 'scan': t_scan, 'lock': t_lock,
          'light': t_light, 'heard': t_heard, 'theme': t_theme, 'fm': t_fm, 'scope': t_scope, 'signal': t_signal,
-         'note': t_note}
+         'note': t_note, 'times': t_times}
 
 QUICK = ['version', 'home', 'signal']       # after a flash: it boots, draws and receives (under a minute)
 

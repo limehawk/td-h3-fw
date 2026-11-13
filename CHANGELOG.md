@@ -5,6 +5,9 @@ starts with its part of this list.
 
 ## Next release
 
+- The home screen shows two times: while you hear a station, how long it has been talking, in the
+  middle of the meter bar (`0:42`); and after each quiet slot's letter, how long ago someone was
+  last heard on its frequency (`<1m`, `12m`, `3h`).
 - The radio keeps receiving while the menu is open: a call no longer goes quiet when you press MENU,
   on the other slot (dual watch) and the priority channel too. A weather alert closes the menu to show itself.
 - New: five more colour themes in THEME (MENU 38): POCKET (dark green on pale green), NIXIE (warm

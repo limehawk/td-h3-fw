@@ -128,6 +128,8 @@ static __xdata uint32_t skip[8];            // nuisance frequencies skipped unti
 static __xdata uint32_t scan_r[2];          // a VFO scan's range (low, high), from where it started
 static __xdata slot_t scan_from;            // the slot as the scan started: its channel, or its VFO frequency
 uint16_t t_tx, t_open, t_key, t_save, t_meter, t_tone, t_scan, t_peek, t_wake, t_sleep, t_hit, heard;
+uint16_t t_rx;                       // the receive timer: rx_min:rx_sec the squelch has been open, counted from t_rx
+uint8_t rx_min, rx_sec;
 int16_t dbm;
 __xdata char dtmf[17];               // DTMF digits heard, shown for 10 s after the last
 // Shown only as a run of DTMF_RUN or more, each within 1.5 s of the last: speech decodes as a stray
@@ -706,7 +708,7 @@ void draw_slot(uint8_t i) __reentrant
 }
 #endif
 
-__xdata uint8_t m_len;               // the meter bar's filled width, its colour and the empty track's
+__xdata uint8_t m_len, m_sec;        // the meter bar's filled width (m_sec: the timer's second drawn), its colour and the empty track's
 __xdata uint16_t m_col, m_trk, m_fg;   // m_fg: the readings' colour
 // asm/draw_meter.asm (with m_fill, m_text and bar_x); this C is the reference (make CFUN=draw_meter builds it)
 void draw_meter(void) __reentrant;
@@ -737,6 +739,22 @@ static void m_text(uint8_t x, __xdata char *p) __reentrant
 
 static uint8_t bar_x(uint8_t d) __reentrant { return d + (uint8_t)(d * 3) / 5; }   // d * 8 / 5 for d 0-85 (callers: 0-79): the bar's x for dBm + 130
 
+static void sql_tick(void) __reentrant
+{
+    if (cfg.sql >= 10 && !tx) {             // S1-S9 squelch: a tick where it opens, to show a station's margin
+        int8_t d = cfg.sql * 6 - 71;        // its dBm + 130
+        lcd_fillp(d < 0 ? 0 : bar_x(d), METER_Y - 1, 1, 9, P_FG);
+    }
+}
+
+static void rx_text(void) __reentrant      // a station heard: how long it has talked, " 0:42", in the bar's middle
+{
+    buf[14] = rx_min < 10 ? ' ' : '0' + rx_min / 10; buf[15] = '0' + rx_min % 10; buf[16] = ':';
+    buf[17] = '0' + rx_sec / 10; buf[18] = '0' + rx_sec % 10; buf[19] = 0;
+    m_sec = rx_sec;
+    m_text(43, buf + 14);
+}
+
 void draw_meter(void) __reentrant
 {
     uint8_t len = 0, s, a = 31;
@@ -757,7 +775,10 @@ void draw_meter(void) __reentrant
         // S9 = -93 dBm, 6 dB per S-unit, read the usual way: S7, S9, S9+20. The bar spans -130..-50
         // dBm: green with the squelch open, the accent at half brightness on noise, so noise never
         // reads as a signal.
-        if (dbm == m_dbm && open == m_open) return;   // drawn 10 times a second: only when something changed
+        if (dbm == m_dbm && open == m_open) {   // 3 times a second: only when something changed,
+            if (open && rx_sec != m_sec) { rx_text(); sql_tick(); }   // or just the timer, once a second
+            return;
+        }
         m_dbm = dbm; m_open = open;
         if (dbm > -130) len = dbm >= -50 ? W : bar_x(dbm + 130);
         s = dbm > 0 ? 0 : dbm < -199 ? 199 : -dbm;
@@ -774,19 +795,22 @@ void draw_meter(void) __reentrant
         m_col = open ? c_ok : (c_acc >> 1 & 0x7BEF) + (c_bg >> 1 & 0x7BEF);   // noise: halfway from the background to the accent (each 565 field halved)
     }
     // The bar is 9 rows, the text's 8 under one more, so the letters (blank row at their foot) sit
-    // centred; "S9+11" at x 1-30 and "-102dBm" at x 86-127 (each glyph's blank column on its right).
+    // centred; "S9+11" at x 1-30, a station's timer " 0:42" at 43-72 and "-102dBm" at x 86-127 (each
+    // glyph's blank column on its right).
     m_len = len;                            // the track in the tint of the slot heard or transmitting, else plain
     s = tx ? T_TX : open ? T_RX : P_BAR;
     m_trk = theme_c(s);
     m_text(1, buf + 8);
     m_text(86, buf);
+    if (!tx && open) {                      // a station heard: its timer between the two
+        rx_text();
+        m_fill(a, 43, METER_Y);
+        a = 73;
+    }
     m_fill(0, W, METER_Y - 1);
     m_fill(0, 1, METER_Y);
     m_fill(a, 86, METER_Y);
-    if (cfg.sql >= 10 && !tx) {             // S1-S9 squelch: a tick where it opens, to show a station's margin
-        int8_t d = cfg.sql * 6 - 71;        // its dBm + 130
-        lcd_fillp(d < 0 ? 0 : bar_x(d), METER_Y - 1, 1, 9, P_FG);
-    }
+    sql_tick();
 }
 #endif
 
@@ -886,6 +910,8 @@ void draw_status(void) __reentrant
 }
 #endif
 
+static void slot_drawn(uint8_t i);
+
 static void draw_main(void)
 {
     uint8_t now_ok = rx_settled();          // before the slots' 40 ms: a retune this pass reads unsettled here
@@ -900,7 +926,7 @@ static void draw_main(void)
     }
     lcd_fillp(0, 9, W, 1, P_BAR);            // under the status bar
     for (uint8_t i = 0; i < 2; i++) {       // each slot, then the rows between it and the meter in its tint
-        draw_slot(i);                       // (bg when none): a slot heard or transmitting runs to the meter
+        slot_drawn(i);                      // (bg when none): a slot heard or transmitting runs to the meter
         lcd_fill(0, i ? 70 : 58, W, 3 - i, theme_c(tinted[i]));
     }
     m_open = 0xFF;                          // just retuned: the main loop draws the new channel's first settled reading
@@ -1198,21 +1224,48 @@ static void list_frame(const __code label_t *l) __reentrant   // after list_redr
     draw_labels(&back, 1);
 }
 
+static void ago(__xdata char *p, uint16_t at)   // p[0-2]: "<1m", " 3m", "12m", " 3h", since up10 was at
+{
+    uint16_t m = up10 - at;                 // 10 s spells ago
+    uint8_t c, hr = m >= 360;               // an hour or more
+    m /= hr ? 360 : 6;                      // hours (up to 182) or minutes
+    c = m > 99 ? 99 : m;
+    u2s(p, c, 2); p[2] = hr ? 'h' : 'm';
+    if (p[0] == '0') p[0] = c ? ' ' : '<';  // "<0m" reads "<1m": less than a minute
+    if (!c) p[1] = '1';
+}
+
 static void heard_row(uint8_t i) __reentrant   // "M12  146.520     3m"
 {
     const __xdata heard_t *h = lh + i;
-    uint16_t m = up10 - h->at;              // 10 s spells ago
-    uint8_t c = h->chn, hr = m >= 360;      // an hour or more
+    uint8_t c = h->chn;
     pad_to(buf, 21);
     if (c) { buf[0] = 'M'; *num(buf + 1, c) = ' '; }   // num ends in a NUL
     freq_s(buf + 5, h->f);
     pad_to(buf + 12, 21);                   // over freq_s's NUL and dec's 10 Hz digit and NUL: the age shows
-    m /= hr ? 360 : 6;                      // hours (up to 182) or minutes
-    c = m > 99 ? 99 : m;
-    u2s(buf + 18, c, 2); buf[20] = hr ? 'h' : 'm';
-    if (buf[18] == '0') buf[18] = c ? ' ' : '<';   // "<0m" reads "<1m": less than a minute
-    if (!c) buf[19] = '1';
+    ago(buf + 18, h->at);
     list_row(14 + 12 * i, i == lsel, P_ACC);
+}
+
+// After a quiet slot's letter, how long ago its frequency was last heard ("12m"): its row in LAST
+// HEARD (0xFF: none, or the slot is heard or transmitting), found as it draws; the 10 s clock redraws the age.
+static __xdata uint8_t ago_k[2];
+static void slot_ago(uint8_t i)
+{
+    uint8_t k = ago_k[i];
+    if (k >= lh_n) return;
+    ago(buf, lh[k].at); buf[3] = 0;
+    text1(10, i ? 73 : 14, P_DIM);
+}
+
+static void slot_drawn(uint8_t i)           // draw_slot, then its last heard
+{
+    const __xdata heard_t *h = lh;
+    uint8_t k = 0;
+    draw_slot(i);
+    ago_k[i] = 0xFF;
+    if (!tinted[i]) for (; k < lh_n; k++, h++) if (h->f == dc.rx) { ago_k[i] = k; break; }
+    slot_ago(i);
 }
 
 static uint8_t heard_screen(void)          // the picked row (lsel), or 0xFF for V/M
@@ -1812,7 +1865,7 @@ static void squelch(void)
         open = want;
         bk_af(open);
         if (open) {
-            t_hit = (now() - 1) | 1; heard_add();   // t_hit 0: nothing heard since the last retune; never a tick ahead (secs() would wrap)
+            t_hit = t_rx = (now() - 1) | 1; heard_add(); rx_min = rx_sec = 0;   // t_hit 0: nothing heard since the last retune; never a tick ahead (secs() would wrap)
             // BELL (Icom's pocket beep): a call after 10 s with no key, TX or signal (t_key counts all
             // three) rings once and marks the status bar. Not for a scan stop, a peek or a held squelch.
             if (cfg.bell && !scanning && !peek && !SQL_HELD && secs(&t_key) >= 10) { rang = 1; bk_chime(snd_bell); }
@@ -1820,7 +1873,11 @@ static void squelch(void)
         else heard = 0;
         dirty = 1; fast = 0;                // the tint comes or goes: the whole screen (a fast redraw keeps a slot's tint)
     }
-    if (open) { stamp(&t_open); if (lh_n && on_rx(&lh[0].f)) lh[0].at = up10; }   // last heard: still on
+    if (open) {
+        stamp(&t_open);
+        if (lh_n && on_rx(&lh[0].f)) lh[0].at = up10;   // last heard: still on
+        if (since(&t_rx) >= 200) { t_rx += 200; if (++rx_sec == 60) { rx_sec = 0; if (rx_min < 99) rx_min++; } }   // a second more (99 minutes at most)
+    }
 }
 
 // Status LEDs, every pass: red on the transmitting slot's spot (left A, right B), green on the
@@ -2373,7 +2430,7 @@ void main(void)
         if (alert) menu = 0xFF;             // a weather alert takes the screen from the menu (dirty: peek_at)
         if (menu == 0xFF) {
             if (dirty) {
-                if (fast) draw_slot(cfg.act); else draw_main();
+                if (fast) slot_drawn(cfg.act); else draw_main();
                 dirty = fast = 0;
                 if (remote_req & REQ_END) { remote_req &= ~REQ_END; remote_end(); }   // the redraw REMOTE asked for is done
                 if (scanning) stamp(&t_scan);   // a scan's dwell starts once the new channel is on screen
@@ -2399,6 +2456,7 @@ void main(void)
         if (secs(&t_batt) >= 10) {
             stamp(&t_batt);
             up10++;                         // last heard's and CALL ID's clock, counted while transmitting too
+            if (menu == 0xFF && !alert && !dirty) { slot_ago(0); slot_ago(1); }   // the slots' ages move on
             if (!tx) {                      // a 2S pack: warn once at 6.8 V, TX refused under 6.5 V
                 int16_t mv = batt_cal();
                 if (mv < 6800 && !low_batt) { low_batt = 1; note = low_s; bk_chime(snd_batt); dirty = 1; }

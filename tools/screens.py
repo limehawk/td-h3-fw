@@ -21,7 +21,7 @@ OUT = os.path.join(ROOT, 'docs', 'manual', 'img')
 # name: [(number, x, y), ...] in the radio's 128 x 128 pixels: where each callout points
 CALLOUTS = {
     'home': [(1, 3, 17), (2, 64, 17), (3, 118, 17), (4, 75, 30), (5, 5, 44), (6, 115, 44), (7, 15, 53),
-             (8, 118, 53), (9, 50, 66), (10, 108, 66), (11, 75, 88), (12, 15, 4), (13, 118, 4)],
+             (8, 118, 53), (9, 30, 66), (10, 108, 66), (11, 75, 88), (12, 15, 4), (13, 118, 4), (14, 18, 17), (15, 58, 66)],
     'typing': [(1, 30, 123)],
     'scanning': [(1, 15, 4), (2, 75, 30)],
     'menu': [(1, 12, 3), (2, 110, 3), (3, 60, 18), (4, 30, 33), (5, 112, 33), (6, 30, 63), (7, 127, 16), (8, 70, 111), (9, 40, 123)],
@@ -94,11 +94,20 @@ def capture():
 
     cpu = fresh()                          # home: A on channel 1, dual watch on, a station heard on B (VFO)
     t.keys(cpu, ['EXIT'])
+    cpu.bk.busy = lambda f: True           # A heard 12 minutes ago: its age after the letter
+    cpu.run(1_500_000)
+    cpu.bk.busy = None
+    cpu.run(1_000_000)
+    lh, up10 = t.static_at(t.FW_RX, 'lh'), t.static_at(t.FW_RX, 'up10')
+    t.poke16(cpu, lh + 4, t.peek16(cpu, up10) - 6 * 12)
     t.longpress(cpu, '9')
     on(cpu, 44600000)                      # the station starts while dual watch looks at B
     cpu.bk.busy = lambda f: True
     cpu.bk.dbm = lambda f: -82
     cpu.run(2_000_000)
+    rx_min, rx_sec = t.symbol(t.FW_RX, '_rx_min'), t.symbol(t.FW_RX, '_rx_sec')
+    cpu.xram[rx_min], cpu.xram[rx_sec] = 0, 42   # talking 42 s: the receive timer
+    cpu.run(400_000)
     save(cpu, 'home')
 
     cpu = fresh()
