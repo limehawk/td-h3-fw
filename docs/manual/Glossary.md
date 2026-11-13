@@ -100,7 +100,8 @@ speaker before the noise. TAIL TONE → REVERSE sends it; see Tail tone for the 
 on the scan list; groups 1-8 are your own subsets. A channel off the scan list is *skipped*: no
 scan stops on it, group scans included (hold **V/M** while scanning).
 
-**Scope (spectrum)**: a picture of the signals on the frequencies around you, as bars (hold **3**).
+**Scope (spectrum)**: a picture of the signals on the frequencies around you, as coloured bars with
+a waterfall of the last few sweeps under them (hold **3**).
 
 ![The scope](img/scope.png)
 

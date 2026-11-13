@@ -3,6 +3,13 @@
 What changed on the radio and in the tdh3 flasher, newest release first. Each release's page
 starts with its part of this list.
 
+## Next release
+
+- The scope (hold 3) colours each bar by strength, dark for the band's noise up to the brightest for
+  a strong station (navy to red in CLASSIC; each theme uses its own colours), and keeps a waterfall
+  of the last sweeps under the bars. Its scale sets itself to the band's noise, the cursor's signal
+  shows in dBm beside its frequency, and 5 switches to a slow sweep that catches short transmissions.
+
 ## 0.66.0
 
 - The home screen shows two times: while you hear a station, how long it has been talking, in the

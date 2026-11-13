@@ -214,6 +214,7 @@ void bcd_put(__xdata uint8_t *b, uint32_t v, uint8_t n) __reentrant;
 #define SCR_BUF 180
 extern __xdata uint8_t scr_buf[SCR_BUF];
 uint32_t scope(uint32_t center, uint16_t step) __reentrant;   // spectrum scope, returns the picked frequency or 0
+extern __xdata int8_t sc_cal;                // METER CAL, for the scope's readings
 uint32_t freq_find(void) __reentrant;                 // frequency counter, returns what it heard or 0
 
 // main.c: theme colours (fm.c draws with them too)
@@ -226,12 +227,16 @@ extern __xdata uint16_t pal[8];
 #define c_hi pal[5]
 #define c_bar pal[6]
 enum { P_BG, P_FG, P_DIM, P_ACC, P_OK, P_HI, P_BAR, P_RED };
+uint16_t theme_c(uint8_t i) __reentrant;    // main.c: colour i of the current theme's row
+#define H0 10                               // theme_c(H0) to theme_c(H0 + 5): the scope's scale, weak to strong
 typedef struct { uint8_t x, y, scale, col; const __code char *s; } label_t;   // fixed text on a screen
 void draw_labels(const __code label_t *l, uint8_t n) __reentrant;
 
 uint8_t lights(uint8_t k) __reentrant;     // main.c: backlight timeout, flashlight; k, or 0 if it only lit the screen
 uint32_t wx_freq(uint8_t n) __reentrant;    // main.c: NOAA weather channel n (0-6), 10 Hz
 __xdata char *dec(__xdata char *p, uint32_t v, uint8_t w, uint8_t frac) __reentrant;   // main.c: fixed-point decimal
+__xdata char *num(__xdata char *p, uint8_t v) __reentrant;   // main.c: 0-255, no padding; returns the end
+__xdata char *cat(__xdata char *d, const __code char *s) __reentrant;   // main.c: strcpy from code; returns the end
 
 // clone.c
 void clone_session(uint8_t bt) __reentrant;            // PC LINK, returns on EXIT or 10 quiet minutes; bt: also listen on Bluetooth

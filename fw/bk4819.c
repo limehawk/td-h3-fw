@@ -476,6 +476,8 @@ int16_t bk_dbm_at(uint32_t f) __reentrant
     bk_freq(f);
     bk_table(vco_tab, sizeof vco_tab);      // retrigger VCO calibration, then RX back on
     for (uint8_t i = 0; i < 50 && (bk_read(0x63) & 0xFF) >= 200; i++) ;   // settled when the glitch count is under 200
+    // On the radio the glitch count reads 255 until about 11 ms after the retune whatever is there, so
+    // this ends at read 41 every time (measured, fw/scan.c RISE): in effect a delay timed by the chip.
     bk_read(0x67);                          // the first RSSI read can still be moving
     return bk_dbm();                        // (fagci's GetRssi, Apache-2.0: top of file)
 }

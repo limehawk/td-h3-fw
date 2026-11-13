@@ -4,7 +4,7 @@
 
 | I want to… | Press |
 |---|---|
-| See the band around me (scope) | Hold **3**; **MENU** tunes to the cursor, **V/M** leaves |
+| See the band around me (scope) | Hold **3**; **5** slow sweep, **MENU** tunes to the cursor, **V/M** leaves |
 | Find a nearby radio's frequency (freq find) | Hold **7**; **MENU** takes it, **V/M** leaves |
 | See who was on lately | **MENU**, **3** **2** (LAST HEARD), **MENU** |
 | Watch for weather alerts | **MENU**, **4** **3** (WX ALERT), **MENU**, **UP** / **DOWN** to your channel, **MENU** |
@@ -16,18 +16,43 @@
 
 ## Scope (hold 3)
 
-A live picture of the band around your frequency: each bar is one channel, taller = stronger.
+A live picture of the band around your frequency: each bar is one channel, and the stronger the
+signal on it, the taller the bar and the hotter its colour. Under the bars, a waterfall keeps the
+last few sweeps, so you can see what was on a moment ago.
 
 ![The scope](img/scope.png)
 
-1. **The frequency under the cursor.**
-2. **Bars**: green is the signal now, the amber tick above is the strongest seen (peak hold).
-   The highlighted column is the cursor.
-3. **Keys**: UP/DOWN move the cursor, 2/8 move the window a quarter down or up, 0 clears the
-   peaks, MENU tunes the selected slot to the cursor (in frequency mode), V/M leaves.
+1. **The cursor's frequency and its signal** in dBm, the same reading as the signal meter on the
+   main screen. The closer to zero, the stronger: -110 to -120 is empty air, -60 a strong station
+   nearby. After you move the cursor, the reading comes when the sweep next passes it.
+2. **Bars**: the signal on each channel now. The bottom of each bar is navy and blue; a stronger
+   signal climbs through cyan and yellow to orange and red. The amber tick above a bar is the
+   strongest it has been (peak hold). The highlighted column with the plain bar is the cursor.
+3. **Waterfall**: each sweep of the band leaves a row of dots in the same colours, starting just
+   under the bars. The newest row is just above the blank line. The blank line moves down one row
+   each sweep and starts again at the top, so the rows under it are the oldest and the last 35
+   sweeps stay on the screen. A station that came and went stays as a streak.
+4. **Keys**: UP/DOWN move the cursor, 2/8 move the window a quarter down or up, 0 clears the peaks,
+   5 switches between the fast and the slow sweep (the line says which one 5 switches to), MENU
+   tunes the selected slot to the cursor (in frequency mode), V/M leaves. 0, 2, 8 and 5 start the
+   waterfall again.
+
+The scale sets itself to the band. Its foot sits just under the quietest channels' own noise (the
+hiss of empty channels). The first colour is wide enough to hold that hiss even where it rises a
+little across the window, as it does on a real receiver, so the empty channels are a calm dark field
+and a station stands out the same whether the band is quiet or noisy. A full-height bar is a signal
+about 33 dB or more over the noise. The scale follows the noise slowly, 1 dB a sweep, so a burst of
+noise lifts the bars and not the whole picture.
+
+**Slow sweep (5)**: the scope listens to each channel for about 40 thousandths of a second instead
+of one quick look, and keeps the strongest reading. A short transmission (a burst of data, or a
+digital voice signal, which is on and off many times a second) can't slip between looks. A sweep
+then takes about three seconds, and the waterfall holds well over a minute. Every channel reads a
+little stronger this way, so pressing 5 sets the scale afresh: the bars come back after one sweep.
 
 The 64 bars are one tuning step apart (STEP kHz in the [Menu](Menu)), so the scope's width follows
-the step: 64 x 25 kHz = 1.6 MHz. Holding **3** stops a scan.
+the step: 64 x 25 kHz = 1.6 MHz. Holding **3** stops a scan. The speaker is quiet while the scope
+is open.
 
 ## Freq find (hold 7)
 

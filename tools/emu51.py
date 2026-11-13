@@ -45,6 +45,8 @@ class BK4819:
         self.tails = 0              # 55 Hz squelch tails still to be heard, one interrupt each, with the detector armed
         self.settle = 0             # instructions after RX turns on (REG_30) that RSSI reads the floor: the real chip's
         self.clock = None           # few ms; the glitch count (REG_63) reads high meanwhile; fn() -> CPU icount
+        self.rise = None            # optional fn(instructions since RX on) -> dB REG_67 still reads under the level:
+                                    # the real chip's RSSI climbs for ~20 ms after a retune (fw/scan.c RISE)
         self.t_tuned = -10**9
         self.voice = 0              # the mic's level as the VOX detector sees it; found over REG_46, lost under REG_79 (REG_31 bit 2 on)
         self.vox_found = False
@@ -75,7 +77,10 @@ class BK4819:
             reg = self.bits & 0x7F
             self.reads.append(reg)
             if reg == 0x67 and self.dbm:
-                self.regs[0x67] = (self.dbm(self.freq()) + 160) * 2
+                d = self.dbm(self.freq())
+                if self.rise:
+                    d -= self.rise(self.clock() - self.t_tuned)
+                self.regs[0x67] = (d + 160) * 2
             if self.settle and reg in (0x63, 0x67):
                 busy = self.clock() - self.t_tuned < self.settle
                 if reg == 0x63:

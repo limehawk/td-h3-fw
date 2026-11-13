@@ -11,6 +11,7 @@ here transmits (REMOTE refuses PTT) or changes a saved setting.
 """
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -189,12 +190,68 @@ def t_fm():
     check('FM back to home', r.is_home())
 
 
+def scope_rec(seconds):                     # the scope for a while as tdh3 records its mirror: sweep period (ms),
+    rec = os.path.join(OUT, 'scope.rec')    # mirror bytes a sweep, and the texts drawn {(x, y): last text}
+    os.makedirs(OUT, exist_ok=True)
+    p = subprocess.Popen([TDH3, '-p', r.port, 'remote', 'record', rec], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(seconds)
+    p.send_signal(signal.SIGINT)
+    p.wait(10)
+    return scope_parse(open(rec, 'rb').read())
+
+
+def scope_parse(b):
+    b, data, at = b[9:], bytearray(), []   # after "TDH3REC1\n": (ms, n, n bytes) chunks
+    while len(b) >= 8:
+        n = int.from_bytes(b[4:8], 'big')
+        at.append((len(data), int.from_bytes(b[:4], 'big')))
+        data += b[8:8 + n]
+        b = b[8 + n:]
+    ms = lambda o: [t for start, t in at if start <= o][-1]
+    i, marks, texts = max(data.find(b'S\xa5\x5a'), 0), [], {}
+    while i < len(data):                    # fw/remote.c's records
+        k = data[i]
+        if k == ord('f'):
+            if data[i + 1:i + 5] == bytes((0, data[i + 2], 2, 1)) and 68 <= data[i + 2] < 104:
+                marks.append((ms(i), i))    # point 0's dot in the waterfall: once a sweep
+            i += 7
+        elif k == ord('t'):
+            end = data.find(0, i + 8)
+            if end < 0: break
+            texts[(data[i + 1], data[i + 2])] = data[i + 8:end].decode('latin-1')
+            i = end + 1
+        elif k == ord('q'):
+            i = data.find(b'\n', i) + 1 or len(data)
+        else:
+            i += 3 if k == ord('S') else 1
+    if len(marks) < 2:
+        return 0, 0, texts
+    n = len(marks) - 1
+    return (marks[-1][0] - marks[0][0]) / n, (marks[-1][1] - marks[0][1]) / n, texts
+
+
 def t_scope():
     r.home()
+    home_dbm = status_line().split()[2:3]
     r.key('3:long'); time.sleep(4)
-    s = r.screen()
     shot('scope')
-    check('SCOPE opens', any('SCOPE' in t for t in s.values()))
+    fast, fb, ft = scope_rec(8)
+    check('SCOPE opens: the cursor\'s dBm in the title, 5 on the key line',
+          ft.get((60, 0), '').strip().endswith('dBm') and ft.get((90, 108)) == 'slow', '%r %r' % (ft.get((60, 0)), ft.get((90, 108))))
+    check('fast sweep timed', fast > 0, '%.0f ms a sweep, %.0f ms of it sending the picture to this computer' % (fast, fb / 100))
+    r.key('5'); time.sleep(0.5)
+    slow, sb, st = scope_rec(12)
+    shot('scope-slow')
+    check('5: slow sweep', st.get((90, 108)) == 'fast' and slow > 1500, '%.0f ms a sweep' % slow)
+    print('     the cursor (the slot\'s frequency): home %s dBm, fast %s, slow %s' % (
+        ''.join(home_dbm) or '?', ft.get((60, 0), '?').strip(), st.get((60, 0), '?').strip()))
+    try:                                    # on a steady station (-100 dBm or stronger) all three read alike
+        h, fa, sl = int(home_dbm[0]), int(ft[(60, 0)].strip()[:-3]), int(st[(60, 0)].strip()[:-3])
+        if h >= -100:
+            check('home, fast and slow within 2 dB on the station', abs(fa - h) <= 2 and abs(sl - h) <= 2, '%d %d %d' % (h, fa, sl))
+    except (IndexError, KeyError, ValueError):
+        pass
+    r.key('5'); time.sleep(3)             # back to fast: the point being watched finishes first
     r.key('VM'); time.sleep(2)
     check('scope back to home', r.is_home())
 

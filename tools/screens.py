@@ -11,6 +11,7 @@ annotate: adds numbered callouts and writes docs/manual/img/<name>.png at 3x. Th
 terms:   runs the real tdh3 in a pseudo-terminal and draws what it prints as docs/manual/img/term-*.png.
 """
 import os
+import random
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ CALLOUTS = {
     'scanning': [(1, 15, 4), (2, 75, 30)],
     'menu': [(1, 12, 3), (2, 110, 3), (3, 60, 18), (4, 30, 33), (5, 112, 33), (6, 30, 63), (7, 127, 16), (8, 70, 111), (9, 40, 123)],
     'fm': [(1, 20, 3), (2, 40, 20), (3, 60, 42), (4, 70, 57), (5, 92, 62), (6, 30, 80), (7, 100, 115), (8, 108, 15)],
-    'scope': [(1, 20, 3), (2, 66, 60), (3, 50, 110)],
+    'scope': [(1, 80, 3), (2, 108, 42), (3, 76, 86), (4, 60, 111)],
     'freqfind': [(1, 40, 38), (2, 50, 123)],
     'pclink': [(1, 40, 48)],
     'locked': [(1, 80, 4)],
@@ -132,10 +133,24 @@ def capture():
     cpu.run(4_000_000)
     save(cpu, 'fm')
 
+    # The scope: a strong station under the cursor, a medium and a weak one, one that came and went
+    # (its streak in the waterfall, its peak tick left over), and the band's noise
     cpu = fresh()
-    cpu.bk.dbm = lambda f: -70 if abs(f - 14652000) < 2000 else -95 if abs(f - 14670000) < 6000 else -127
+    looks = [0]
+
+    def band(f):
+        p = (f - 14572000) // 2500          # the point, 0-63
+        looks[0] += p == 0                  # point 0 is read twice a sweep
+        s = looks[0] // 2
+        if p == 32: return -68
+        if p == 50: return -104
+        if p == 17: return -115
+        if p == 26 and 25 <= s < 34: return -86
+        return random.Random(p * 1000 + s).randint(-126, -122) + p // 11   # rising 5 dB across, as a real band's
+    cpu.bk.dbm = band
+    t.scope_chip(cpu)
     t.menu(cpu, 'SCOPE', ['UP'])
-    cpu.run(14_000_000)
+    cpu.run(66_000_000)                     # the blank line low in the waterfall, the station's streak over it
     save(cpu, 'scope')
 
     cpu = fresh()

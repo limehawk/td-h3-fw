@@ -2509,6 +2509,232 @@ def test_scope(cpu):
     assert cpu.bk.regs[0x43] == ch43, (hex(cpu.bk.regs[0x43]), hex(ch43))   # the channel's filter is back
 
 
+
+# SCOPE (scan.c): bars 54 px over y 12-65 in six colours (SC_EDGE: each one's top); the waterfall's 36 rows at y 68-103;
+# its state in the screen buffer after the bars, the peaks and the text: row, over, reach, sum, base, prev, slow
+SC_TOP, SC_TALL, SC_WF, SC_WFH, SC_ST = 12, 54, 68, 36, 2 * 64 + 10
+SC_F0 = 14652000 - 32 * 2500                # point 0: the VFO's 146.520 less half the window, 25 kHz steps
+SC_EDGE = [18, 26, 33, 41, 48, 54]
+
+
+def sc_band(px):                            # the colour of the pixel px up a bar
+    return next(b for b, e in enumerate(SC_EDGE) if px < e)
+
+
+def sc_height(dbm, base):                   # scan.c height(): px for a reading on the scale from base (dBm + 160)
+    u = dbm + 160 - base
+    return 0 if u <= 0 else SC_TALL if u >= 36 else u + u // 2
+# main.c's themes, colours H0..H0+5: the scale weak to strong, per theme
+HEAT_RGB = [
+    [(11, 30, 70), (37, 99, 235), (34, 211, 238), (253, 224, 71), (249, 115, 22), (239, 68, 68)],
+    [(28, 19, 0), (92, 63, 0), (133, 91, 0), (174, 120, 0), (215, 148, 0), (255, 176, 0)],
+    [(5, 28, 11), (18, 92, 36), (26, 133, 53), (34, 174, 69), (43, 215, 86), (51, 255, 102)],
+    [(28, 2, 0), (92, 8, 0), (133, 12, 0), (174, 16, 0), (215, 20, 0), (255, 24, 0)],
+    [(123, 161, 25), (48, 98, 48), (48, 98, 48), (16, 57, 15), (18, 59, 15), (15, 56, 15)],
+    [(76, 41, 16), (224, 122, 48), (224, 122, 48), (253, 206, 136), (249, 203, 134), (253, 58, 30)],
+    [(181, 179, 173), (68, 68, 68), (68, 68, 68), (18, 18, 18), (22, 21, 21), (17, 17, 17)],
+    [(85, 95, 69), (184, 199, 154), (184, 199, 154), (215, 163, 64), (212, 161, 64), (231, 95, 59)],
+    [(184, 164, 0), (42, 42, 0), (42, 42, 0), (1, 1, 0), (5, 5, 0), (176, 0, 0)],
+]
+
+
+def scope_sweeps(cpu, n):                  # run on to the start of the nth sweep from now: point 0 just tuned
+    w, seen = cpu.bk.writes, [len(cpu.bk.writes), 0]
+    def until():
+        if len(w) != seen[0]:
+            seen[0] = len(w)
+            seen[1] += w[-1] == (0x38, SC_F0 & 0xFFFF)
+        return seen[1] >= n
+    assert cpu.run(n * 6_000_000, until=until), 'the scope stopped sweeping'
+
+
+def scope_st(cpu, k):                      # one byte of the scope's state
+    return cpu.xram[symbol(FW, '_scr_buf') + SC_ST + k]
+
+
+def scope_chip(cpu):                       # the chip's RSSI after a retune as measured on the radio (scan.c RISE): the glitch
+    cpu.bk.clock = lambda: cpu.icount      # count high for a moment, then the level 8 dB short for a few reads, then all there
+    cpu.bk.settle = 3_000
+    cpu.bk.rise = lambda t: 8 if t < 15_000 else 0
+
+
+def scope_open(cpu, dbm, theme=0):
+    scope_chip(cpu)
+    if theme:
+        menu(cpu, 'THEME', ['UP'] * theme + ['EXIT'])
+    cpu.bk.dbm = dbm
+    menu(cpu, 'SCOPE', ['UP'])
+    scope_sweeps(cpu, 3)                   # the first sets the scale
+
+
+def test_scope_colours(cpu):               # a bar's colours weak to strong, the first 12 dB wide; the waterfall pixel is the
+    import lcdshot                         # bar's top colour; in four themes; no pink or purple anywhere on the scale
+    for c in sum(HEAT_RGB, []):
+        assert not (c[0] > c[1] + 30 and c[2] > c[1] + 30), ('pink or purple on the scale', c)
+    noise = -118                           # the scale's foot settles 1 dB under it: -119 dBm
+    st = {SC_F0 + 2500 * 40: -82, SC_F0 + 2500 * 50: -100,    # 37 dB over the foot (a full bar), 19 (28 px)
+          SC_F0 + 2500 * 20: -107, SC_F0 + 2500 * 25: -106}   # 12 dB (18 px: the first colour's top), 13 (19 px: the second's)
+    for n, c in ((0, cpu), (3, boot()), (6, boot()), (8, boot())):   # CLASSIC, NIGHT RED, E-INK, HIGH-VIS
+        scope_open(c, lambda f: st.get(f, noise), n)
+        scope_sweeps(c, 3)                 # the foot settled; then a waterfall drawn on that scale alone
+        press(c, '0')
+        scope_sweeps(c, 3)
+        base = 160 - 119
+        assert scope_st(c, 5) == base, scope_st(c, 5)
+        H, bg = [rgb(*x) for x in HEAT_RGB[n]], THEME_C[n][0]
+        fb, y = lcdshot.frame(c.lcd), SC_TOP + SC_TALL - 1   # y: a bar's bottom row
+        for i, h in ((40, 54), (50, 28), (20, 18), (25, 19), (10, 1)):
+            assert sc_height(st.get(SC_F0 + 2500 * i, noise), base) == h
+            col = [fb[y - k][2 * i] for k in range(SC_TALL)]
+            assert col[:h] == [H[sc_band(k)] for k in range(h)], (THEMES[n], i, col[:h])
+            assert col[h:] == [bg] * (SC_TALL - h), (THEMES[n], i, 'over the bar', col[h:])
+            assert {r[2 * i] for r in fb[SC_WF:SC_WF + SC_WFH]} - {bg} == {H[sc_band(h - 1)]}, (THEMES[n], i, 'waterfall')
+
+
+def wf_rows(cpu):                          # the waterfall's rows top to bottom: True where any pixel is drawn
+    import lcdshot
+    fb = lcdshot.frame(cpu.lcd)
+    return [any(p != fb[0][127] for p in fb[y]) for y in range(SC_WF, SC_WF + SC_WFH)]
+
+
+def noise(f, spread=2, slope=0):          # the band's hiss: -118 dBm give or take `spread` dB, new each look,
+    import random                          # rising `slope` dB across the window
+    return -118 + random.randint(-spread, spread) + round(slope * (f - SC_F0) / (63 * 2500))
+
+
+def test_scope_waterfall(cpu):             # a row a sweep from the top down, the newest just over a blank row; 0 clears it; it wraps;
+    import lcdshot, random                 # noise alone, rising 6 dB across the window as a real band's does, is one calm
+    random.seed(5)                         # colour, the scale's first
+    scope_open(cpu, lambda f: noise(f, 3, 6))               # sweep 1 sets the scale and draws no row; sweeps 2 and 3 the top two
+    for k in range(2, 5):
+        rows = wf_rows(cpu)
+        assert rows == [True] * k + [False] * (SC_WFH - k), (k, rows)
+        scope_sweeps(cpu, 1)
+    press(cpu, '0')
+    assert not any(wf_rows(cpu)[1:]), 'peaks cleared: the waterfall starts again'
+    scope_sweeps(cpu, 40)                  # round past the bottom: the newest row goes down from row 0 again
+    rows = wf_rows(cpu)
+    gap = [i for i, r in enumerate(rows) if not r]
+    assert len(gap) == 2 and gap[1] == gap[0] + 1, rows   # the row about to be written, and the blank row under it
+    assert scope_st(cpu, 0) == gap[0], (scope_st(cpu, 0), gap)
+    fb = lcdshot.frame(cpu.lcd)
+    dots = [r[x] for r in fb[SC_WF:SC_WF + SC_WFH] for x in range(0, 128, 2) if r[127] != fb[0][127]]
+    calm = rgb(*HEAT_RGB[0][0])
+    assert len(dots) > 2000 and sum(d != calm for d in dots) <= len(dots) // 50, \
+        ('noise not one colour', len(dots), {hex(d): dots.count(d) for d in set(dots)})
+
+
+def test_scope_slow(cpu):                  # 5: SLOW watches each frequency 35-40 ms, keeping the strongest reading:
+    f0, peak = SC_F0 + 2500 * 40, symbol(FW, '_scr_buf') + 64 + 40   # a burst that comes 19-31 ms after the radio
+    cpu.bk.clock = lambda: cpu.icount                                  # arrives there is missed by a fast look
+    burst = lambda f: -70 if f == f0 and 15_000 <= cpu.icount - cpu.bk.t_tuned < 25_000 else -118
+    scope_open(cpu, burst)
+    scope_sweeps(cpu, 3)
+    assert cpu.xram[peak] == 1, ('fast: the burst seen', cpu.xram[peak])   # the noise's 1 px
+    press(cpu, '5')
+    assert scope_st(cpu, 7) == 1
+    scope_sweeps(cpu, 3)                   # the first slow sweep sets the scale again
+    assert cpu.xram[peak] == SC_TALL, ('slow: the burst missed', cpu.xram[peak])
+    press(cpu, '5')
+    assert scope_st(cpu, 7) == 0
+
+
+def test_scope_scale(cpu):                 # the scale's foot: the first sweep's average less 3 dB, then 1 dB a sweep toward
+    lvl = [-118]                           # the quietest readings, so a burst of noise moves it 1 dB at most
+    jit = lambda f: lvl[0] + (f // 2500) % 3 - 1   # -1, 0, +1 dB across the window
+    scope_open(cpu, lambda f: -60 if f == SC_F0 + 2500 * 20 else jit(f))
+    base = 160 - 118 - 2                   # 1 dB under the lowest third
+    assert base - 2 <= scope_st(cpu, 5) <= base, scope_st(cpu, 5)
+    scope_sweeps(cpu, 3)
+    assert scope_st(cpu, 5) == base, ('steady noise: the foot stays', scope_st(cpu, 5))
+    lvl[0] = -106                          # the band 12 dB noisier: up 1 dB a sweep, then it settles
+    for k in range(1, 6):
+        scope_sweeps(cpu, 1)
+        assert scope_st(cpu, 5) == base + k, (k, scope_st(cpu, 5))
+    scope_sweeps(cpu, 10)
+    assert scope_st(cpu, 5) == base + 12, scope_st(cpu, 5)
+    import lcdshot                         # the station still a full bar, the noise bars as tall as on the quiet band
+    assert lcdshot.frame(cpu.lcd)[SC_TOP][40] == rgb(*HEAT_RGB[0][5])
+    h = cpu.xram[symbol(FW, '_scr_buf'):symbol(FW, '_scr_buf') + 64]
+    assert all(1 <= v <= 4 for i, v in enumerate(h) if i != 20), list(h)
+
+
+def test_scope_slow_scale(cpu):            # 5 starts the scale afresh: a slow sweep reads the noise higher (its strongest
+    import random                          # of many reads), and the scale is there after one sweep, not 1 dB a sweep
+    random.seed(7)
+    scope_open(cpu, lambda f: noise(f, 3))
+    scope_sweeps(cpu, 6)
+    fast = scope_st(cpu, 5)
+    press(cpu, '5')
+    assert scope_st(cpu, 5) == 255 and not any(wf_rows(cpu)[1:]), ('a new scale and waterfall', scope_st(cpu, 5), wf_rows(cpu))
+    scope_sweeps(cpu, 2)
+    assert scope_st(cpu, 5) >= fast + 2, (fast, scope_st(cpu, 5))
+    scope_sweeps(cpu, 2)
+    h = cpu.xram[symbol(FW, '_scr_buf'):symbol(FW, '_scr_buf') + 64]
+    assert all(v < SC_EDGE[0] for v in h), ('slow noise not in the first colour', list(h))
+
+
+def test_scope_reads_true(cpu):            # home, the fast look and the slow one agree on a steady station: the look reads the
+    menu(cpu, 'MCAL', ['UP'] * 3 + ['EXIT'])   # chip 8 dB short (scope_chip) and scan.c adds it back; METER CAL counts in all three
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    scope_chip(cpu)
+    cpu.bk.dbm = lambda f: -89 if f == 14652000 else -111
+    cpu.uart_in.extend(b'S')
+    cpu.run(200_000)
+    cpu.uart_in.extend(b'Q')
+    cpu.run(1_500_000)
+    home = [int(r[1].split()[1]) for r in remote_records(cpu.uart_out) if r[0] == 'q']
+    assert home and home[-1] == -86, home
+    scope_open(cpu, cpu.bk.dbm)
+    title = lambda: [r[3] for r in remote_records(cpu.uart_out) if r[0] == 't' and r[1:3] == (60, 0)]
+    assert title()[-1] == '-86dBm ', ('fast', title())
+    cpu.uart_in.extend(b'S')               # mirrored for 10 s more
+    press(cpu, '5')
+    scope_sweeps(cpu, 2)
+    assert title()[-1] == '-86dBm ', ('slow', title())
+
+
+def test_scope_title(cpu):                 # the cursor's reading in dBm beside its frequency; a new cursor's at its next look
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    cpu.uart_in.extend(b'S')
+    scope_open(cpu, lambda f: -62 if f == 14652000 else -117 if f == 14654500 else -118)
+    title = lambda: [r[3] for r in remote_records(cpu.uart_out) if r[0] == 't' and r[1:3] == (60, 0)]
+    assert title()[-1] == '-62dBm ', title()
+    cpu.uart_out.clear()
+    cpu.uart_in.extend(b'S')               # mirrored for 10 s more
+    press(cpu, 'UP')
+    scope_sweeps(cpu, 2)
+    assert title()[-1] == '-117dBm ', title()
+    texts = [r[3] for r in remote_records(cpu.uart_out) if r[0] == 't']
+    assert '146.5450' in texts and '\x7f\x80 2/8 move  5' in texts and 'slow' in texts, texts
+
+
+def test_scope_keys(cpu):                  # 8 and 2 move the window a quarter, 0 clears the peaks, V/M leaves
+    scope_open(cpu, lambda f: -70 if f == 14652000 else -118)
+    scope_sweeps(cpu, 2)                   # the foot settled: a full bar's peak is kept as it moves, but only to 36 dB
+    pk = symbol(FW, '_scr_buf') + 64
+    assert cpu.xram[pk + 32] == SC_TALL
+    cpu.bk.dbm = lambda f: -118            # the station gone: its peak stays till 0
+    scope_sweeps(cpu, 1)
+    assert cpu.xram[pk + 32] == SC_TALL
+    press(cpu, '0')
+    assert cpu.xram[pk + 32] <= 6, 'peaks not cleared'
+    cpu.key = '8'                          # a key acts when it is let go: what the sweep looks at while 8 is held is the
+    while not cpu.xram[cpu.key_held_at]:   # old window, as far as the image's speed takes it
+        cpu.run(50_000)
+    n = len(cpu.bk.writes)
+    cpu.key = None
+    cpu.run(1_200_000)
+    t, new = tuned(cpu, n), SC_F0 + 16 * 2500
+    assert new in t[:3] and min(t[t.index(new):]) >= new, ('window not moved up a quarter', [(f - SC_F0) // 2500 for f in t])
+    n = len(cpu.bk.writes)
+    keys(cpu, ['2', '2'])
+    cpu.run(500_000)
+    assert SC_F0 - 16 * 2500 in tuned(cpu, n), 'window not moved down'
+    press(cpu, 'EXIT')
+    cpu.run(2_000_000)
+    assert freq(cpu) == 14652000, freq(cpu)
+
 def remote_records(out):                   # REMOTE stream after the last sync -> [(kind, ...)]
     i, recs = out.rfind(b'S\xa5\x5a') + 3, []
     while i < len(out):
@@ -3987,6 +4213,14 @@ INDEPENDENT = [
     ('freq find', test_freq_find),
     ('freq find rounds to the nearest 2.5 kHz', test_freq_find_rounds),
     ('spectrum scope sweep + tune', test_scope),
+    ('scope: bars and waterfall coloured by level, four themes', test_scope_colours),
+    ('scope: waterfall gains a row a sweep, clears, wraps', test_scope_waterfall),
+    ('scope: 5 slow catches a burst the fast sweep misses', test_scope_slow),
+    ('scope: the scale follows the noise 1 dB a sweep', test_scope_scale),
+    ('scope: 5 starts the scale afresh', test_scope_slow_scale),
+    ('scope: the cursor\'s dBm in the title', test_scope_title),
+    ('scope: home, fast and slow read a station alike', test_scope_reads_true),
+    ('scope: 2/8 move, 0 clears peaks, V/M leaves', test_scope_keys),
     ('frequency calibration', test_freq_cal),
     ('BRIGHTNESS dims the backlight, LIGHT timeout still works', test_brightness),
     ('BELL rings for a call after a quiet spell', test_bell),

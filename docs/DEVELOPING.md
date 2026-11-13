@@ -209,7 +209,7 @@ is 4000 instructions, about 25× fewer than the real 48 MHz part runs in 5 ms. T
 
 - Anything tick-based (`delay_ms`, key repeat and long-press, timeouts) runs at the right
   emulated time. Busy-wait code (`udelay`, bit-banged buses, LCD fills) runs ~25× slow in
-  emulated time. A scope sweep point costs ~108K instructions (27 ticks) here, ~2.5 ms on
+  emulated time. A scope sweep point costs ~26K instructions (6 ticks) here, ~2.5 ms on
   the radio.
 - Key presses are in instructions: `press` holds 250K (62 ticks), `longpress` 1.4M. Key
   debounce is time-based (stable for 2 ticks) so it works whatever the caller's poll rate.

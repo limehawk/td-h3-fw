@@ -176,7 +176,7 @@ __xdata char *num(__xdata char *p, uint8_t v) __reentrant   // 0-255, no padding
     return p + w;
 }
 
-static __xdata char *cat(__xdata char *d, const __code char *s) __reentrant { while ((*d = *s++)) d++; return d; }
+__xdata char *cat(__xdata char *d, const __code char *s) __reentrant { while ((*d = *s++)) d++; return d; }
 __xdata char *xcat(__xdata char *d, const __xdata char *s) __reentrant { while ((*d = *s++)) d++; return d; }   // cat from RAM
 void pad_to(__xdata char *p, uint8_t n) __reentrant { while (p < buf + n) *p++ = ' '; *p = 0; }   // buf from p to n characters
 
@@ -341,19 +341,22 @@ static void cfg_load(void)
 
 // Themes; the panel is BGR, RGB() packs for it. bg, fg, dim, accent, signal, highlight, bar, transmit
 // (P_RED), and the tints behind a slot being heard and one transmitting (draw_slot reads those two
-// from here): the background 29% of the way to signal and to transmit.
+// from here): the background 29% of the way to signal and to transmit. Then the scope's scale, weak
+// to strong (H0 in fw.h): navy to red in CLASSIC; one hue getting brighter in the night themes and
+// GREEN; the colour themes' own highlight, accent and transmit colours, as they repaint everything else.
+// The first, the band's noise, is the background 30% of the way to the second: a calm field.
 #define T_RX 8
 #define T_TX 9
-static const __code uint16_t themes[NTHEMES][10] = {
-    {BLACK, WHITE, RGB(120, 120, 120), RGB(255, 176, 0), RGB(0, 220, 80), RGB(0, 200, 230), RGB(30, 30, 30), RED, RGB(6, 64, 28), RGB(74, 12, 0)},
-    {BLACK, RGB(255, 176, 0), RGB(138, 90, 0), RGB(255, 176, 0), RGB(255, 204, 64), RGB(255, 208, 112), RGB(42, 24, 0), RED, RGB(40, 26, 0), RGB(88, 44, 0)},
-    {BLACK, RGB(51, 255, 102), RGB(26, 138, 51), RGB(51, 255, 102), RGB(153, 255, 170), RGB(204, 255, 216), RGB(6, 32, 16), RED, RGB(6, 48, 16), RGB(16, 84, 28)},
-    {BLACK, RGB(255, 24, 0), RGB(128, 8, 0), RGB(255, 24, 0), RGB(255, 64, 32), RGB(255, 104, 80), RGB(40, 0, 0), RED, RGB(40, 0, 0), RGB(84, 0, 0)},   // keeps night vision
-    {RGB(155, 188, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(15, 56, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(139, 172, 15), RGB(15, 56, 15), RGB(114, 150, 15), RGB(114, 150, 15)},   // POCKET
-    {RGB(13, 6, 3), RGB(255, 154, 60), RGB(176, 96, 42), RGB(255, 208, 138), RGB(255, 241, 201), RGB(224, 122, 48), RGB(42, 20, 8), RGB(255, 59, 31), RGB(83, 74, 60), RGB(83, 21, 11)},   // NIXIE
-    {RGB(230, 227, 218), RGB(17, 17, 17), RGB(85, 85, 85), RGB(17, 17, 17), RGB(17, 17, 17), RGB(68, 68, 68), RGB(201, 197, 186), RGB(17, 17, 17), RGB(168, 166, 160), RGB(168, 166, 160)},   // E-INK
-    {RGB(43, 51, 32), RGB(227, 214, 168), RGB(169, 173, 124), RGB(217, 164, 65), RGB(199, 224, 106), RGB(184, 199, 154), RGB(61, 74, 44), RGB(232, 96, 60), RGB(88, 101, 53), RGB(98, 64, 40)},   // FIELD
-    {RGB(245, 216, 0), RGB(0, 0, 0), RGB(58, 51, 0), RGB(0, 0, 0), RGB(0, 92, 26), RGB(42, 42, 0), RGB(209, 184, 0), RGB(176, 0, 0), RGB(174, 180, 8), RGB(225, 153, 0)},   // HIGH-VIS
+static const __code uint16_t themes[NTHEMES][16] = {
+    {BLACK, WHITE, RGB(120, 120, 120), RGB(255, 176, 0), RGB(0, 220, 80), RGB(0, 200, 230), RGB(30, 30, 30), RED, RGB(6, 64, 28), RGB(74, 12, 0), RGB(11, 30, 70), RGB(37, 99, 235), RGB(34, 211, 238), RGB(253, 224, 71), RGB(249, 115, 22), RGB(239, 68, 68)},
+    {BLACK, RGB(255, 176, 0), RGB(138, 90, 0), RGB(255, 176, 0), RGB(255, 204, 64), RGB(255, 208, 112), RGB(42, 24, 0), RED, RGB(40, 26, 0), RGB(88, 44, 0), RGB(28, 19, 0), RGB(92, 63, 0), RGB(133, 91, 0), RGB(174, 120, 0), RGB(215, 148, 0), RGB(255, 176, 0)},
+    {BLACK, RGB(51, 255, 102), RGB(26, 138, 51), RGB(51, 255, 102), RGB(153, 255, 170), RGB(204, 255, 216), RGB(6, 32, 16), RED, RGB(6, 48, 16), RGB(16, 84, 28), RGB(5, 28, 11), RGB(18, 92, 36), RGB(26, 133, 53), RGB(34, 174, 69), RGB(43, 215, 86), RGB(51, 255, 102)},
+    {BLACK, RGB(255, 24, 0), RGB(128, 8, 0), RGB(255, 24, 0), RGB(255, 64, 32), RGB(255, 104, 80), RGB(40, 0, 0), RED, RGB(40, 0, 0), RGB(84, 0, 0), RGB(28, 2, 0), RGB(92, 8, 0), RGB(133, 12, 0), RGB(174, 16, 0), RGB(215, 20, 0), RGB(255, 24, 0)},   // keeps night vision
+    {RGB(155, 188, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(15, 56, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(139, 172, 15), RGB(15, 56, 15), RGB(114, 150, 15), RGB(114, 150, 15), RGB(123, 161, 25), RGB(48, 98, 48), RGB(48, 98, 48), RGB(16, 57, 15), RGB(18, 59, 15), RGB(15, 56, 15)},   // POCKET
+    {RGB(13, 6, 3), RGB(255, 154, 60), RGB(176, 96, 42), RGB(255, 208, 138), RGB(255, 241, 201), RGB(224, 122, 48), RGB(42, 20, 8), RGB(255, 59, 31), RGB(83, 74, 60), RGB(83, 21, 11), RGB(76, 41, 16), RGB(224, 122, 48), RGB(224, 122, 48), RGB(253, 206, 136), RGB(249, 203, 134), RGB(253, 58, 30)},   // NIXIE
+    {RGB(230, 227, 218), RGB(17, 17, 17), RGB(85, 85, 85), RGB(17, 17, 17), RGB(17, 17, 17), RGB(68, 68, 68), RGB(201, 197, 186), RGB(17, 17, 17), RGB(168, 166, 160), RGB(168, 166, 160), RGB(181, 179, 173), RGB(68, 68, 68), RGB(68, 68, 68), RGB(18, 18, 18), RGB(22, 21, 21), RGB(17, 17, 17)},   // E-INK
+    {RGB(43, 51, 32), RGB(227, 214, 168), RGB(169, 173, 124), RGB(217, 164, 65), RGB(199, 224, 106), RGB(184, 199, 154), RGB(61, 74, 44), RGB(232, 96, 60), RGB(88, 101, 53), RGB(98, 64, 40), RGB(85, 95, 69), RGB(184, 199, 154), RGB(184, 199, 154), RGB(215, 163, 64), RGB(212, 161, 64), RGB(231, 95, 59)},   // FIELD
+    {RGB(245, 216, 0), RGB(0, 0, 0), RGB(58, 51, 0), RGB(0, 0, 0), RGB(0, 92, 26), RGB(42, 42, 0), RGB(209, 184, 0), RGB(176, 0, 0), RGB(174, 180, 8), RGB(225, 153, 0), RGB(184, 164, 0), RGB(42, 42, 0), RGB(42, 42, 0), RGB(1, 1, 0), RGB(5, 5, 0), RGB(176, 0, 0)},   // HIGH-VIS
 };
 __xdata uint16_t pal[8];
 void draw_labels(const __code label_t *l, uint8_t n) __reentrant
@@ -370,7 +373,7 @@ static void tx_prefs(void)                  // the settings radio.c, bk4819.c an
     bk_vox = cfg.vox ? vox_thr[cfg.vox - 1] : 0;
 }
 
-uint16_t theme_c(uint8_t i) __reentrant { return ((const __code uint16_t *)themes)[(uint8_t)(cfg.theme * 10 + i)]; }   // colour i of the current theme (an 8-bit index: no int multiply)
+uint16_t theme_c(uint8_t i) __reentrant { return ((const __code uint16_t *)themes)[(uint8_t)(cfg.theme << 4 | i)]; }   // colour i of the current theme (an 8-bit index: no multiply)
 
 void theme_apply(void)
 {
@@ -1481,7 +1484,7 @@ static void menu_change(int8_t d) __reentrant
         load_prio();
         break;
     }
-    case M_SCOPE: set_vfo(scope(ch.rx, steps[cfg.step])); break;
+    case M_SCOPE: sc_cal = cfg.mcal; set_vfo(scope(ch.rx, steps[cfg.step])); break;
     case M_GRP: case M_TOVFO: case M_NAME:   // the channel afresh: ch may be reversed or weather
         if (!sl_mem() || !chan_load(sl_chn())) { note = "MEMORY CHANNELS ONLY"; chime_no(); leave = 1; }
         else if (menu == M_GRP) groups_screen();
