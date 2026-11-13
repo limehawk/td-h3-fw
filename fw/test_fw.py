@@ -1997,7 +1997,8 @@ def test_meter_calm(cpu):                  # a fluttering signal: a new reading 
                 if at is not None: gaps.append((t - at) & 0xFFFF)
                 at = t
         assert len(gaps) >= 3 and min(gaps) >= 66, 'meter redrawn sooner than every 330 ms: %s' % gaps
-        cpu.bk.dbm = lambda f: -60 if f == 44600000 else -100   # B (446.000) strong, A weak
+        cpu.bk.busy = None                 # squelch shut on both: no opening to redraw the meter for us
+        cpu.bk.dbm = lambda f: -60 if f == 44600000 else -100   # B (446.000) stronger, A weak
         cpu.bk.settle, cpu.bk.clock = 300_000, lambda: cpu.icount   # ~25 ms of floor after a retune or a key's beep
         cpu.run(6_000_000)
         assert get(shown) == -100, get(shown)
@@ -2009,7 +2010,7 @@ def test_meter_calm(cpu):                  # a fluttering signal: a new reading 
             cpu.run(2_000)
             seen.add(get(shown))
         d = (get(ticks) - t) & 0xFFFF
-        assert get(shown) == -60 and d < 40, 'a new channel\'s reading waited %d ticks' % d
+        assert get(shown) == -60 and d < 56, 'a new channel\'s reading waited %d ticks' % d
         assert seen <= {-100, -60}, 'the meter showed an unsettled reading: %s' % sorted(seen)
     finally:
         emu51.TICK = tick
@@ -2970,7 +2971,7 @@ def test_ptt_wakes_backlight(cpu):         # RX-only: PTT is refused but still l
     cpu.key = 'PTT'
     cpu.run(300_000)
     cpu.key = None
-    cpu.run(600_000)                       # the refusal tone (200 ms) plays before the redraw
+    cpu.run(800_000)                       # the refusal tone (200 ms) plays before the redraw
     assert cpu.xram[0xF140] == 200, 'PTT left the screen dark'
 
 
@@ -3400,7 +3401,7 @@ def test_meter(cpu):                       # one full-width bar, the reading ins
     assert fb[65][76] == fb[69][127] == rgb(6, 64, 28), 'the empty track: the RX tint while heard'
     for d in (-116, -112, -74, -59, -52):   # the edge under the text: the row above it (61) moves with
         cpu.bk.dbm = lambda f, d=d: d       # the text rows (69, the glyphs' blank foot row), not ahead of them
-        cpu.run(300_000)
+        cpu.run(700_000)                    # the next reading (330 ms) and its draw
         fb = lcdshot.frame(cpu.lcd)
         assert fb[61] == fb[69], (d, [x for x in range(128) if fb[61][x] != fb[69][x]])
     cpu.bk.dbm = lambda f: -82

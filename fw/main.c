@@ -502,6 +502,7 @@ __xdata char shown[2][8];            // the digits on screen, so a scan step red
 __xdata uint16_t shown_c[2];
 int16_t m_dbm;                       // what the meter last drew: its reading, and the squelch (0xFF forces a redraw)
 uint8_t m_open;
+static __bit m_wait;                 // squelch() found the receiver unsettled: dbm is the last channel's, don't draw it
 
 // buf from p to 21 characters: a then b right-aligned at the end, spaces between. Reentrant, so
 // its locals go on the stack, not into the full XDATA.
@@ -797,6 +798,7 @@ void draw_status(void) __reentrant
 
 static void draw_main(void)
 {
+    uint8_t now_ok = rx_settled();          // before the slots' 40 ms: a retune this pass reads unsettled here
     if (alert) {
         lcd_clear();
         static const __code label_t l[] = {{1, 20, 3, P_RED, "WEATHER"}, {4, 50, 3, P_RED, "ALERT"}, {0, BOT_Y, 1, P_DIM, "any key to stop"}};
@@ -812,7 +814,7 @@ static void draw_main(void)
         lcd_fill(0, i ? 70 : 58, W, 3 - i, theme_c(tinted[i]));
     }
     m_open = 0xFF;                          // just retuned: the main loop draws the new channel's first settled reading
-    if (rx_settled()) draw_meter();
+    if (now_ok) draw_meter();
     draw_status();
 }
 
@@ -1703,7 +1705,8 @@ static void dtmf_poll(void) __reentrant
 static void squelch(void)
 {
     uint8_t want, hw;
-    if (!rx_settled()) return;              // just retuned: keep the meter and the squelch as they were
+    if (!rx_settled()) { m_wait = 1; return; }   // just retuned: keep the meter and the squelch as they were
+    m_wait = 0;
     hw = bk_sql_open();
     dbm = bk_dbm() + cfg.mcal;
     if (ch.mode) dbm += bk_am_gain(dbm);   // AM and USB
@@ -2121,7 +2124,7 @@ static void ptt(void) __reentrant
         // the chip's squelch, 30 ms on, says if the channel is busy.
         else if (ch.bcl && (open || (delay_ms(30), bk_sql_open()))) refuse("BUSY: NO TX");
         else if (batt_cal() < 6500) refuse("BATTERY LOW: NO TX");
-        else if (radio_tx(1)) { tx = 1; stamp(&t_tx); open = 0; tot_warned = dtmf_n = dt_on = dt_mem = 0; dirty = 1; }
+        else if (radio_tx(1)) { tx = 1; m_wait = 0; stamp(&t_tx); open = 0; tot_warned = dtmf_n = dt_on = dt_mem = 0; dirty = 1; }
         else refuse("TX NOT ALLOWED");
         if (!tx) vox_arm = vox_tx = 0;      // refused: VOX waits for quiet before it tries again
     } else if (tx && tt && !tot_warned && secs(&t_tx) + 10 >= tt) {
@@ -2284,7 +2287,7 @@ void main(void)
             // The meter: a new reading 3 times a second, calm enough to read on a fluttering signal; at once
             // when the squelch opens or closes, or with a new channel's first settled reading (draw_main
             // leaves m_open 0xFF). The mic level and TX clock 10 times a second.
-            else if (!alert && rx_settled() && (since(&t_meter) >= (tx ? 20 : 66) || !tx && open != m_open)) { stamp(&t_meter); draw_meter(); }
+            else if (!alert && !m_wait && (since(&t_meter) >= (tx ? 20 : 66) || !tx && open != m_open)) { stamp(&t_meter); draw_meter(); }
         }
 
         if (remote_req & REQ_REDRAW) {
