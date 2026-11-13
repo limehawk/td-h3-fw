@@ -12,6 +12,11 @@ starts with its part of this list.
   until you type a callsign.
 - The menu items from SCAN GROUP on each moved down one place: SCAN GROUP is now 21, PC LINK 45,
   REMOTE 46 and VERSION 51.
+- The signal meter changes three times a second instead of ten, so a fluttering signal is easier to
+  read. A new channel's reading still shows at once, and so does the squelch opening or closing.
+- The green (or red, while you talk) behind the slot you're hearing now runs right up to the signal
+  meter, with no dark line between them.
+- The meter no longer drops to nothing for a moment after a key beep.
 
 ## 0.65.0
 

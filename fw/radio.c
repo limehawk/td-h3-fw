@@ -240,10 +240,13 @@ static uint32_t trim(uint32_t f) __reentrant
 static uint16_t t_tuned;                    // when radio_tune last ran
 static __bit settled;
 
-// Right after a retune (a channel change, a dual-watch look, the battery saver waking it) the BK4819
+// Right after a retune (a channel change, a dual-watch look, the battery saver waking it, a beep handing
+// the chip back to the receiver) the BK4819
 // reads its floor (-126 dBm) and a closed squelch until the receiver settles: seen on the radio as the
 // meter dropping to nothing at every battery-saver wake. Settled, as bk_dbm_at decides it, is the
 // glitch count (REG_63) under 200; 50 ms at most, if it never drops.
+void rx_unsettle(void) { t_tuned = now(); settled = 0; }
+
 uint8_t rx_settled(void)
 {
     if (!settled && ((bk_read(0x63) & 0xFF) < 200 || (uint16_t)(now() - t_tuned) >= 10)) settled = 1;
@@ -265,7 +268,7 @@ void radio_tune(void)
     bk_rx_on();
     bk_dtmf_on(tail);
     bk_af(0);
-    t_tuned = now(); settled = 0;
+    rx_unsettle();
 }
 
 void radio_init(void)

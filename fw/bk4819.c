@@ -384,7 +384,7 @@ static void bk_spk(uint8_t on) __reentrant
     AMP_ON = 0;
     bk_write(0x47, af_now);
     if (st == BK_SLEEP) bk_sleep();
-    else bk_table(rx_on, sizeof rx_on);
+    else { bk_table(rx_on, sizeof rx_on); rx_unsettle(); }   // RX restarts: its RSSI reads the floor a moment
 }
 
 // A sound is a list of ramps (note_t, fw.h): each voice's level and pitch move in straight lines,

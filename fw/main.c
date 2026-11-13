@@ -126,7 +126,7 @@ __bit overwrite;                     // saving: the typed channel is in use, MEN
 static __xdata uint32_t skip[8];            // nuisance frequencies skipped until power-off (FT5DR skip search)
 static __xdata uint32_t scan_r[2];          // a VFO scan's range (low, high), from where it started
 static __xdata slot_t scan_from;            // the slot as the scan started: its channel, or its VFO frequency
-uint16_t t_tx, t_open, t_key, t_save, t_meter, t_scan, t_peek, t_wake, t_sleep, t_hit, heard;
+uint16_t t_tx, t_open, t_key, t_save, t_meter, t_tone, t_scan, t_peek, t_wake, t_sleep, t_hit, heard;
 int16_t dbm;
 __xdata char dtmf[17];               // DTMF digits heard, shown for 10 s after the last
 // Shown only as a run of DTMF_RUN or more, each within 1.5 s of the last: speech decodes as a stray
@@ -495,7 +495,7 @@ static uint16_t tone_heard(void) __reentrant
 // y 41  A: mode, power, shift ... bandwidth             y 73-116  B the same
 // y 50  A: tones ... step (or DTMF / HEARD while heard) y 120     (BOT_Y) messages and typing
 // 128 rows exactly: 3 between the bar's rule and A, A and the meter, B and the bottom line, 2 over B.
-// A slot heard or transmitting sits on its theme tint (y 13-57 or 72-116).
+// A slot heard or transmitting sits on its theme tint (y 13-60 or 70-116: up to the meter).
 #define METER_Y 62                          // the meter's text row; the bar starts a row above
 
 __xdata char shown[2][8];            // the digits on screen, so a scan step redraws only what changed
@@ -807,10 +807,12 @@ static void draw_main(void)
         return;
     }
     lcd_fillp(0, 9, W, 1, P_BAR);            // under the status bar
-    draw_slot(0);
-    draw_slot(1);
-    m_open = 0xFF;
-    draw_meter();
+    for (uint8_t i = 0; i < 2; i++) {       // each slot, then the rows between it and the meter in its tint
+        draw_slot(i);                       // (bg when none): a slot heard or transmitting runs to the meter
+        lcd_fill(0, i ? 70 : 58, W, 3 - i, theme_c(tinted[i]));
+    }
+    m_open = 0xFF;                          // just retuned: the main loop draws the new channel's first settled reading
+    if (rx_settled()) draw_meter();
     draw_status();
 }
 
@@ -1720,7 +1722,7 @@ static void squelch(void)
             if (cfg.bell && !scanning && !peek && !SQL_HELD && secs(&t_key) >= 10) { rang = 1; bk_chime(snd_bell); }
         }
         else heard = 0;
-        dirty = 1;
+        dirty = 1; fast = 0;                // the tint comes or goes: the whole screen (a fast redraw keeps a slot's tint)
     }
     if (open) { stamp(&t_open); if (lh_n && on_rx(&lh[0].f)) lh[0].at = up10; }   // last heard: still on
 }
@@ -2260,7 +2262,8 @@ void main(void)
             if (!asleep) {
                 dtmf_poll();
                 squelch();
-                if (open && !ch.rx_tone && !heard && since(&t_meter) >= 20) {
+                if (open && !ch.rx_tone && !heard && since(&t_tone) >= 20) {
+                    stamp(&t_tone);
                     // a real tone is steady: the same one three readings running (speech hits one by chance)
                     uint16_t h = tone_heard();
                     if (h && h == tone_try) { if (++tone_n >= 3) { heard = h; dirty = 1; } }
@@ -2278,7 +2281,10 @@ void main(void)
                 if (remote_req & REQ_END) { remote_req &= ~REQ_END; remote_end(); }   // the redraw REMOTE asked for is done
                 if (scanning) stamp(&t_scan);   // a scan's dwell starts once the new channel is on screen
             }
-            else if (since(&t_meter) >= 20) { stamp(&t_meter); if (!alert) draw_meter(); }
+            // The meter: a new reading 3 times a second, calm enough to read on a fluttering signal; at once
+            // when the squelch opens or closes, or with a new channel's first settled reading (draw_main
+            // leaves m_open 0xFF). The mic level and TX clock 10 times a second.
+            else if (!alert && rx_settled() && (since(&t_meter) >= (tx ? 20 : 66) || !tx && open != m_open)) { stamp(&t_meter); draw_meter(); }
         }
 
         if (remote_req & REQ_REDRAW) {

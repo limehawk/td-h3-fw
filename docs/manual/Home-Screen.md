@@ -47,9 +47,11 @@ Both slots are laid out the same way, under a status bar. The meter sits between
 9. **Signal meter**: one bar across the screen, filling to the right as the signal gets stronger.
     Dim amber while it's just noise (in the theme's own colour: dim red in NIGHT RED); green once the
     squelch opens on a real signal, however strong, and then the rest of the bar takes the same dark
-    green as the slot you're hearing. With the squelch at S1-S9 it stays dim until the
-    signal reaches that S-unit, and a thin white line marks that level, so you can see how far over it
-    a station is.
+    green as the slot you're hearing, which runs right up to the bar with no dark line between. With
+    the squelch at S1-S9 it stays dim until the signal reaches that S-unit, and a thin white line marks
+    that level, so you can see how far over it a station is. The reading changes three times a second,
+    slow enough to read on a signal that flutters; a new channel's reading shows at once, and so does the
+    squelch opening or closing.
 10. **Signal strength**, twice, inside the bar: in S-units at the left, `S0` to `S9`, then `S9+10` and
     so on (dB over S9), and in dBm at the right (`-102dBm`: the closer to zero, the stronger; -120 is a
     whisper, -60 is very strong).

@@ -977,12 +977,12 @@ def rgb(r, g, b):                          # fw.h's RGB(): BGR565
     return (b & 0xF8) << 8 | (g & 0xFC) << 3 | r >> 3
 
 
-def tints(cpu):                            # the backgrounds of slot A's and B's blocks (x 127: no text reaches it)
-    import lcdshot
+def tints(cpu):                            # the backgrounds of slot A's and B's blocks (x 127: no text reaches it),
+    import lcdshot                         # each down or up to the meter (rows 61-69): no dark rows between
     fb = lcdshot.frame(cpu.lcd)
-    a, b = {fb[y][127] for y in range(13, 58)}, {fb[y][127] for y in range(72, 117)}
-    assert len(a) == len(b) == 1, ('a block not one colour', a, b)
-    assert fb[0][127] == 0 and fb[70][127] == 0, 'the status bar or the row under the meter changed colour'
+    a, b = {fb[y][127] for y in range(13, 61)}, {fb[y][127] for y in range(70, 117)}
+    assert len(a) == len(b) == 1, ('a block not one colour to the meter', a, b)
+    assert fb[0][127] == 0, 'the status bar changed colour'
     return a.pop(), b.pop()
 
 
@@ -1009,7 +1009,7 @@ def test_slot_tints(cpu):                  # a slot heard on a green tint, the o
     cpu.run(1_000_000)
     assert tints(cpu) == (0, 0), 'the tint stays after squelch closes'
     cpu.key = 'PTT'
-    cpu.run(300_000)
+    cpu.run(600_000)                       # the slot, then the rows under it
     assert tints(cpu) == (red, 0), 'TX on A: no red tint on A'
     cpu.run(700_000)                       # the mic bar's first draw
     assert lcdshot.frame(cpu.lcd)[69][127] == red, 'TX: the meter track not in the TX tint'
@@ -1030,7 +1030,7 @@ def test_slot_tints(cpu):                  # a slot heard on a green tint, the o
     cpu.bk.busy = None
     cpu.run(1_000_000)
     cpu.key = 'PTT'
-    cpu.run(300_000)
+    cpu.run(600_000)                       # the slot, then the rows under it
     assert tints(cpu) == (rgb(84, 0, 0), 0), 'NIGHT RED: TX tint'
     cpu.key = None
     cpu.run(2_000_000)
@@ -1975,6 +1975,48 @@ def test_meter_waits_for_retune(cpu):     # the chip reads its floor ~10 ms afte
     cpu.bk.dbm, cpu.bk.settle = None, 0
     cpu.bk.regs.pop(0x65, None)
     assert seen == {-98}, 'meter read an unsettled chip: %s' % sorted(seen)
+
+
+def test_meter_calm(cpu):                  # a fluttering signal: a new reading 3 times a second, a new channel's at once
+    import emu51
+    tick, ticks, shown = emu51.TICK, symbol(FW, '_ticks'), symbol(FW, '_m_dbm')
+    t_meter = symbol(FW, '_t_meter')
+    def get(a):
+        v = cpu.xram[a] | cpu.xram[a + 1] << 8
+        return v - 0x10000 if v & 0x8000 else v
+    emu51.TICK = 60000                     # ~12 MIPS: the main loop at the radio's pace, so ticks read true
+    try:
+        cpu.bk.busy = lambda f: True
+        cpu.bk.dbm = lambda f: -80 - cpu.icount // 30000 % 9   # a new reading every half tick
+        cpu.run(2_000_000)
+        last, at, gaps = get(shown), None, []
+        for _ in range(4000):              # ~330 ticks
+            cpu.run(5_000)
+            if get(shown) != last:
+                last, t = get(shown), get(ticks)
+                if at is not None: gaps.append((t - at) & 0xFFFF)
+                at = t
+        assert len(gaps) >= 3 and min(gaps) >= 66, 'meter redrawn sooner than every 330 ms: %s' % gaps
+        cpu.bk.dbm = lambda f: -60 if f == 44600000 else -100   # B (446.000) strong, A weak
+        cpu.bk.settle, cpu.bk.clock = 300_000, lambda: cpu.icount   # ~25 ms of floor after a retune or a key's beep
+        cpu.run(6_000_000)
+        assert get(shown) == -100, get(shown)
+        cpu.run(1_000_000, until=lambda: (get(ticks) - get(t_meter)) & 0xFFFF == 1)   # just drawn: the next is 330 ms off
+        t, seen = get(ticks), set()
+        cpu.key = '#'                      # A/B: B's reading must not wait out the 330 ms
+        while (get(ticks) - t) & 0xFFFF < 66 and get(shown) != -60:
+            if cpu.xram[cpu.key_held_at]: cpu.key = None
+            cpu.run(2_000)
+            seen.add(get(shown))
+        d = (get(ticks) - t) & 0xFFFF
+        assert get(shown) == -60 and d < 40, 'a new channel\'s reading waited %d ticks' % d
+        assert seen <= {-100, -60}, 'the meter showed an unsettled reading: %s' % sorted(seen)
+    finally:
+        emu51.TICK = tick
+        cpu.key = cpu.bk.busy = cpu.bk.dbm = None
+        cpu.bk.settle = 0
+    cpu.run(2_000_000)
+    press(cpu, '#')                        # back to A
 
 
 def test_battery_saver_wakes_on_ptt(cpu):   # PTT refused while asleep: the receiver wakes (it slept 5 s more, deaf)
@@ -3610,6 +3652,7 @@ INDEPENDENT = [
     ('Bluetooth clone protocol on UART0', test_bluetooth),
     ('save VFO to a memory channel', test_save_vfo_to_memory),
     ('the meter waits for the receiver to settle after a retune (no dips at every battery-saver wake)', test_meter_waits_for_retune),
+    ('the meter: a new reading 3 times a second, a new channel\'s at once', test_meter_calm),
     ('hold UP repeats', test_hold_repeats),
     ('UP/DOWN land on the step raster', test_step_raster),
     ('8.33 and 15 kHz steps land on their rasters', test_air_band_steps),
