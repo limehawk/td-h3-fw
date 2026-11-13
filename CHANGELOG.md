@@ -3,7 +3,7 @@
 What changed on the radio and in the tdh3 flasher, newest release first. Each release's page
 starts with its part of this list.
 
-## Next release
+## 0.66.0
 
 - The home screen shows two times: while you hear a station, how long it has been talking, in the
   middle of the meter bar (`0:42`); and after each quiet slot's letter, how long ago someone was
