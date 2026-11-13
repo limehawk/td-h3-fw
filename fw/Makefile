@@ -62,7 +62,7 @@ build/$(OUT).bin: $(SRC) $(LINK:%=asm/%.asm) $(if $(LINK),build/asm.inc) fw.h hw
 	 if [ $$size -gt 63488 ]; then echo "$@: $$size bytes, over 63488: would hit the bootloader"; rm -f $@; exit 1; fi; \
 	 echo "$@: $$size bytes ($$((size * 100 / 63488))% of 62 KB)"
 
-# The emulator is a tight Python loop: PyPy runs the suite ~10x faster (13 s vs 2.5 min).
+# The emulator is a tight Python loop: PyPy runs the suite ~20x faster (16 s vs 6 min on 24 threads).
 # uv python install pypy3.11 puts it in ~/.local/share/uv; plain python3 works too.
 PY := $(shell uv python find pypy3.11 2>/dev/null || echo python3)
 test: all rxonly

@@ -85,7 +85,7 @@ cd fw && make test T="scan fm"     # only tests whose names contain these words
 ```
 
 `make test` uses PyPy when uv has it (`uv python install pypy3.11`, user-level, no system
-packages) and plain `python3` otherwise (about 2.5 minutes). `test_fw.py` boots the real `.bin` in the emulator with a fixture EEPROM
+packages) and plain `python3` otherwise (about 6 minutes against PyPy's 16 s, on 24 threads). `test_fw.py` boots the real `.bin` in the emulator with a fixture EEPROM
 (factory cal, channels 1-4 with scan groups) and checks what reaches the pins and buses. The
 first block runs in order on one booted CPU (boot compared live with stock, RX path, TX band
 plan, clone protocol); `INDEPENDENT` tests each get a fresh boot. All of them share one process
