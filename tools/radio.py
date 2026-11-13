@@ -13,7 +13,7 @@ import os
 import subprocess
 import time
 
-SLOT_Y = {'A': 14, 'B': 73}                # each slot's letter row (fw/main.c draw_slot): frequency at + 9, label + 13
+SLOT_Y = {'A': 14, 'B': 73}                # each slot's letter row (fw/main.c draw_slot): frequency at + 9, label + 13 or this row's right end
 
 TDH3 = 'tools/tdh3/tdh3'
 
@@ -46,8 +46,14 @@ class Radio:
         return self.screen().get((120, 0), '')
 
     @staticmethod
+    def label_at(s, y):                     # a slot's "*M20" or "VFO": at y + 13 x 0 (DIGITS CLASSIC), else ending at the top row's right edge
+        t = s.get((y + 13, 0), '').split('  (')[0].strip()
+        return t or next((v.split('  (')[0].strip() for (ty, x), v in s.items()
+                          if ty == y and x + 6 * len(v.split('  (')[0].rstrip()) == 128), '')
+
+    @staticmethod
     def label(s, y):                        # a slot's memory number, "*M20" -> "20" ("VFO" stays), no "(lit)"
-        return s.get((y + 13, 0), '').split('  (')[0].strip('*M ')
+        return Radio.label_at(s, y).strip('*M ')
 
     @staticmethod
     def freq(s, y):                         # a slot's frequency (SLOT_Y), drawn 2x at y + 9, x 32

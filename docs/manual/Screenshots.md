@@ -22,6 +22,7 @@ Under each picture is a link to the page that explains it.
 <tr><td valign="top"><img src="img/memory.png" width="320" alt="On a memory channel"><br><b>On a memory channel</b><br><a href="Home-Screen">The home screen</a></td><td valign="top"><img src="img/typing.png" width="320" alt="Typing a frequency"><br><b>Typing a frequency</b><br><a href="Home-Screen#typing-a-frequency">Typing a frequency</a></td></tr>
 <tr><td valign="top"><img src="img/usb.png" width="320" alt="Listening to SSB"><br><b>Listening to SSB</b><br><a href="Home-Screen#listening-to-ssb">Listening to SSB</a></td></tr>
 <tr><td colspan="2"><img src="img/themes.png" width="660" alt="The four themes: Classic, Night Amber, Green, Night Red"><br><b>The four themes: Classic, Night Amber, Green, Night Red</b><br><a href="Menu#display--sound">Display and sound settings</a></td></tr>
+<tr><td colspan="2"><img src="img/digits.png" width="500" alt="The three DIGITS looks: Arcade, LCD, Classic"><br><b>The three DIGITS looks: Arcade, LCD, Classic</b><br><a href="Menu#display--sound">Display and sound settings</a></td></tr>
 </table>
 
 ## The menu

@@ -51,7 +51,7 @@ for what the radio sends.
 
 ## Run it from your computer, or let an AI set it up
 
-Switch on REMOTE (**MENU**, **4** **5**, **MENU**, **UP**, **MENU**, then **V/M**) and the flasher you downloaded also works the radio
+Switch on REMOTE (**MENU**, **4** **7**, **MENU**, **UP**, **MENU**, then **V/M**) and the flasher you downloaded also works the radio
 over the same USB-C cable: it reads the screen as text, presses keys, tunes, picks channels and
 lists every setting. That's all an AI assistant that can run commands on your
 computer (Claude Code, Codex and the like) needs to set the radio up for you: *"put slot B on the
@@ -66,7 +66,7 @@ tdh3 remote settings                # every menu setting and its value
 tdh3 remote wait "squelch open"     # returns when someone talks on the frequency
 ```
 
-For these, put the radio in PC LINK instead (**MENU**, **4** **4**, **MENU**); **V/M** leaves it:
+For these, put the radio in PC LINK instead (**MENU**, **4** **6**, **MENU**); **V/M** leaves it:
 
 ```bash
 tdh3 channels import channels.csv   # load a channel list saved from CHIRP

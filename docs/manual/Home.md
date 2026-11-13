@@ -40,11 +40,11 @@ triple tap for strobe · any tap stops strobe or SOS.
 | 1 | SQUELCH | 30 | FM RADIO |
 | 2 | ATTENUATOR | 31 | WEATHER |
 | 13 | TX BANDS (where you may transmit) | 32 | LAST HEARD (who was on) |
-| 15 | TAIL TONE | 42 | WX ALERT |
-| 21 | SCAN GROUP | 43 | AUTO OFF |
-| 24 | DUAL WATCH | 45 | PC LINK (for CHIRP) |
-| 26 | GROUP LINK (scan several groups) | 46 | REMOTE (for the computer) |
-| 27 | CH GROUPS (a channel's scan groups) | 51 | VERSION |
+| 15 | TAIL TONE | 43 | WX ALERT |
+| 21 | SCAN GROUP | 44 | AUTO OFF |
+| 24 | DUAL WATCH | 46 | PC LINK (for CHIRP) |
+| 26 | GROUP LINK (scan several groups) | 47 | REMOTE (for the computer) |
+| 27 | CH GROUPS (a channel's scan groups) | 52 | VERSION |
 
 **Flashing new firmware:** download the flasher for your computer from the newest release (the
 firmware is inside it) and open it with the radio plugged in. With the radio on and REMOTE on, press and hold
@@ -88,7 +88,7 @@ For people working on the firmware: [Keeping this manual current](Keeping-This-M
 | Receive-only | `td-h3-rx.bin` | Never. PTT shows **TX NOT ALLOWED**. |
 | Full | `td-h3.bin` | Only on the services on in TX BANDS (HAM and GMRS to start with), and only with the radio's factory calibration present. |
 
-MENU → VERSION (item 51) shows which version you're running, for example `0.55.2`.
+MENU → VERSION (item 52) shows which version you're running, for example `0.55.2`.
 
 ![The VERSION item at the bottom of the menu](img/version.png)
 

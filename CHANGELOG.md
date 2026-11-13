@@ -10,8 +10,12 @@ starts with its part of this list.
 - New: CALL ID (MENU 20) sends your ham callsign in Morse code when you let go of PTT, on 2 m and
   70 cm only, the first time after you switch on and then at most every 10 minutes. It stays off
   until you type a callsign.
-- The menu items from SCAN GROUP on each moved down one place: SCAN GROUP is now 21, PC LINK 45,
-  REMOTE 46 and VERSION 51.
+- New: DIGITS (MENU 39) picks how the big frequency numbers look: ARCADE, chunky with a soft
+  shadow (the new default); LCD, like a digital clock; or CLASSIC, the look from before. With ARCADE
+  and LCD, `VFO` or the memory number sits at the top right of the slot.
+- The menu items from SCAN GROUP on moved down one place, and those after THEME one more: SCAN
+  GROUP is now 21, KEY BEEP 40, PC LINK 46, REMOTE 47 and VERSION 52.
+- tdh3: `tdh3 remote screen` reads the frequency and memory number in every DIGITS look.
 - The signal meter changes three times a second instead of ten, so a fluttering signal is easier to
   read. A new channel's reading still shows at once, and so does the squelch opening or closing.
 - The green (or red, while you talk) behind the slot you're hearing now runs right up to the signal

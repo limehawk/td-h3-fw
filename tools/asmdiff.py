@@ -58,7 +58,9 @@ class Image:
                 if key[1] in PTRS:
                     v = self.ptr(*other.meaning(v))
                 self.write(s, a, v)
+        sp = self.cpu.sfr[0x81]                 # its own SP: an asm function's DATA bytes move where the stack starts
         self.cpu.sfr[:] = other.cpu.sfr
+        self.cpu.sfr[0x81] = sp
         self.save()
 
     def read(self, key):
@@ -254,7 +256,8 @@ def gen_draw_slot(r):
           S(0, 'SLOT_MEM'): [r.randrange(2)], S(1, 'SLOT_MEM'): [r.randrange(2)], S(0, 'SLOT_CHN'): [r.randrange(200)], S(1, 'SLOT_CHN'): [r.randrange(200)],
           'tinted': [r.choice([0, 7, 8]), r.choice([0, 7, 8])], 'small': [r.randrange(4)], 'shown': r.randbytes(16), 'shown_c': r.randbytes(4),
           'dtmf_n': [r.randrange(6)], 'dtmf': bytes(r.choice(b'0123456789ABCD*#') for _ in range(r.randrange(17))) + b'\0',
-          'heard': r.choice([0, 0, 1000, r.randrange(0x10000)]).to_bytes(2, 'little'), 'mirror': bit(0.3)}
+          'heard': r.choice([0, 0, 1000, r.randrange(0x10000)]).to_bytes(2, 'little'), 'mirror': bit(0.3),
+          'cfg+%d' % K['CFG_DIGITS']: [r.randrange(256)]}   # DIGITS: freq_text's style, slot_label's place
     step = K['CFG_STEP']                       # step 0-11 and sstep 0-3: indexes into their tables
     pk['cfg+%d' % step] = [r.randrange(256) & ~K['CFG_STEP_MASK'] | r.randrange(12) << K['CFG_STEP_BIT']]
     pk['cfg+%d' % K['CFG_SSTEP']] = [r.randrange(256) & ~K['CFG_SSTEP_MASK'] | r.randrange(4) << K['CFG_SSTEP_BIT']]
@@ -263,9 +266,19 @@ def gen_draw_slot(r):
     return pk, r.randrange(2), b'', {}, {}
 
 
+def gen_freq_text(r):
+    big = r.choice([b'146.520', b'446.006', b'462.562', b' 18.000', b'999.999', bytes(r.choice(b'0123456789. :') for _ in range(7))])
+    small = r.choice([b'25', b'5 ', b'  ', b'00', bytes(r.choice(b'0123456789 ') for _ in range(2))])
+    buf = bytearray(r.randbytes(48))
+    buf[0:8], buf[20:23] = big + b'\0', small + b'\0'
+    pk = {'cfg+%d' % K['CFG_DIGITS']: [r.randrange(256)], 'buf': bytes(buf), 'pal': r.randbytes(16), 'mirror': [r.random() < 0.4]}
+    k = r.choice([0, 0, 1, 2, 3, 4, 5, 6, 20, 20])
+    return pk, k, bytes([r.randrange(8), r.choice([14, 73, r.randrange(100)])]), {}, {}   # fc, y
+
+
 CASES = {'lcd_text_bg': (gen_lcd_text_bg, 1), 'lcd_icon': (gen_lcd_icon, 0), 'lcd_fill': (gen_lcd_fill, 0),
          'draw_status': (gen_draw_status, 0), 'draw_meter': (gen_draw_meter, 0),
-         'draw_slot': (gen_draw_slot, 0)}   # name: (cases, bytes returned in DPL, DPH, B, A)
+         'draw_slot': (gen_draw_slot, 0), 'freq_text': (gen_freq_text, 0)}   # name: (cases, bytes returned in DPL, DPH, B, A)
 
 
 def main():

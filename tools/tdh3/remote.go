@@ -44,7 +44,14 @@ type screen struct {
 	end   bool   // the radio sent 'E': the redraw is complete
 }
 
+// words is a text record's scale for words alone, no pixels: the big frequency digits the
+// firmware draws as fills in its ARCADE and LCD styles (fw.h WORDS).
+const words = 255
+
 func overlaps(t text, x, y, w, h int) bool {
+	if t.scale == words { // a point: gone once a fill covers where it sits
+		return x <= t.x && t.x < x+w && y <= t.y && t.y < y+h
+	}
 	tw, th := 6*t.scale*len(t.s), 8*t.scale
 	return t.x < x+w && x < t.x+tw && t.y < y+h && y < t.y+th
 }
@@ -70,6 +77,19 @@ func (sc *screen) fill(x, y, w, h int, c uint16) {
 
 // draw follows lcd_text: 6x8 cells at scale, stops before a cell would cross the right edge.
 func (sc *screen) draw(x, y, scale int, s string, fg, bg uint16) {
+	if scale == words { // no pixels: these words replace the last ones at (x, y)
+		keep := sc.texts[:0]
+		for _, t := range sc.texts {
+			if t.scale != words || t.x != x || t.y != y {
+				keep = append(keep, t)
+			}
+		}
+		sc.texts = keep
+		if strings.TrimSpace(s) != "" {
+			sc.texts = append(sc.texts, text{x, y, words, s, false})
+		}
+		return
+	}
 	cw, n := 6*scale, 0
 	for ; n < len(s) && x+(n+1)*cw <= 128; n++ {
 		ch := s[n]
@@ -169,7 +189,7 @@ func (sc *screen) Text() string {
 	var out strings.Builder
 	for _, x := range t {
 		size := ""
-		if x.scale > 1 {
+		if x.scale > 1 && x.scale != words {
 			size = fmt.Sprintf("  (x%d)", x.scale)
 		}
 		if x.lit {
@@ -431,8 +451,9 @@ func (sc *screen) at(y, x int) (string, bool) {
 	return "", false
 }
 
-// The home screen (draw_main): slot A at y 12, B at y 67. Each has its letter at x 1 (lit when
-// selected), the frequency 2x at y+9 x 32 and "VFO" or the memory ("*M20") at y+13 x 0.
+// The home screen (draw_main): slot A at y 14, B at y 73. Each has its letter at x 1 (lit when
+// selected), the frequency at y+9 x 32 (2x, or in words under DIGITS ARCADE and LCD) and "VFO" or
+// the memory ("*M20") at y+13 x 0, or under ARCADE and LCD at the right end of the slot's top row.
 // Typed digits show on the bottom line, y 118.
 var slotY = map[string]int{"A": 14, "B": 73}
 
@@ -455,9 +476,22 @@ func (sc *screen) bottom() string { s, _ := sc.at(120, 0); return s } // the fir
 
 // mem is the selected slot's memory number, "" in VFO.
 func (sc *screen) mem() string {
-	s, _ := sc.at(slotY[slotOf(sc)]+13, 0)
+	s := sc.label(slotY[slotOf(sc)])
 	if n := strings.TrimLeft(s, "*"); strings.HasPrefix(n, "M") {
 		return n[1:]
+	}
+	return ""
+}
+
+// label is the slot at y's "VFO" or memory number, wherever DIGITS puts it.
+func (sc *screen) label(y int) string {
+	if s, _ := sc.at(y+13, 0); s != "" {
+		return s
+	}
+	for _, t := range sc.texts {
+		if t.y == y && t.scale == 1 && t.x+6*len(t.s) == 128 {
+			return strings.TrimRight(t.s, " ")
+		}
 	}
 	return ""
 }

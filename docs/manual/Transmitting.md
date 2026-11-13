@@ -14,7 +14,7 @@
 | Choose where I may transmit | **MENU**, **1** **3** (TX BANDS), **MENU**, **UP** / **DOWN**, **MENU** |
 | Change power | Hold **2**: low → mid → high → ultra-low. On a memory channel it's saved with the channel. In frequency mode **MENU**, **0** **9** (POWER) does it too |
 | Set the longest transmission | **MENU**, **1** **4** (TX TIMEOUT; 120 s to start with) |
-| Check which build I have | **MENU**, **5** **1** (VERSION) |
+| Check which build I have | **MENU**, **5** **2** (VERSION) |
 
 **You need a licence to transmit**, and following the rules for each service is up to you, as on any
 radio. In the US: an amateur (ham) licence for the 2 m and 70 cm bands, a GMRS licence (no exam,

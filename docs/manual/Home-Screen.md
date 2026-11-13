@@ -24,8 +24,9 @@ Both slots are laid out the same way, under a status bar. The meter sits between
 1. **Slot letter.** The selected slot's letter sits in a lit block.
 2. **Name.** The memory channel's name, or the band (`2M`, `70CM`) in frequency (VFO) mode.
 3. **Memory number.** `M20` is memory channel 20; a `*` in front means it's on the scan list.
-   `VFO` in frequency mode.
-4. **Frequency** in MHz. Green while a signal is coming through, red while transmitting. Digits
+   `VFO` in frequency mode. With MENU → DIGITS on CLASSIC it sits left of the frequency instead.
+4. **Frequency** in MHz. Green while a signal is coming through, red while transmitting. MENU →
+   DIGITS picks how the numbers look: ARCADE (here), LCD or CLASSIC. Digits
    below 1 kHz show small after it: GMRS channel 1 reads `462.562` with a small `5` (462.5625 MHz).
    In USB the last two digits are always there.
 5. **Mode, power and shift**: `FM`, `AM` (aircraft) or `USB` ([SSB](#listening-to-ssb), with just `RXONLY` after it); transmit power `HIGH`, `MID`, `LOW` or

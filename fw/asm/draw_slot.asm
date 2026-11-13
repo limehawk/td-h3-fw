@@ -1,7 +1,8 @@
 ; asm-for: main.c draw_slot
-; c-sha256: dbd5f115e84ff4a8
-; draw_slot: slot A (i 0, y 14) or B (i 1, y 73): letter and name, memory number, the frequency at 2x
-; (only the digits that changed on a fast redraw), USB's small 10 Hz digits, the mode/power/shift/
+; c-sha256: 6512ca6cc8f16998
+; draw_slot: slot A (i 0, y 14) or B (i 1, y 73): letter and name, memory number (slot_label), the
+; frequency in the DIGITS style (freq_text: only the digits that changed on a fast redraw), the small
+; digits below 1 kHz, the mode/power/shift/
 ; bandwidth row and the tones/step row (or DTMF digits, or the tone heard). main.c has the C original.
 ; void draw_slot(uint8_t i) __reentrant
 ; i in DPL; i is 0 or 1 (the C's 1 << i and y as for those). Every register, B and DPTR are the
@@ -45,6 +46,8 @@
 	.globl _theme_apply
 	.globl _text_bg
 	.globl _lcd_text
+	.globl _freq_text
+	.globl _slot_label
 	.globl _chan_in_scan
 	.globl _num
 	.globl _pad_to
@@ -285,7 +288,7 @@ _draw_slot:
 00022$:	mov	dptr,#_buf
 	lcall	icat
 	.asciz	"VFO"
-00023$:	mov	a,#5			; pad_to(p, 5); text1(0, y + 13, sel && wxm ? P_ACC : P_DIM);
+00023$:	mov	a,#5			; pad_to(p, 5); slot_label(y, sel && wxm ? P_ACC : P_DIM);
 	push	acc
 	lcall	_pad_to
 	dec	sp
@@ -293,11 +296,11 @@ _draw_slot:
 	jnb	_sel,00024$
 	jnb	_wxm,00024$
 	mov	r5,#P_ACC
-00024$:	FR	FY
-	add	a,#13
-	mov	r6,a
-	mov	r7,#0
-	lcall	text1r
+00024$:	push	ar5
+	FR	FY+1
+	mov	dpl,a
+	lcall	_slot_label
+	dec	sp
 
 ; dec(buf, f, 8, 5): all 8 digits, once; buf[20..22] = buf[7], buf[8], 0 (the two below 1 kHz, for
 ; the small digits); buf[7] = 0 ends the big ones at 1 kHz. Then the digits from the first that changed
@@ -363,27 +366,11 @@ _draw_slot:
 	jnz	00030$
 	inc	r7
 	sjmp	00031$
-; if (k < 7) lcd_text(32 + 12 * k, y + 9, buf + k, 2, fc);
+; if (k < 7) freq_text(k, y, fc);
 00030$:	cjne	r7,#7,00033$
 00033$:	jnc	00034$
-	mov	a,r7
-	add	a,#_buf
-	mov	r4,a
-	clr	a
-	addc	a,#(_buf >> 8)
-	mov	r5,a
-	mov	a,r7
-	mov	b,#12
-	mul	ab
-	add	a,#32
-	mov	r7,a
-	FR	FY
-	add	a,#9
-	mov	r6,a
-	mov	r3,#2
-	FR	FC
-	mov	r2,a
-	lcall	ltext
+	mov	dpl,r7
+	lcall	ftext
 ; xcat(shown[i], buf); shown_c[i] = pal[fc];   the colour, not the index: as drawn
 00034$:	mov	a,#_buf
 	push	acc
@@ -422,16 +409,8 @@ _draw_slot:
 00090$:	mov	dptr,#(_buf + 21)	; the 100 Hz digit alone: buf[21] = ' '
 	mov	a,#0x20
 	movx	@dptr,a
-00039$:	mov	r7,#116			; lcd_text(116, y + 17, buf + 7, 1, fc)
-	FR	FY
-	add	a,#17
-	mov	r6,a
-	mov	r4,#(_buf + 20)
-	mov	r5,#((_buf + 20) >> 8)
-	mov	r3,#1
-	FR	FC
-	mov	r2,a
-	lcall	ltext
+00039$:	mov	dpl,#20			; freq_text(20, y, fc)
+	lcall	ftext
 	lcall	kbit
 	mov	r7,a
 	mov	dptr,#_small
@@ -451,14 +430,13 @@ _draw_slot:
 	movx	a,@dptr
 	anl	a,r7
 	movx	@dptr,a
-	mov	r7,#116			; lcd_fillp(116, y + 17, 12, 8, P_BG)
-	FR	FY
-	add	a,#17
-	mov	r6,a
-	mov	r5,#12
-	mov	r4,#8
-	mov	r3,#P_BG
-	lcall	fillr
+	mov	dptr,#(_buf + 20)	; buf[20] = buf[21] = ' '; freq_text(20, y, fc)
+	mov	a,#' '
+	movx	@dptr,a
+	inc	dptr
+	movx	@dptr,a
+	mov	dpl,#20
+	lcall	ftext
 
 ; The mode, power, shift ... bandwidth row: p = cat(buf, mode_s[dc.mode]); *p++ = ' ';   r5 = dc.mode
 00037$:	mov	dptr,#(_dc + CHAN_MODE)
@@ -788,6 +766,15 @@ _draw_slot:
 	ret
 
 ; ---- helpers (frame offsets in them are +2: their return address) ----
+; freq_text(DPL, y, fc)
+ftext:	FR	FC+2
+	push	acc
+	FR	FY+3
+	push	acc
+	lcall	_freq_text
+	dec	sp
+	dec	sp
+	ret
 ; lcd_text(r7, r6, the XDATA text at r5:r4, scale r3, colour r2)
 ltext:	push	ar2
 	push	ar3

@@ -44,6 +44,40 @@ func TestScreenFromMirror(t *testing.T) {
 	}
 }
 
+// DIGITS ARCADE and LCD: the big digits come as fills, the frequency as words with no pixels.
+func TestWordsAndLabelAtTheRight(t *testing.T) {
+	var s []byte
+	s = append(s, 'f', 0, 0, 128, 128, 0, 0)          // clear
+	s = append(s, 't', 1, 14, 1, 0, 0, 0xFF, 0xFF)    // slot A's letter, lit
+	s = append(s, "A\x00"...)                         //
+	s = append(s, 't', 110, 14, 1, 0xFF, 0xFF, 0, 0)  // its label at the name row's right end
+	s = append(s, "*M1\x00"...)                       //
+	s = append(s, 'f', 5, 23, 15, 17, 0, 0)           // a digit's cell
+	s = append(s, 'f', 7, 25, 4, 2, 0xFF, 0xFF)       // and some of the digit
+	s = append(s, 't', 32, 23, 255, 0xFF, 0xFF, 0, 0) // the words
+	s = append(s, "146.520\x00"...)                   //
+	s = append(s, 'f', 90, 23, 15, 17, 0, 0)          // the last digit again: the words stay
+	s = append(s, 't', 32, 23, 255, 0xFF, 0xFF, 0, 0) // and are replaced, not added
+	s = append(s, "146.525\x00"...)                   //
+	sc := &screen{}
+	if err := sc.apply(append(append([]byte{}, sync...), s...)); err != nil {
+		t.Fatal(err)
+	}
+	if got := sc.Text(); !strings.Contains(got, " 23  32  146.525\n") || strings.Contains(got, "146.520") || strings.Contains(got, "x255") {
+		t.Fatalf("text:\n%s", got)
+	}
+	if sc.px[23][32] != 0 || sc.px[25][7] != 0xFFFF { // the words drew nothing; the fill did
+		t.Fatal("pixels")
+	}
+	if sc.freq() != "146.525" || sc.mem() != "1" {
+		t.Fatalf("freq %q mem %q", sc.freq(), sc.mem())
+	}
+	s = append([]byte{}, 'f', 0, 22, 128, 45, 0, 0) // the slot cleared: the words go too
+	if err := sc.apply(s); err != nil || strings.Contains(sc.Text(), "146.525") {
+		t.Fatalf("text after a clear:\n%s", sc.Text())
+	}
+}
+
 func TestKeysNeverSendPTT(t *testing.T) {
 	for _, k := range []string{"PTT", "SIDE1", "PTTB"} {
 		if _, ok := keyCodes[k]; ok {

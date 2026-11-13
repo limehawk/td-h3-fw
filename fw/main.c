@@ -18,7 +18,7 @@ typedef struct {
     uint8_t power:2, shift:2, save:2, light:2;                          // 0x1FC3
     uint8_t narrow:1, att:1, dw:1, :1, beep:1, bt:1, remote:1, bell:1;   // 0x1FC4; bit 3: TAIL TONE OFF before 0xAC
     uint8_t apo:2, theme:2, :3, klock:1;                                // 0x1FC5; klock: KEY LOCK stops PTT too; bits 4-6: the old single OFFSET, not read (old radios still hold it)
-    uint8_t pause:3, resume:3, :2;                                      // 0x1FC6
+    uint8_t pause:3, resume:3, digits:2;                                // 0x1FC6; digits: DIGITS, D_*
     uint8_t tot;
     uint8_t bright:3, vmode:4, :1;          // 0x1FC8; vmode: each VFO's MOD_* (A bits 4:3, B 6:5), 0 = by band
     uint8_t comp:2, tail:2, nar6:1, sstep:2, :1;   // 0x1FC9, read as bk_opt by bk4819.c and radio.c (BKO_* in fw.h); sstep: SSB's
@@ -226,8 +226,10 @@ static uint8_t slot_ok(const __xdata slot_t *x) __reentrant { return x->vfo >= 1
 
 enum { M_SQL, M_ATT, M_COMP, M_NAR, M_BW, M_MODE, M_STEP, M_RXT, M_POW, M_SHIFT, M_OFFS, M_TXT, M_TXB, M_TOT, M_TAIL, M_MIC, M_VOX, M_VOXD, M_DTMF, M_CALL,   // the menu's order
        M_GROUP, M_PAUSE, M_RESUME, M_DW, M_PRIO, M_GLINK, M_GRP, M_SCOPE, M_FF, M_FM, M_WXM, M_LH, M_NAME, M_TOVFO, M_DEL,
-       M_LIGHT, M_BRIGHT, M_THEME, M_BEEP, M_KLOCK, M_BELL, M_WX, M_APO, M_SAVE, M_PC, M_REM, M_BT, M_FCAL, M_MCAL, M_BCAL, M_VER, M_N };
+       M_LIGHT, M_BRIGHT, M_THEME, M_DIGITS, M_BEEP, M_KLOCK, M_BELL, M_WX, M_APO, M_SAVE, M_PC, M_REM, M_BT, M_FCAL, M_MCAL, M_BCAL, M_VER, M_N };
 static const __code char *const __code theme_s[NTHEMES] = {"CLASSIC", "NIGHT AMBER", "GREEN", "NIGHT RED"};
+enum { D_ARC, D_LCD, D_CLASSIC };          // DIGITS: 0, a new radio's, is ARCADE
+static const __code char *const __code digits_s[] = {"ARCADE", "LCD", "CLASSIC"};
 static const __code char *const __code pow_s[] = {"ULTRA LOW", "LOW", "MID", "HIGH"};   // PWR_*: lowest to highest
 const __code char *const __code pow_d[] = {"ULOW ", "LOW ", "MID ", "HIGH "};   // the slot's detail row
 static const __code char *const __code bw_s[] = {"WIDE", "NARROW"};
@@ -273,7 +275,7 @@ static const __code item_t items[M_N] = {   // SQUELCH 0-9, then S1-S9 (10-18): 
     [M_BEEP] = {4, 2, 1, 0x41, off_on}, [M_BT] = {4, 2, 0, 0x51, off_on}, [M_REM] = {4, 2, 0, 0x61, off_on}, [M_BELL] = {4, 2, 0, 0x71, off_on},
     [M_APO] = {5, 4, 0, 0x02, apo_s}, [M_THEME] = {5, NTHEMES, 0, 0x22, theme_s}, [M_KLOCK] = {5, 2, 0, 0x71, klock_s}, [M_VOX] = {16, 10, 0, 0x04, 0}, [M_VOXD] = {16, 5, 0, 0x43, voxd_s},
     [M_COMP] = {9, 4, 0, 0x02, comp_s}, [M_NAR] = {9, 2, 0, 0x41, nar_s},
-    [M_PAUSE] = {6, 5, 4, 0x03, pause_s}, [M_RESUME] = {6, 6, 2, 0x33, resume_s},
+    [M_PAUSE] = {6, 5, 4, 0x03, pause_s}, [M_RESUME] = {6, 6, 2, 0x33, resume_s}, [M_DIGITS] = {6, 3, D_ARC, 0x62, digits_s},
     [M_WX] = {O(wx), 8, 0, 0x08, 0},       // OFF, WX1-WX7: shown as its frequency (menu_value)
 };
 typedef char cfg_layout[O(tot) == 7 && O(act) == 13 && O(txb) == 17 && O(fcal) == 20 && O(s) == 29 ? 1 : -1];   // saved blocks keep reading right
@@ -519,6 +521,93 @@ void right(__xdata char *p, const __code char *a, const __code char *b) __reentr
 
 __xdata uint8_t tinted[2];           // the tint each slot's block is on (0: none), so going back to bg fills it too
 uint8_t small;                       // bit i: slot i shows its 10 Hz digits
+// DIGITS: how the slots' frequencies look. CLASSIC is the 5x7 font at 2x (lcd_text). ARCADE and LCD
+// draw each character as fills, which REMOTE mirrors, then send the frequency in words (scale
+// WORDS: no pixels) where CLASSIC's text sits, so a computer still reads it. Big digits from x 5,
+// 16 apart, the point 5; the two small digits below 1 kHz follow, bottom-aligned. All end on row y + 25.
+// ARCADE: the owner's 7x9 shapes, each pixel 2 wide, shape rows 2 and 6 1 tall and the rest 2
+// (14x16 at y + 9), over a shadow 1 px right and down at 40%; the point 3x3; small, the shapes at
+// 1x, 8 apart. LCD: a clock's seven segments, 3 px strokes with mitred corners (14x18 at y + 8);
+// the point 3x3; small 7x11, 1 px strokes, 9 apart.
+// Each shape is a list of rectangles, two bytes each: x << 4 | w, y << 3 | h - 1.
+const __code uint8_t arc_r[] = {     // ARCADE in shape units: columns 0-6, rows 0-8
+    0x02, 0x0E, 0x52, 0x0E, 0x15, 0x00, 0x15, 0x40,   // 0
+    0x32, 0x07, 0x16, 0x40, 0x12, 0x10, 0x21, 0x08,   // 1
+    0x07, 0x40, 0x52, 0x0A, 0x15, 0x00, 0x23, 0x28, 0x02, 0x08, 0x42, 0x20, 0x12, 0x30, 0x02, 0x38,   // 2
+    0x51, 0x07, 0x15, 0x40, 0x14, 0x00, 0x23, 0x20, 0x52, 0x0A, 0x52, 0x2A, 0x02, 0x08, 0x02, 0x38,   // 3
+    0x52, 0x07, 0x05, 0x28, 0x32, 0x08, 0x22, 0x10, 0x12, 0x18, 0x02, 0x20, 0x52, 0x40, 0x41, 0x00,   // 4
+    0x02, 0x03, 0x52, 0x23, 0x07, 0x00, 0x15, 0x40, 0x06, 0x18, 0x02, 0x38,   // 5
+    0x02, 0x0E, 0x52, 0x2A, 0x15, 0x00, 0x15, 0x40, 0x06, 0x20, 0x52, 0x08,   // 6
+    0x22, 0x2B, 0x07, 0x00, 0x52, 0x09, 0x42, 0x18, 0x32, 0x20,   // 7
+    0x11, 0x07, 0x51, 0x07, 0x15, 0x40, 0x14, 0x00, 0x14, 0x20, 0x01, 0x0A, 0x52, 0x0A, 0x01, 0x2A, 0x52, 0x2A,   // 8
+    0x52, 0x0E, 0x02, 0x0A, 0x15, 0x00, 0x15, 0x40, 0x14, 0x20, 0x02, 0x38,   // 9
+};
+const __code uint8_t arc_i[11] = {0, 4, 8, 16, 24, 32, 38, 44, 49, 58, 64};   // digit d's rectangles: arc_i[d] to arc_i[d + 1]
+const __code uint8_t rowy[10] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16};   // a big shape row's top: rows 2 and 6 1 tall
+const __code uint8_t seg_r[] = {     // LCD segments a-g in px: big, three each (outer to inner), then small, one each
+    0x1C, 0x00, 0x2A, 0x08, 0x38, 0x10,  0xD1, 0x0E, 0xC1, 0x15, 0xB1, 0x1B,  0xD1, 0x4F, 0xC1, 0x4E, 0xB1, 0x54,
+    0x38, 0x78, 0x2A, 0x80, 0x1C, 0x88,  0x01, 0x4F, 0x11, 0x4E, 0x21, 0x54,  0x01, 0x0E, 0x11, 0x15, 0x21, 0x1B,
+    0x38, 0x38, 0x2A, 0x40, 0x38, 0x48,
+    0x15, 0x00, 0x61, 0x0B, 0x61, 0x33, 0x15, 0x50, 0x01, 0x33, 0x01, 0x0B, 0x15, 0x28,
+};
+const __code uint8_t seg7[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};   // bit 0 a (top) .. 6 g (middle)
+const __code uint8_t dots[] = {0x03, 0x6A, 0x03, 0x7A};   // the point, 3x3 on the bottom rows: ARCADE (at its row 13), LCD (15)
+// The frequency from buf + k (0-6: the big digits from the first that changed; 20: the small ones,
+// spaces to clear them) in slot y's frequency rows, colour fc.
+// asm/freq_text.asm; this C is the reference (make CFUN=freq_text builds it)
+void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant;
+#ifdef C_FREQ_TEXT
+static __xdata uint8_t d_x, d_y, d_units;  // the cell's top left; d_units: ARCADE's big shape units (x 2, rows by rowy)
+static __xdata uint16_t d_ink;
+
+static void rects(const __code uint8_t *p, uint8_t n) __reentrant   // n rectangles from p
+{
+    for (; n; n--) {
+        uint8_t x = *p >> 4, w = *p++ & 15, y = *p >> 3, h = (*p++ & 7) + 1;
+        if (d_units) { x += x; w += w; h = rowy[y + h] - rowy[y]; y = rowy[y]; }
+        lcd_fill(d_x + x, d_y + y, w, h, d_ink);
+    }
+}
+
+void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant
+{
+    __xdata char *s = buf + k;
+    uint8_t big = k < 7, a = cfg.digits == D_ARC, x = 5, c, o, t;
+    if (cfg.digits == D_CLASSIC) { lcd_text(big ? 32 + 12 * k : 116, y + (big ? 9 : 17), s, big + 1, fc); return; }
+    for (o = 0; o < k && o < 7; o++) x += buf[o] == '.' ? 5 : 16;
+    t = y + (big ? 8 : 15) + a;             // the top row: ARCADE's a row lower, its shadow ending where LCD does
+    for (; c = *s; s++) {
+        uint8_t w = !big ? 7 : c == '.' ? 3 : 14;
+        d_units = 0; d_x = x; d_y = t; d_ink = c_bg;
+        lcd_fill(x, t, w + a, (big ? 18 : 11) - a, d_ink);   // the cell (ARCADE's: 2 rows shorter, and its shadow's)
+        for (o = a; o != 0xFF; o--) {       // ARCADE: o 1 the shadow, 1 right and down, at 40% (each channel x 0.406); o 0 the character
+            d_ink = pal[fc];
+            if (o) d_ink = (d_ink >> 1 & 0x7BEF) - (d_ink >> 3 & 0x18E3) + (d_ink >> 5 & 0x0020);
+            d_x = x + o; d_y = t + o;
+            if (c == '.') rects(dots + 2 - 2 * a, 1);
+            else if ((uint8_t)(c - '0') < 10) {   // a space, or anything else: the cleared cell
+                uint8_t d = c - '0';
+                if (a) { d_units = big; rects(arc_r + 2 * arc_i[d], arc_i[d + 1] - arc_i[d]); }
+                else for (uint8_t m = seg7[d], j = 0; m; m >>= 1, j++) if (m & 1) rects(seg_r + (big ? 6 * j : 42 + 2 * j), big ? 3 : 1);
+            }
+        }
+        x += big ? w + 2 : 9 - a;
+    }
+    if (mirror) remote_text(big ? 32 : 116, y + (big ? 9 : 17), buf + (big ? 0 : 20), WORDS, pal[fc], c_bg);
+}
+#endif
+
+// The memory label, buf padded to 5: CLASSIC at x 0 on the frequency row; ARCADE and LCD at the name
+// row's right end, 1 px from the edge (the name row is cleared each draw).
+void slot_label(uint8_t y, uint8_t c) __reentrant
+{
+    uint8_t n = 0;
+    if (cfg.digits == D_CLASSIC) { text1(0, y + 13, c); return; }
+    while (buf[n] > ' ') n++;
+    buf[n] = 0;
+    text1(W - 6 * n, y, c);
+}
+
 __xdata chan_t dc;                   // draw_slot's copy of the slot's channel: fixed addresses read far cheaper
 __bit sel, live;                     // draw_slot's: its slot is the selected one, the one tuned
 // asm/draw_slot.asm; this C is the reference (make CFUN=draw_slot builds it)
@@ -557,13 +646,13 @@ void draw_slot(uint8_t i) __reentrant
         p = num(p, k);
     } else p = cat(p, "VFO");
     pad_to(p, 5);
-    text1(0, y + 13, sel && wxm ? P_ACC : P_DIM);
+    slot_label(y, sel && wxm ? P_ACC : P_DIM);
 
     k = 0;
     dec(buf, live && tx ? dc.tx : dc.rx, 8, 5);   // all 8 digits, once: the big ones end at 1 kHz, and the
     buf[20] = buf[7]; buf[21] = buf[8]; buf[22] = 0; buf[7] = 0;   // two below it wait at buf + 20 for the small ones
     if (fast && shown_c[i] == pal[fc]) while (k < 7 && buf[k] == shown[i][k]) k++;
-    if (k < 7) lcd_text(32 + 12 * k, y + 9, buf + k, 2, fc);
+    if (k < 7) freq_text(k, y, fc);
     xcat(shown[i], buf); shown_c[i] = pal[fc];   // the colour, not the index: as drawn
     // The digits below 1 kHz, small after it: USB's 100 Hz and 10 Hz always; otherwise only when there
     // are any, so a 12.5 kHz channel reads whole (462.562 and a small 5). Cleared only once gone (REMOTE
@@ -573,10 +662,10 @@ void draw_slot(uint8_t i) __reentrant
         if (buf[20] == '0') goto none;
         buf[21] = ' ';                      // "5 ": the space wipes a 10 Hz digit left from before
     }
-    lcd_text(116, y + 17, buf + 20, 1, fc); small |= k;
+    freq_text(20, y, fc); small |= k;
     goto shown_small;
 none:
-    if (small & k) { lcd_fillp(116, y + 17, 12, 8, P_BG); small &= ~k; }
+    if (small & k) { buf[20] = buf[21] = ' '; freq_text(20, y, fc); small &= ~k; }
 shown_small:
 
     p = cat(buf, mode_s[dc.mode]);          // mode, power, shift ... bandwidth; USB: receive only
@@ -829,7 +918,7 @@ static const __code char *const __code mnames[M_N] = {
     "SQUELCH", "ATTENUATOR", "COMPANDER", "NARROW kHz", "BANDWIDTH", "MODE", "STEP kHz", "RX TONE", "POWER", "SHIFT", "OFFSET MHz", "TX TONE", "TX BANDS", "TX TIMEOUT", "TAIL TONE", "MIC GAIN", "VOX", "VOX DELAY", "DTMF CODES", "CALL ID",
     "SCAN GROUP", "SCAN PAUSE", "SCAN RESUME", "DUAL WATCH", "PRIORITY", "GROUP LINK", "CH GROUPS",
     "SCOPE", "FREQ FIND", "FM RADIO", "WEATHER", "LAST HEARD", "CH NAME", "CH TO VFO", "DELETE CH",
-    "LIGHT", "BRIGHTNESS", "THEME", "KEY BEEP", "KEY LOCK", "BELL", "WX ALERT", "AUTO OFF", "BATT SAVE",
+    "LIGHT", "BRIGHTNESS", "THEME", "DIGITS", "KEY BEEP", "KEY LOCK", "BELL", "WX ALERT", "AUTO OFF", "BATT SAVE",
     "PC LINK", "REMOTE", "BLUETOOTH", "FREQ CAL", "METER CAL", "BATT CAL", "VERSION",
 };
 

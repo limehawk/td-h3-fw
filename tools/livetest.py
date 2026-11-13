@@ -49,7 +49,7 @@ def where():                                # the selected slot's state, to put 
     s = r.home()
     slot = r.slot(s)
     y = SLOT_Y.get(slot, 0)
-    label, f = s.get((y + 13, 0), '').split('  (')[0].strip(), r.freq(s, y)   # "*M20", never "(lit)"
+    label, f = r.label_at(s, y), r.freq(s, y)   # "*M20", never "(lit)"
     if not (y and label and f):             # the rows moved: say so, never compare blanks
         raise RuntimeError('cannot read the selected slot (slot %r, label %r, freq %r): rows in SLOT_Y wrong?' % (slot, label, f))
     return slot, label, f

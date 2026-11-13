@@ -351,7 +351,7 @@ def test_call_id_off(cpu):                 # CALL ID: OFF on a new radio (EEPROM
     keys(cpu, ['MENU', '2', '0'])
     cpu.run(1_000_000)
     rows = remote_texts(cpu)
-    assert any(r.startswith('TRANSMIT') and r.endswith('20/51') for r in rows), rows
+    assert any(r.startswith('TRANSMIT') and r.endswith('20/52') for r in rows), rows
     assert any(r.startswith('CALL ID') and r.endswith('OFF') for r in rows), rows
     keys(cpu, ['EXIT'])
     cpu.bk.writes = Stamped(cpu)
@@ -605,7 +605,7 @@ def test_dcs(cpu):
 
 MENU = ['SQUELCH', 'ATT', 'COMP', 'NARKHZ', 'BW', 'MODE', 'STEP', 'RXT', 'POWER', 'SHIFT', 'OFFS', 'TXT', 'TXB', 'TOT', 'TAIL', 'MIC', 'VOX', 'VOXD', 'DTMF', 'CALL',   # fw/main.c's M_ order
         'GROUP', 'PAUSE', 'RESUME', 'DW', 'PRIO', 'GLINK', 'GRP', 'SCOPE', 'FF', 'FM', 'WEATHER', 'LH', 'NAME', 'TOVFO', 'DEL',
-        'LIGHT', 'BRIGHT', 'THEME', 'BEEP', 'KLOCK', 'BELL', 'WX', 'APO', 'SAVE', 'PC', 'REMOTE', 'BT', 'FCAL', 'MCAL', 'BCAL', 'VER']
+        'LIGHT', 'BRIGHT', 'THEME', 'DIGITS', 'BEEP', 'KLOCK', 'BELL', 'WX', 'APO', 'SAVE', 'PC', 'REMOTE', 'BT', 'FCAL', 'MCAL', 'BCAL', 'VER']
 
 
 def num(item):                             # the two digits that jump to an item
@@ -1921,7 +1921,7 @@ def test_weather_mode(cpu):                # long #: WX1-WX7, the strongest on t
     cpu.run(2_000_000)                     # it measures all seven
     assert freq(cpu) == 16247500, freq(cpu)
     texts = remote_texts(cpu)
-    assert 'WX4' in texts and 'WX   ' in texts, texts   # the channel, and WX where VFO/M20 goes
+    assert 'WX4' in texts and 'WX' in texts, texts   # the channel, and WX where VFO/M20 goes
     assert not status_bar(cpu).startswith('WX'), 'WX ALERT switched itself on'
     keys(cpu, ['UP'])
     assert freq(cpu) == 16250000, freq(cpu)
@@ -2308,8 +2308,8 @@ def remote_records(out):                   # REMOTE stream after the last sync -
             end = out.find(0, i + 8)
             if end < 0:
                 break                          # cut off mid-record when the run stopped
-            recs.append(('t', out[i + 1], out[i + 2], out[i + 8:end].decode('latin-1'),   # x, y, text, fg, bg
-                         out[i + 4] << 8 | out[i + 5], out[i + 6] << 8 | out[i + 7])); i = end + 1   # the font's arrows are 0x7F, 0x80
+            recs.append(('t', out[i + 1], out[i + 2], out[i + 8:end].decode('latin-1'),   # x, y, text, fg, bg, scale
+                         out[i + 4] << 8 | out[i + 5], out[i + 6] << 8 | out[i + 7], out[i + 3])); i = end + 1   # the font's arrows are 0x7F, 0x80
         elif k == ord('q'):
             end = out.find(b'\n', i)
             if end < 0:
@@ -2438,6 +2438,58 @@ def test_remote_up_one_step(cpu):          # a redraw slower than 200 ms ate bot
         keys(cpu, ['EXIT', 'EXIT']); cpu.run(1_000_000)
 
 
+DIGITS = ['ARCADE', 'LCD', 'CLASSIC']
+
+
+def test_digits(cpu, style):               # DIGITS: the look's pixels in slot A, the label's place, REMOTE's words, saved
+    import lcdshot
+    n, cfg, y = DIGITS.index(style), rst_addr('_cfg'), 14
+    assert cpu.xram[cfg + 6] >> 6 == 0, 'a new radio (settings FF) not on ARCADE'
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    if n:
+        menu(cpu, 'DIGITS', ['UP'] * n + ['EXIT'])
+    cpu.run(3_000_000)                     # saved 2 s after the last change
+    assert cpu.ee.mem[0x1FC6] >> 6 == n, 'DIGITS not saved: %02X' % cpu.ee.mem[0x1FC6]
+
+    def look():                            # slot A's rows as drawn, and its texts as REMOTE sends them after a sync
+        cpu.uart_out.clear()
+        cpu.uart_in.extend(b'S')
+        cpu.run(3_000_000)
+        return [row[:] for row in lcdshot.frame(cpu.lcd)[y - 1:y + 44]], {(r[2], r[1]): r for r in remote_records(cpu.uart_out) if r[0] == 't'}
+    fb, t = look()
+    px = lambda x, yy: fb[yy - y + 1][x]
+    bg = px(127, y + 20)
+    fg = cpu.xram[rst_addr('_pal') + 2] | cpu.xram[rst_addr('_pal') + 3] << 8
+    big = t.get((y + 9, 32))
+    if n == 2:                             # CLASSIC as ever: the font at 2x from x 32, the label at x 0 on its row
+        assert big and big[3] == '146.520' and big[6] == 2, big
+        assert t.get((y + 13, 0), ('',) * 4)[3] == 'VFO  ', t
+        return
+    assert big and big[3] == '146.520' and big[6] == 255, ('the frequency not sent in words', big)
+    assert any(r[3] == 'VFO' and ry == y and x + 6 * 3 == 128 for (ry, x), r in t.items()), ('the label not at the name row\'s right end', t)
+    assert all(px(x, yy) == bg for x in range(5) for yy in range(y + 8, y + 27)), 'something left of the digits'
+    if n == 0:                             # ARCADE: '1' at x 5 is shape columns 3-4 (x 11-14), rows y+9 to y+24, its shadow 1 right and down
+        dim = (fg >> 1 & 0x7BEF) - (fg >> 3 & 0x18E3) + (fg >> 5 & 0x0020)
+        assert px(11, y + 9) == px(14, y + 24) == fg and px(10, y + 9) == bg, 'ARCADE 1 not at x 11-14'
+        assert px(15, y + 10) == px(15, y + 25) == dim and px(7, y + 25) == bg and px(8, y + 25) == dim, 'no shadow at 40%'
+        assert px(53, y + 22) == fg and px(56, y + 25) == dim and px(53, y + 21) == bg, 'the point not 3x3 on the baseline'
+    else:                                  # LCD: '1' is segments b and c, 3 px tapering to x 16-18, a notch between; two colours, no shadow
+        assert px(18, y + 9) == px(17, y + 10) == px(16, y + 11) == px(18, y + 17) == fg, 'LCD 1'
+        assert px(17, y + 9) == px(18, y + 16) == px(5, y + 12) == px(18, y + 25) == bg, 'LCD 1: its corners, notch, foot'
+        assert {px(x, yy) for x in range(128) for yy in range(y + 8, y + 27)} == {fg, bg}, 'more than two colours'
+        assert px(53, y + 23) == px(55, y + 25) == fg and px(56, y + 25) == px(53, y + 22) == bg, 'the point not 3x3 on the bottom rows'
+    # A fast redraw (the digits that changed) and a 12.5 kHz small digit come and go cleanly: as a full redraw
+    keys(cpu, ['EXIT'])                    # V/M: channel 1, 146.520
+    for k, f, small in (('UP', '462.562', '5 '), ('DOWN', '146.520', '  ')):
+        keys(cpu, [k])
+        cpu.run(1_000_000)
+        fast, t = look()
+        assert t[(y + 9, 32)][3] == f and t.get((y + 17, 116), ('',) * 4)[3].strip() == small.strip(), (k, t[(y + 9, 32)], t.get((y + 17, 116)))
+        keys(cpu, ['MENU', 'EXIT'])        # the whole screen again
+        cpu.run(1_000_000)
+        assert look()[0] == fast, 'a redraw of %s left pixels a full redraw has not' % f
+
+
 def test_tinted_label_reads(cpu):          # a heard slot's label mirrors as plain "M1": bright on its tint, not lit
     sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
     import radio
@@ -2450,11 +2502,13 @@ def test_tinted_label_reads(cpu):          # a heard slot's label mirrors as pla
     cpu.run(3_000_000)
     t = {(r[2], r[1]): r for r in remote_records(cpu.uart_out) if r[0] == 't'}
     y = radio.SLOT_Y['A']
-    lab, letter = t[(y + 13, 0)], t[(y, 1)]
+    lab = next(r for (ry, x), r in t.items() if ry == y and x + 6 * len(r[3]) == 128)   # ARCADE, the default: the name row's right end
+    letter = t[(y, 1)]
     assert lab[3].lstrip('*').startswith('M') and luma(lab[4]) > luma(lab[5]), lab   # bright text on the dark tint
     assert lab[5] == rgb(6, 64, 28), 'the label not on the RX tint'
     assert luma(letter[5]) > luma(letter[4]), letter   # the selected letter: inverse, so tdh3 calls it lit
     assert radio.Radio.label({(y + 13, 0): '*M20  (lit)'}, y) == '20'   # an old tdh3's suffix is stripped too
+    assert radio.Radio.label({(y, 1): 'A  (lit)', (y, 110): '*M1'}, y) == '1'   # ARCADE and LCD: at the right end
     cpu.bk.busy = None
 
 
@@ -3227,7 +3281,7 @@ def test_flash_restart(cpu):               # 'B' arms; PTT down then restarts in
     cpu.key = None
     cpu.run(1_000_000)
     t = remote_texts(cpu)
-    assert '146.520' in t and 'VFO  ' in t, 'not on the home screen after the restart: %r' % t
+    assert '146.520' in t and 'VFO' in t, 'not on the home screen after the restart: %r' % t
 
 
 def test_mirror_lapses(cpu):              # REMOTE on but nobody talking: draws stop costing a serial trip
@@ -3648,6 +3702,9 @@ INDEPENDENT = [
     ('slot tints: green while heard, red while transmitting, per theme', test_slot_tints),
     ('tools/radio.py and tdh3 read the rows the firmware draws', test_tool_rows),
     ('a tinted slot\'s label mirrors plain, its letter inverse', test_tinted_label_reads),
+    ('DIGITS ARCADE: shapes, shadow, label at the right, words to REMOTE, saved', partial(test_digits, style='ARCADE')),
+    ('DIGITS LCD: clock segments, label at the right, words to REMOTE, saved', partial(test_digits, style='LCD')),
+    ('DIGITS CLASSIC: the 5x7 font at 2x and the label as before, saved', partial(test_digits, style='CLASSIC')),
     ('meter: one full-width bar, the reading inside, the squelch tick', test_meter),
     ('dual watch: a wrong-tone carrier is not held', test_dual_watch_wrong_tone),
     ('Bluetooth clone protocol on UART0', test_bluetooth),

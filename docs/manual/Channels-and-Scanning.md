@@ -28,7 +28,7 @@ The easiest way is from a computer with [CHIRP](https://chirp.danplanet.com) or 
 downloaded ([Updating the firmware](Updating#get-the-flasher); type `.\tdh3.exe` on Windows and
 `./tdh3` on a Mac or Linux where these steps say `tdh3`).
 
-1. On the radio: **MENU**, then type **4** **5** to reach **PC LINK**, then **MENU**. The
+1. On the radio: **MENU**, then type **4** **6** to reach **PC LINK**, then **MENU**. The
    screen says *waiting for computer*. Plug in the USB-C cable. (With BLUETOOTH on in the menu, a
    phone app can talk to it over Bluetooth too.)
 
@@ -61,7 +61,7 @@ USB (MENU → MODE).
 ## Changing channels from the computer
 
 `tdh3` (the flasher you downloaded) can show and change your channels one at a time, or many at
-once. Put the radio in PC LINK first: **MENU**, type **4** **5**, **MENU**. **V/M** leaves it when you're done.
+once. Put the radio in PC LINK first: **MENU**, type **4** **6**, **MENU**. **V/M** leaves it when you're done.
 
 | I want to… | Type |
 |---|---|
@@ -98,14 +98,14 @@ settings, its calibration and everything else. Its old channels 1-199 are replac
 
 You need one USB-C cable. Run the commands in the firmware's folder.
 
-1. **Save radio 1's memory to a file.** Plug radio 1 in. On it: **MENU**, type **4** **5** (PC LINK),
+1. **Save radio 1's memory to a file.** Plug radio 1 in. On it: **MENU**, type **4** **6** (PC LINK),
    **MENU**. The screen says *waiting for computer*. On the computer:
    ```bash
    tdh3 eeprom backup radio1.bin
    ```
    It finds the cable by itself (with two radio cables plugged in, name one: `-p /dev/ttyUSB0`).
    When it says *saved*, press **V/M** on radio 1 and unplug it.
-2. **Plug radio 2 in** and put it in PC LINK the same way: **MENU**, **4** **5** (PC LINK), **MENU**.
+2. **Plug radio 2 in** and put it in PC LINK the same way: **MENU**, **4** **6** (PC LINK), **MENU**.
 3. **Copy:**
    ```bash
    tdh3 channels copy radio1.bin

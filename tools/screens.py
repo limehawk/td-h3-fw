@@ -20,7 +20,7 @@ OUT = os.path.join(ROOT, 'docs', 'manual', 'img')
 
 # name: [(number, x, y), ...] in the radio's 128 x 128 pixels: where each callout points
 CALLOUTS = {
-    'home': [(1, 3, 17), (2, 64, 17), (3, 10, 27), (4, 75, 30), (5, 5, 44), (6, 115, 44), (7, 15, 53),
+    'home': [(1, 3, 17), (2, 64, 17), (3, 118, 17), (4, 75, 30), (5, 5, 44), (6, 115, 44), (7, 15, 53),
              (8, 118, 53), (9, 50, 66), (10, 108, 66), (11, 75, 88), (12, 15, 4), (13, 118, 4)],
     'typing': [(1, 30, 123)],
     'scanning': [(1, 15, 4), (2, 75, 30)],
@@ -30,7 +30,7 @@ CALLOUTS = {
     'freqfind': [(1, 40, 38), (2, 50, 123)],
     'pclink': [(1, 40, 48)],
     'locked': [(1, 80, 4)],
-    'usb': [(1, 30, 44), (2, 121, 33), (3, 112, 53)],
+    'usb': [(1, 30, 44), (2, 114, 35), (3, 112, 53)],
     'tx': [(1, 75, 30), (2, 20, 66), (3, 112, 66), (4, 60, 52), (5, 40, 123)],
     'dtmfcodes': [(1, 30, 17), (2, 30, 29), (3, 60, 111)],
     'alert': [(1, 50, 30)],
@@ -41,6 +41,7 @@ PLAIN = ['memory', 'menuedit', 'menudigit', 'saveask', 'replace', 'deletelist', 
          'chname', 'weather', 'lastheard', 'flashlight', 'remote', 'version', 'notallowed', 'repeater', 'dtmfask',
          'ptthold', 'vox', 'fmauto', 'callid']
 THEMES = 4          # MENU, THEME: the four side by side make themes.png
+DIGITS = 3          # MENU, DIGITS: ARCADE, LCD and CLASSIC side by side make digits.png
 
 
 def capture():
@@ -225,6 +226,14 @@ def capture():
         cpu.run(2_000_000)
         save(cpu, 'theme%d' % n)
 
+    for n in range(DIGITS):                # GMRS channel 1: 462.5625, a small 5
+        cpu = memory()
+        t.keys(cpu, ['0', '0', '2'])
+        if n:
+            t.menu(cpu, 'DIGITS', ['UP'] * n + ['EXIT'])
+        cpu.run(2_000_000)
+        save(cpu, 'digits%d' % n)
+
     cpu = fresh()
     t.longpress(cpu, 'MENU')
     save(cpu, 'saveask')
@@ -334,6 +343,12 @@ def annotate():
         img.paste(src.resize((128 * 2, 128 * 2), Image.NEAREST), (pad + n * (128 * 2 + pad), pad))
     img.save(os.path.join(OUT, 'themes.png'), optimize=True)
     print('docs/manual/img/themes.png')
+    img = Image.new('RGB', (DIGITS * (128 * 2 + pad) + pad, 128 * 2 + 2 * pad), (28, 28, 28))
+    for n in range(DIGITS):
+        src = Image.open(os.path.join(RAW, 'digits%d.png' % n)).convert('RGB')
+        img.paste(src.resize((128 * 2, 128 * 2), Image.NEAREST), (pad + n * (128 * 2 + pad), pad))
+    img.save(os.path.join(OUT, 'digits.png'), optimize=True)
+    print('docs/manual/img/digits.png')
     for name, marks in CALLOUTS.items():
         src = Image.open(os.path.join(RAW, name + '.png')).convert('RGB')
         img = Image.new('RGB', (128 * k + 2 * m, 128 * k + 2 * pad), (28, 28, 28))

@@ -11,7 +11,7 @@ No other radio firmware does this as far as we know.
 ## Set it up
 
 1. Plug the radio into the computer with its USB-C cable.
-2. On the radio, switch REMOTE on: press **MENU**, then **4** **5** (item 45, REMOTE), **MENU**,
+2. On the radio, switch REMOTE on: press **MENU**, then **4** **7** (item 47, REMOTE), **MENU**,
    **UP** so it says **ON**, **MENU**, and **V/M** to leave the menu.
 3. Use the flasher you downloaded (`tdh3.exe` on Windows, `tdh3` on a Mac or Linux), or build it from the source: `cd tools/tdh3 && go build`.
 4. That's all: `tdh3` finds the radio's cable by itself. With two radios plugged in, a person

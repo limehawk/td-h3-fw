@@ -22,9 +22,9 @@ type `.\tdh3.exe` on Windows and `./tdh3` on a Mac or Linux. See [Updating the f
 
 **Two ways the radio talks to a computer.** Each command needs one of these:
 
-- **PC LINK**: press **MENU**, type **4** **5** (PC LINK), press **MENU**. The screen says
+- **PC LINK**: press **MENU**, type **4** **6** (PC LINK), press **MENU**. The screen says
   *waiting for computer*. **V/M** leaves it when you're done. The radio doesn't receive while it's in PC LINK.
-- **REMOTE**: press **MENU**, type **4** **6** (REMOTE), press **MENU**, set it to **ON**, press
+- **REMOTE**: press **MENU**, type **4** **7** (REMOTE), press **MENU**, set it to **ON**, press
   **MENU**. It stays on, and the radio works normally. It can never make the radio transmit.
 
 **Several radios plugged in?** Add `-p` and the port, like `-p /dev/ttyUSB1` or `-p COM5`. With one
