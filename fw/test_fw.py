@@ -2403,6 +2403,9 @@ def test_remote_same_key_twice(cpu):        # V/M from one tdh3 call, then the n
 
 
 def test_remote_paced_vm(cpu):             # as tools/emuport.py feeds tdh3's bytes: one at a time, 150 ms apart, the
+    # DIGITS CLASSIC: an all-C (ASM=0) redraw of ARCADE or LCD runs past ~200 ticks between key scans,
+    # where a held REMOTE key lets go; the shipped ASM=1 build has room. This checks REMOTE's timing.
+    menu(cpu, 'DIGITS', ['UP', 'UP', 'EXIT'])
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # hold landing in the 'S' redraw. Read late, then a slow mirrored pass:
     cpu.run(1_000_000)                     # let go before key_event saw it, so V/M did nothing
     pending, last, n = [ord('S'), 0x8E, 0x8E, 0x80, 0x80], 0, 0
