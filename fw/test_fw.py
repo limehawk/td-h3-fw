@@ -10,6 +10,7 @@ import glob
 import os
 import re
 import sys
+from functools import partial
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
@@ -1556,15 +1557,17 @@ def scan_to_busy(cpu, on):               # scan the memories until it stops on c
     cpu.run(300_000)
 
 
-def test_scan_stops_for_save_and_tools(cpu):   # hold MENU on a scan stop saves that channel, though the call ends;
-    on = [True]                            # a freq-find pick stays tuned (the scan went on under both)
+def test_scan_stops_for_save_and_tools(cpu):   # hold MENU on a scan stop saves that channel, though the call ends
+    on = [True]
     scan_to_busy(cpu, on)
     longpress(cpu, 'MENU')
     on[0] = False
     cpu.run(6_000_000)
     press(cpu, 'MENU')
     assert bytes(cpu.ee.mem[0x50:0x54]) == bcd(46256250, 4), bytes(cpu.ee.mem[0x50:0x54]).hex()
-    cpu = boot()
+
+
+def test_scan_stops_for_freq_find(cpu):    # a freq-find pick on a scan stop stays tuned (the scan went on under it)
     keys(cpu, ['*'])                       # a VFO scan on 2 m
     cpu.run(1_000_000)
     cpu.bk.counter = lambda: 44700000
@@ -1612,77 +1615,74 @@ def stop_scan(cpu, key='*'):               # a short press that stops a running 
     press(cpu, key, after=2_500_000)
 
 
-def test_scan_stop_goes_back_or_to_hit(cpu):   # * with no hit: back to the start; one hit: to it; the hold keys the same
-    for mem in (True, False):
-        k = 'memory' if mem else 'VFO'
-        c = boot()
-        scan_hits(c, mem, 0)
-        press(c, '*')
-        stopped_on(c, SCAN_FROM, k + ' scan, no hit')
-        c = boot()
-        hits = scan_hits(c, mem, 1)
-        press(c, '*')
-        stopped_on(c, hits[0], k + ' scan, one hit')
-        c = boot()
-        hits = scan_hits(c, mem, 1)
-        press(c, 'MENU', hold=3_000_000)   # held (longer while the scan keeps the CPU busy): save what it stopped on
-        press(c, 'EXIT')                   # no, thanks
-        stopped_on(c, hits[0], k + ' scan, one hit, hold MENU')
-        c = boot()
-        scan_hits(c, mem, 0)
-        press(c, '7', hold=3_000_000)      # held: freq find, from the start
-        c.run(500_000)
-        press(c, 'EXIT')
-        stopped_on(c, SCAN_FROM, k + ' scan, no hit, hold 7')
+def test_scan_stop_goes_back_or_to_hit(cpu, mem):   # * with no hit: back to the start; one hit: to it; the hold keys the same
+    k = 'memory' if mem else 'VFO'
+    c = cpu
+    scan_hits(c, mem, 0)
+    press(c, '*')
+    stopped_on(c, SCAN_FROM, k + ' scan, no hit')
+    c = boot()
+    hits = scan_hits(c, mem, 1)
+    press(c, '*')
+    stopped_on(c, hits[0], k + ' scan, one hit')
+    c = boot()
+    hits = scan_hits(c, mem, 1)
+    press(c, 'MENU', hold=3_000_000)       # held (longer while the scan keeps the CPU busy): save what it stopped on
+    press(c, 'EXIT')                       # no, thanks
+    stopped_on(c, hits[0], k + ' scan, one hit, hold MENU')
+    c = boot()
+    scan_hits(c, mem, 0)
+    press(c, '7', hold=3_000_000)          # held: freq find, from the start
+    c.run(500_000)
+    press(c, 'EXIT')
+    stopped_on(c, SCAN_FROM, k + ' scan, no hit, hold 7')
 
 
-def test_scan_stop_picks_from_hits(cpu):   # * with two hits: LAST HEARD, the hits on top, newest lit; MENU, DOWN, V/M
+def test_scan_stop_picks_from_hits(cpu, mem):   # * with two hits: LAST HEARD, the hits on top, newest lit; MENU, DOWN, V/M
     import lcdshot
-    for mem in (True, False):
-        k = 'memory' if mem else 'VFO'
-        c = boot()
-        menu(c, 'REMOTE', ['UP', 'EXIT'])
-        hits = scan_hits(c, mem, 2)
-        stop_scan(c)
-        c.uart_in.extend(b'S')             # ask for a fresh screen, as tdh3 does
-        c.run(1_000_000)
-        rows = sorted((r[2], r[3]) for r in remote_records(c.uart_out) if r[0] == 't' and 14 <= r[2] < 110)
-        want = ('M3 ', 'M2 ') if mem else ('147.000', '146.600')
-        assert len(rows) >= 2 and all(w in r[1] for w, r in zip(want, rows)), (k, rows)   # the hits on top, newest first
-        fb = lcdshot.frame(c.lcd)
-        assert fb[13][64] == rgb(255, 176, 0) and fb[25][64] == 0, k + ': the newest hit not lit'
-        press(c, 'MENU')
-        stopped_on(c, hits[1], k + ': MENU on the newest')
-        c = boot()
-        hits = scan_hits(c, mem, 2)
-        stop_scan(c)
-        keys(c, ['DOWN', 'MENU'])
-        stopped_on(c, hits[0], k + ': DOWN, MENU')
-        c = boot()
-        scan_hits(c, mem, 2)
-        stop_scan(c)
-        press(c, 'EXIT')
-        stopped_on(c, SCAN_FROM, k + ': V/M in the list')
+    k = 'memory' if mem else 'VFO'
+    c = cpu
+    menu(c, 'REMOTE', ['UP', 'EXIT'])
+    hits = scan_hits(c, mem, 2)
+    stop_scan(c)
+    c.uart_in.extend(b'S')                 # ask for a fresh screen, as tdh3 does
+    c.run(1_000_000)
+    rows = sorted((r[2], r[3]) for r in remote_records(c.uart_out) if r[0] == 't' and 14 <= r[2] < 110)
+    want = ('M3 ', 'M2 ') if mem else ('147.000', '146.600')
+    assert len(rows) >= 2 and all(w in r[1] for w, r in zip(want, rows)), (k, rows)       # the hits on top, newest first
+    fb = lcdshot.frame(c.lcd)
+    assert fb[13][64] == rgb(255, 176, 0) and fb[25][64] == 0, k + ': the newest hit not lit'
+    press(c, 'MENU')
+    stopped_on(c, hits[1], k + ': MENU on the newest')
+    c = boot()
+    hits = scan_hits(c, mem, 2)
+    stop_scan(c)
+    keys(c, ['DOWN', 'MENU'])
+    stopped_on(c, hits[0], k + ': DOWN, MENU')
+    c = boot()
+    scan_hits(c, mem, 2)
+    stop_scan(c)
+    press(c, 'EXIT')
+    stopped_on(c, SCAN_FROM, k + ': V/M in the list')
 
 
-def test_scan_stop_paused_and_vm(cpu):     # * while paused on a station: stays; V/M: always back to the start
-    for mem in (True, False):
-        k = 'memory' if mem else 'VFO'
-        c = boot()
-        menu(c, 'REMOTE', ['UP', 'EXIT'])
-        hits = scan_hits(c, mem, 2, pause=True)
-        remote_texts(c)                    # sync the mirror
-        press(c, '*')
-        stopped_on(c, hits[2], k + ': * paused on a station')
-        assert not any('LAST HEARD' in t for t in remote_texts(c)), k + ': the list opened'
-        c = boot()
-        scan_hits(c, mem, 1, pause=True)
-        press(c, 'EXIT')
-        stopped_on(c, SCAN_FROM, k + ': V/M paused on a station')
-        c = boot()
-        scan_hits(c, mem, 2)
-        press(c, 'EXIT')
-        stopped_on(c, SCAN_FROM, k + ': V/M with two hits')
+def test_scan_stop_paused_and_vm(cpu, mem):   # * while paused on a station: stays; V/M: always back to the start
+    k = 'memory' if mem else 'VFO'
+    c = cpu
+    menu(c, 'REMOTE', ['UP', 'EXIT'])
+    hits = scan_hits(c, mem, 2, pause=True)
+    remote_texts(c)                        # sync the mirror
+    press(c, '*')
+    stopped_on(c, hits[2], k + ': * paused on a station')
+    assert not any('LAST HEARD' in t for t in remote_texts(c)), k + ': the list opened'
+    c = boot()
+    scan_hits(c, mem, 1, pause=True)
+    press(c, 'EXIT')
+    stopped_on(c, SCAN_FROM, k + ': V/M paused on a station')
+    c = boot()
+    scan_hits(c, mem, 2)
+    press(c, 'EXIT')
+    stopped_on(c, SCAN_FROM, k + ': V/M with two hits')
 
 
 def static_at(path, name, src='main'):    # a static's XDATA address, from the module's listing (fw.map has globals only)
@@ -2577,6 +2577,9 @@ def test_auto_shift(cpu):            # SHIFT AUTO: the ARRL band plan's repeater
     assert freq(cpu) == 14634000 and pins(cpu)['TXV'], freq(cpu)   # mirrored retune here keys up at ~380 ms (~25 ms on the radio)
     cpu.key = None
     cpu.run(2_000_000)
+
+
+def test_auto_shift_fresh(cpu):            # SHIFT AUTO is the default
     ee = eeprom()
     ee[0x1FC0:0x1FF0] = b'\xff' * 0x30     # fresh settings: AUTO
     cpu = boot(ee=ee)
@@ -2616,13 +2619,12 @@ def offset_row(cpu):                       # OFFSET's value in the menu, then ou
     return row[0].split()[-1]
 
 
-def test_offset_old_settings(cpu):         # settings from before OFFSET was per band: each band starts on its standard
-    for old in (0, 1, 4, 6):
-        ee = eeprom(); ee[0x1FC3] = 0x49; ee[0x1FC5] = old << 4   # SHIFT -, the old single OFFSET
-        cpu = boot(ee=ee)
-        menu(cpu, 'REMOTE', ['UP', 'EXIT'])
-        assert shift_of(cpu, '145580') == '-0.6' and offset_row(cpu) == '0.60', old
-        assert shift_of(cpu, '446000') == '-5' and offset_row(cpu) == '5.00', old
+def test_offset_old_settings(cpu, old):    # settings from before OFFSET was per band: each band starts on its standard
+    ee = eeprom(); ee[0x1FC3] = 0x49; ee[0x1FC5] = old << 4   # SHIFT -, the old single OFFSET
+    cpu = boot(ee=ee)
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    assert shift_of(cpu, '145580') == '-0.6' and offset_row(cpu) == '0.60', old
+    assert shift_of(cpu, '446000') == '-5' and offset_row(cpu) == '5.00', old
 
 
 def test_offset_dial(cpu):                 # 50 kHz steps, 0.05 to 12.75 MHz, round past either end
@@ -2649,22 +2651,20 @@ def test_shift_digits(cpu):                # a shift of 10 MHz or more shows in 
     assert line.split()[2] == '-300', line
 
 
-def test_ch_to_vfo_offset(cpu):            # CH TO VFO: any 50 kHz multiple comes over; anything else is simplex
-    for tx, shift, off in ((44610000 - 765000, '-', '7.65'), (44610000 - 60001, 'OFF', '5.00')):
-        cpu = boot()
-        cpu.ee.mem[0x44:0x48] = bcd(tx, 4)
-        menu(cpu, 'REMOTE', ['UP', 'EXIT'])
-        press(cpu, 'EXIT')                 # V/M: memory mode
-        keys(cpu, '004')
-        cpu.run(1_000_000)
-        menu(cpu, 'TOVFO', ['UP'])
-        cpu.run(1_000_000)
-        assert offset_row(cpu) == off, tx
-        menu(cpu, 'SHIFT')
-        cpu.run(1_000_000)
-        row = [t for t in remote_texts(cpu) if t.startswith('SHIFT')]
-        assert row and row[0].split()[-1] == shift, (tx, row)
-        keys(cpu, ['EXIT'])
+def test_ch_to_vfo_offset(cpu, tx, shift, off):   # CH TO VFO: any 50 kHz multiple comes over; anything else is simplex
+    cpu.ee.mem[0x44:0x48] = bcd(tx, 4)
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])
+    press(cpu, 'EXIT')                     # V/M: memory mode
+    keys(cpu, '004')
+    cpu.run(1_000_000)
+    menu(cpu, 'TOVFO', ['UP'])
+    cpu.run(1_000_000)
+    assert offset_row(cpu) == off, tx
+    menu(cpu, 'SHIFT')
+    cpu.run(1_000_000)
+    row = [t for t in remote_texts(cpu) if t.startswith('SHIFT')]
+    assert row and row[0].split()[-1] == shift, (tx, row)
+    keys(cpu, ['EXIT'])
 
 
 def test_entry_rxonly(cpu):                # RX-only: 'RXONLY' made the info line overflow into entry
@@ -3012,18 +3012,17 @@ def test_tail_migration(cpu):              # a 0xAB block's TAIL TONE OFF (0x1FC
     assert (c.ee.mem[0x1FC0], c.ee.mem[0x1FC3] & 3, c.ee.mem[0x1FC4] & 8, c.ee.mem[0x1FC9]) == (0xAD, 1, 0, 0x07), bytes(c.ee.mem[0x1FC0:0x1FF0]).hex()
 
 
-def test_power_migration(cpu):             # a 0xAC block's POWER (0 LOW, 1 HIGH, 2 ULTRA LOW) keeps its level as MID comes in
-    for old, new, name in ((0, 1, 'LOW'), (1, 3, 'HIGH'), (2, 0, 'ULTRA LOW')):
-        ee = eeprom()
-        ee[0x1FC0], ee[0x1FC3] = 0xAC, ee[0x1FC3] & ~3 | old
-        c = boot(ee=ee)
-        menu(c, 'REMOTE', ['UP', 'EXIT'])   # a change, so the block is saved; and the screen mirrored
-        menu(c, 'POWER')
-        rows = [t.split(None, 1)[1].strip() for t in remote_texts(c) if t.startswith('POWER ')]
-        assert name in rows, (name, rows)
-        keys(c, ['EXIT'])
-        c.run(3_000_000)
-        assert (c.ee.mem[0x1FC0], c.ee.mem[0x1FC3] & 3) == (0xAD, new), (name, bytes(c.ee.mem[0x1FC0:0x1FC4]).hex())
+def test_power_migration(cpu, old, new, name):   # a 0xAC block's POWER (0 LOW, 1 HIGH, 2 ULTRA LOW) keeps its level as MID comes in
+    ee = eeprom()
+    ee[0x1FC0], ee[0x1FC3] = 0xAC, ee[0x1FC3] & ~3 | old
+    c = boot(ee=ee)
+    menu(c, 'REMOTE', ['UP', 'EXIT'])       # a change, so the block is saved; and the screen mirrored
+    menu(c, 'POWER')
+    rows = [t.split(None, 1)[1].strip() for t in remote_texts(c) if t.startswith('POWER ')]
+    assert name in rows, (name, rows)
+    keys(c, ['EXIT'])
+    c.run(3_000_000)
+    assert (c.ee.mem[0x1FC0], c.ee.mem[0x1FC3] & 3) == (0xAD, new), (name, bytes(c.ee.mem[0x1FC0:0x1FC4]).hex())
 
 
 def test_mid_power(cpu):                   # MID: the whole part of sqrt(LOW x HIGH) of the segment's factory duties
@@ -3097,19 +3096,18 @@ def remote_texts_boot(cpu):
     return remote_texts(cpu)
 
 
-def test_flash_restart_ends_with_remote(cpu):   # 'B', then REMOTE OFF or PC LINK: PTT later transmits, no restart.
-    for leave in (['MENU'] + num('REMOTE') + ['MENU', 'UP', 'MENU', 'EXIT'], ['MENU'] + num('PC') + ['MENU', 'EXIT']):
-        cpu = boot()                       # remote_tick, which lets the arming lapse, only runs with REMOTE on
-        menu(cpu, 'REMOTE', ['UP', 'EXIT'])
-        cpu.uart_in.extend(b'B'); cpu.run(2_000_000)
-        for k in leave:
-            cpu.uart_in.append(0x80)       # tdh3's keep-armed byte
-            press(cpu, k)
-        cpu.run(12 * 800_000)
-        cpu.key = 'PTT'; cpu.run(400_000)
-        p = pins(cpu)
-        assert not cpu.resets and (p['TXU'] or p['TXV']), (leave[1:], cpu.resets)
-        cpu.key = None; cpu.run(1_000_000)
+def test_flash_restart_ends_with_remote(cpu, item):   # 'B', then REMOTE OFF or PC LINK: PTT later transmits, no restart.
+    leave = ['MENU'] + num(item) + (['MENU', 'UP', 'MENU', 'EXIT'] if item == 'REMOTE' else ['MENU', 'EXIT'])
+    menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # remote_tick, which lets the arming lapse, only runs with REMOTE on
+    cpu.uart_in.extend(b'B'); cpu.run(2_000_000)
+    for k in leave:
+        cpu.uart_in.append(0x80)           # tdh3's keep-armed byte
+        press(cpu, k)
+    cpu.run(12 * 800_000)
+    cpu.key = 'PTT'; cpu.run(400_000)
+    p = pins(cpu)
+    assert not cpu.resets and (p['TXU'] or p['TXV']), (leave[1:], cpu.resets)
+    cpu.key = None; cpu.run(1_000_000)
 
 
 def test_flash_restart_side_key(cpu):      # armed, side key 1 (PTT-B) restarts as PTT does: it transmitted on B
@@ -3512,6 +3510,42 @@ def run(name, fn, cpu):
     print('ok', name)
 
 
+def test_first_block(cpu):                 # in order on one booted CPU: each leaves the radio as the next expects
+    run('boot matches stock', test_boot_matches_stock, cpu)
+    run('VHF RX path at 146.520', test_vhf_rx_path, cpu)
+    run('stock hardware squelch thresholds + REG_0C bit 1', test_stock_squelch, cpu)
+    run('A/B slots', test_ab_slots, cpu)
+    run('keypad entry -> UHF path', test_keypad_entry_uhf, cpu)
+    run('TX on 446.000 uses UHF path + factory cal', test_tx_allowed_band, cpu)
+    run('TX refused on 162.550', test_tx_refused_out_of_band, cpu)
+    run('memory channels from stock layout', test_memory_channels, cpu)
+    run('DCS D023N RX / D754I TX from a stored channel', test_dcs, cpu)
+    run('settings saved only to 0x1FC0 block', test_settings_saved_only_in_own_block, cpu)
+    run('PC LINK clone protocol + protected cal', test_pc_link_clone, cpu)
+    run('no PC LINK without the menu', test_no_auto_pc_link, cpu)
+
+
+def test_no_cal_no_tx(cpu):
+    cpu = boot(cal=False)
+    keys(cpu, '446000')
+    tx_refused(cpu)
+
+
+def test_rxonly_never_transmits(cpu):
+    if not os.path.exists(FW_RX):
+        print('  (%s absent, skipped)' % FW_RX)
+        return
+    cpu = boot(FW_RX)
+    keys(cpu, '446000')
+    tx_refused(cpu)
+
+
+FIRST = [
+    ('first block: boot, RX path, TX band plan, clone protocol', test_first_block),
+    ('no factory cal -> no TX', test_no_cal_no_tx),
+    ('RX-only build never transmits', test_rxonly_never_transmits),
+]
+
 INDEPENDENT = [
     ('GROUP LINK: a scan covers several groups', test_group_link),
     ('CH GROUPS: a channel\'s groups set on the radio', test_ch_groups),
@@ -3523,7 +3557,8 @@ INDEPENDENT = [
     ('LAST HEARD: newest first, MENU tunes to it', test_last_heard),
     ('REMOTE: a held key lets go without its release byte', test_remote_key_lets_go),
     ('REMOTE: a lost release lets go in FM auto presets too', test_remote_lost_release_in_fm_auto),
-    ('flash restart: REMOTE OFF or PC LINK disarms it', test_flash_restart_ends_with_remote),
+    ('flash restart: REMOTE OFF disarms it', partial(test_flash_restart_ends_with_remote, item='REMOTE')),
+    ('flash restart: PC LINK disarms it', partial(test_flash_restart_ends_with_remote, item='PC')),
     ('flash restart: side key 1 restarts too, never transmits', test_flash_restart_side_key),
     ('REMOTE: one UP from tdh3 is one step, over a slow redraw', test_remote_up_one_step),
     ('REMOTE: a digit from tdh3 landing in a redraw still counts (menu number)', test_remote_digit_in_redraw),
@@ -3531,17 +3566,23 @@ INDEPENDENT = [
     ('REMOTE: a V/M fed a byte at a time (emuport) still counts', test_remote_paced_vm),
     ('REMOTE: bytes that land in a redraw are kept, a whole press read in turn', test_remote_bytes_kept_in_redraw),
     ('dual watch waits 3 s after a call drops (fades)', test_dual_watch_waits_after_a_fade),
-    ('a scan stops for hold MENU (save) and the hold-key tools', test_scan_stops_for_save_and_tools),
-    ('scan stop: back to the start with no hit, to the one hit (memory and VFO)', test_scan_stop_goes_back_or_to_hit),
-    ('scan stop: two hits open LAST HEARD to pick from (memory and VFO)', test_scan_stop_picks_from_hits),
-    ('scan stop: * paused stays, V/M always back to the start (memory and VFO)', test_scan_stop_paused_and_vm),
+    ('a scan stops for hold MENU (save)', test_scan_stops_for_save_and_tools),
+    ('a scan stops for the hold-key tools (freq find)', test_scan_stops_for_freq_find),
+    ('scan stop: back to the start with no hit, to the one hit (memory)', partial(test_scan_stop_goes_back_or_to_hit, mem=True)),
+    ('scan stop: back to the start with no hit, to the one hit (VFO)', partial(test_scan_stop_goes_back_or_to_hit, mem=False)),
+    ('scan stop: two hits open LAST HEARD to pick from (memory)', partial(test_scan_stop_picks_from_hits, mem=True)),
+    ('scan stop: two hits open LAST HEARD to pick from (VFO)', partial(test_scan_stop_picks_from_hits, mem=False)),
+    ('scan stop: * paused stays, V/M always back to the start (memory)', partial(test_scan_stop_paused_and_vm, mem=True)),
+    ('scan stop: * paused stays, V/M always back to the start (VFO)', partial(test_scan_stop_paused_and_vm, mem=False)),
     ('a scan saves the settings once, when it ends', test_scan_saves_settings_once),
     ('a quiet scan doesn\'t stall at the 327 s tick wrap', test_scan_quiet_past_tick_wrap),
     ('TAIL TONE on and off', test_tail_tone),
     ('COMPANDER: RX, TX, BOTH', test_compander),
     ('NARROW kHz: 6.25 narrows narrow FM only', test_narrow_khz),
     ('TAIL TONE OFF moves to its 2-bit place (0xAB -> 0xAD)', test_tail_migration),
-    ('POWER keeps its level as MID comes in (0xAC -> 0xAD)', test_power_migration),
+    ('POWER LOW keeps its level as MID comes in (0xAC -> 0xAD)', partial(test_power_migration, old=0, new=1, name='LOW')),
+    ('POWER HIGH keeps its level as MID comes in (0xAC -> 0xAD)', partial(test_power_migration, old=1, new=3, name='HIGH')),
+    ('POWER ULTRA LOW keeps its level as MID comes in (0xAC -> 0xAD)', partial(test_power_migration, old=2, new=0, name='ULTRA LOW')),
     ('MID power: sqrt(LOW x HIGH) of the factory table, never a blank one', test_mid_power),
     ('scan skip: off the scan list for good, group scans too, after power-off; hold V/M undoes', test_scan_skip_kept),
     ('TX BANDS: per-service transmit switches', test_tx_bands),
@@ -3674,11 +3715,16 @@ INDEPENDENT = [
     ('menu times out after 20 s', test_menu_times_out),
     ('REMOTE: screen mirror, keys, status, no PTT', test_remote),
     ('SHIFT AUTO follows the band plan', test_auto_shift),
+    ('SHIFT AUTO on fresh settings', test_auto_shift_fresh),
     ('OFFSET is one per band', test_offset_per_band),
-    ('settings saved with one OFFSET load right', test_offset_old_settings),
+    ('settings saved with one OFFSET load right (old OFFSET 0)', partial(test_offset_old_settings, old=0)),
+    ('settings saved with one OFFSET load right (old OFFSET 1)', partial(test_offset_old_settings, old=1)),
+    ('settings saved with one OFFSET load right (old OFFSET 4)', partial(test_offset_old_settings, old=4)),
+    ('settings saved with one OFFSET load right (old OFFSET 6)', partial(test_offset_old_settings, old=6)),
     ('a shift of 10 MHz or more shows in full', test_shift_digits),
     ('OFFSET dials 0.05 to 12.75 MHz and goes round', test_offset_dial),
-    ('CH TO VFO brings any 50 kHz offset, else simplex', test_ch_to_vfo_offset),
+    ('CH TO VFO brings any 50 kHz offset', partial(test_ch_to_vfo_offset, tx=44610000 - 765000, shift='-', off='7.65')),
+    ('CH TO VFO makes any other offset simplex', partial(test_ch_to_vfo_offset, tx=44610000 - 60001, shift='OFF', off='5.00')),
     ('typed digits show on the RX-only build', test_entry_rxonly),
     ('V/M leaves a remotely started PC LINK', test_remote_pc_link_exit),
     ('menu walk: every setting, its text and saved bytes', test_menu_walk),
@@ -3697,6 +3743,12 @@ def one(item):
         return 'ok %s [sp %02X]' % (name, cpu.sp_max)
     except AssertionError as e:
         return 'FAIL %s: %s' % (name, e)
+
+
+def timed(item):
+    import time
+    t = time.time()
+    return item[0], one(item), time.time() - t
 
 
 def check_quick_reference():               # every manual page's menu numbers are the firmware's
@@ -3722,48 +3774,35 @@ def check_menu_help():                     # fw/help.c is tools/mkhelp.py's outp
     assert got == mkhelp.pack(mkhelp.HELP), 'fw/help.c is stale: run python3 tools/mkhelp.py'
 
 if __name__ == '__main__':
+    import json
     import multiprocessing
-    if sys.argv[1:]:                       # python3 test_fw.py scan fm: just the feature tests whose names match
-        items = [i for i in INDEPENDENT if any(w.lower() in i[0].lower() for w in sys.argv[1:])]
-        if not items:
-            sys.exit('no test name contains ' + ' or '.join(sys.argv[1:]))
-        results = multiprocessing.Pool(len(items)).map(one, items)
-        print('\n'.join(results))
-        sys.exit(1 if any(r.startswith('FAIL') for r in results) else 0)
-    # TEST_JOBS caps the workers where RAM, not cores, is the limit (CI: each PyPy worker is a few hundred MB).
-    pool = multiprocessing.Pool(min(len(INDEPENDENT), int(os.environ.get('TEST_JOBS', 0)) or os.cpu_count() or 4))
-    pending = pool.map_async(one, INDEPENDENT)
-
     check_quick_reference()
     check_menu_help()
-    cpu = boot()
-    run('boot matches stock', test_boot_matches_stock, cpu)
-    run('VHF RX path at 146.520', test_vhf_rx_path, cpu)
-    run('stock hardware squelch thresholds + REG_0C bit 1', test_stock_squelch, cpu)
-    run('A/B slots', test_ab_slots, cpu)
-    run('keypad entry -> UHF path', test_keypad_entry_uhf, cpu)
-    run('TX on 446.000 uses UHF path + factory cal', test_tx_allowed_band, cpu)
-    run('TX refused on 162.550', test_tx_refused_out_of_band, cpu)
-    run('memory channels from stock layout', test_memory_channels, cpu)
-    run('DCS D023N RX / D754I TX from a stored channel', test_dcs, cpu)
-    run('settings saved only to 0x1FC0 block', test_settings_saved_only_in_own_block, cpu)
-    run('PC LINK clone protocol + protected cal', test_pc_link_clone, cpu)
-    run('no PC LINK without the menu', test_no_auto_pc_link, cpu)
-
-    nocal = boot(cal=False)
-    keys(nocal, '446000')
-    run('no factory cal -> no TX', tx_refused, nocal)
-    if os.path.exists(FW_RX):
-        rx = boot(FW_RX)
-        keys(rx, '446000')
-        run('RX-only build never transmits', tx_refused, rx)
-
-    results = pending.get()
+    items = FIRST + INDEPENDENT
+    if sys.argv[1:]:                       # python3 test_fw.py scan fm: just the tests whose names match
+        items = [i for i in items if any(w.lower() in i[0].lower() for w in sys.argv[1:])]
+        if not items:
+            sys.exit('no test name contains ' + ' or '.join(sys.argv[1:]))
+    # Longest first, from the last run's times (a new test counts as longest), so no long test starts last.
+    times_file = os.path.join(HERE, 'build', 'test-times')
+    try:
+        times = json.load(open(times_file))
+    except (OSError, ValueError):
+        times = {}
+    jobs = sorted(items, key=lambda i: -times.get(i[0], 1e9))
+    # TEST_JOBS caps the workers where RAM, not cores, is the limit (CI: each PyPy worker is a few hundred MB).
+    pool = multiprocessing.Pool(min(len(jobs), int(os.environ.get('TEST_JOBS', 0)) or os.cpu_count() or 4))
+    done = {name: (line, t) for name, line, t in pool.imap_unordered(timed, jobs)}
+    results = [done[name][0] for name, _ in items]
     print('\n'.join(results))
+    times.update((name, round(t, 2)) for name, (_, t) in done.items())
+    json.dump({n: times[n] for n, _ in FIRST + INDEPENDENT if n in times}, open(times_file, 'w'), indent=0)
+    failed = [r for r in results if r.startswith('FAIL')]
+    if sys.argv[1:]:
+        sys.exit(1 if failed else 0)
     peak = max(int(r[-3:-1], 16) for r in results if r.startswith('ok ') and r.endswith(']'))
     print('  (stack peak 0x%02X of 0xFF)' % peak)
     open(os.path.join(HERE, 'build', 'stack-peak'), 'w').write('%02X\n' % peak)   # for tools/budget.py
-    failed = [r for r in results if r.startswith('FAIL')]
     if failed:
         sys.exit('%d feature tests failed' % len(failed))
     print('all passed')

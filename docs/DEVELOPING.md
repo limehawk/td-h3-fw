@@ -88,7 +88,10 @@ cd fw && make test T="scan fm"     # only tests whose names contain these words
 packages) and plain `python3` otherwise (about 2.5 minutes). `test_fw.py` boots the real `.bin` in the emulator with a fixture EEPROM
 (factory cal, channels 1-4 with scan groups) and checks what reaches the pins and buses. The
 first block runs in order on one booted CPU (boot compared live with stock, RX path, TX band
-plan, clone protocol); `INDEPENDENT` tests each get a fresh boot and run in a process pool.
+plan, clone protocol); `INDEPENDENT` tests each get a fresh boot. All of them share one process
+pool, longest first by the last run's times (`build/test-times`; a new test counts as longest), so
+the suite ends on short tests. The run is bound by total CPU, not by any one test: a test that runs
+several scenarios on fresh boots is better as one test per scenario (`functools.partial` in the list).
 
 Run a few independent tests by name:
 
