@@ -1,5 +1,5 @@
 ; asm-for: main.c draw_meter
-; c-sha256: 9e6683da83872685
+; c-sha256: 98346ed52120d47d
 ; draw_meter: the meter row between the slots, with its private helpers m_fill, m_text and bar_x
 ; (main.c has the C originals). On receive the S-meter bar and "S9+11 ... -102dBm", on transmit the
 ; mic level and the TX clock "   116s".
@@ -87,7 +87,7 @@ _draw_meter:
 00102$:	push	ar7			; len
 	clr	a
 	push	acc			; a = 0: no left text, the bar from x 0
-; s = tots[cfg.tot]; m = secs(&t_tx); if (s) { s -= m; if (s <= 10) m_fg = RED; } else s = m;   r6 = s
+; s = tots[cfg.tot]; m = secs(&t_tx); if (s) { s -= m; if (s <= 10) m_fg = pal[P_RED]; } else s = m;   r6 = s
 	mov	dptr,#(_cfg + CFG_TOT)
 	movx	a,@dptr
 	mov	dptr,#_tots
@@ -102,8 +102,8 @@ _draw_meter:
 	mov	r6,a
 	add	a,#-11			; C: s > 10
 	jc	00104$
-	mov	r2,#RED
-	mov	r3,#(RED >> 8)
+	mov	dptr,#(_pal + 2 * P_RED)
+	lcall	rd2
 	mov	dptr,#_m_fg
 	lcall	wr2
 	sjmp	00104$
@@ -134,9 +134,9 @@ _draw_meter:
 	movx	@dptr,a
 	inc	dptr
 	movx	@dptr,a
-; m_col = RED
-	mov	r2,#RED
-	mov	r3,#(RED >> 8)
+; m_col = pal[P_RED]
+	mov	dptr,#(_pal + 2 * P_RED)
+	lcall	rd2
 	mov	dptr,#_m_col
 	lcall	wr2
 	ljmp	00300$
@@ -272,23 +272,25 @@ _draw_meter:
 	movx	@dptr,a
 	inc	dptr
 	lcall	pad13
-; if (!open) m_fg = c_dim; m_col = open ? c_ok : c_acc >> 1 & 0x7BEF;
+; if (!open) m_fg = c_dim; m_col = open ? c_ok : (c_acc >> 1 & 0x7BEF) + (c_bg >> 1 & 0x7BEF);
 00220$:	jb	_open,00221$
 	mov	dptr,#(_pal + 2 * P_DIM)
 	lcall	rd2
 	mov	dptr,#_m_fg
 	lcall	wr2
-	mov	dptr,#(_pal + 2 * P_ACC)	; the accent at half brightness, each 565 field halved
-	lcall	rd2
-	clr	c
-	mov	a,r3
-	rrc	a
-	anl	a,#0x7B
-	mov	r3,a
-	mov	a,r2
-	rrc	a
-	anl	a,#0xEF
+	mov	dptr,#_pal		; halfway from the background to the accent, each 565 field halved
+	lcall	half
+	push	ar2
+	push	ar3
+	mov	dptr,#(_pal + 2 * P_ACC)
+	lcall	half
+	pop	b
+	pop	acc
+	add	a,r2			; no field carries: each is two halves
 	mov	r2,a
+	mov	a,b
+	addc	a,r3
+	mov	r3,a
 	sjmp	00222$
 00221$:	mov	dptr,#(_pal + 2 * P_OK)
 	lcall	rd2
@@ -377,6 +379,18 @@ barx:	mov	r4,a
 	ret
 
 ; r3:r2 = the 16 bits at dptr; and back
+; half: R3:R2 = the 16 bits at DPTR, each 565 field halved
+half:	lcall	rd2
+	clr	c
+	mov	a,r3
+	rrc	a
+	anl	a,#0x7B
+	mov	r3,a
+	mov	a,r2
+	rrc	a
+	anl	a,#0xEF
+	mov	r2,a
+	ret
 rd2:	movx	a,@dptr
 	mov	r2,a
 	inc	dptr

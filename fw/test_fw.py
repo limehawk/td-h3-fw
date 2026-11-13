@@ -1037,6 +1037,85 @@ def test_slot_tints(cpu):                  # a slot heard on a green tint, the o
     assert tints(cpu) == (0, 0), 'NIGHT RED: the tint stays after transmit'
 
 
+# THEME: main.c's table, each bg, fg, dim, accent, signal, highlight, bar, transmit, RX tint, TX tint
+THEMES = ['CLASSIC', 'NIGHT AMBER', 'GREEN', 'NIGHT RED', 'POCKET', 'NIXIE', 'E-INK', 'FIELD', 'HIGH-VIS']
+RED_ = (240, 40, 40)
+THEME_RGB = [
+    [(0, 0, 0), (255, 255, 255), (120, 120, 120), (255, 176, 0), (0, 220, 80), (0, 200, 230), (30, 30, 30), RED_, (6, 64, 28), (74, 12, 0)],
+    [(0, 0, 0), (255, 176, 0), (138, 90, 0), (255, 176, 0), (255, 204, 64), (255, 208, 112), (42, 24, 0), RED_, (40, 26, 0), (88, 44, 0)],
+    [(0, 0, 0), (51, 255, 102), (26, 138, 51), (51, 255, 102), (153, 255, 170), (204, 255, 216), (6, 32, 16), RED_, (6, 48, 16), (16, 84, 28)],
+    [(0, 0, 0), (255, 24, 0), (128, 8, 0), (255, 24, 0), (255, 64, 32), (255, 104, 80), (40, 0, 0), RED_, (40, 0, 0), (84, 0, 0)],
+]
+def _mix(a, b, k): return tuple(round(a[i] + (b[i] - a[i]) * k) for i in range(3))
+for _h in ('9BBC0F 0F380F 306230 0F380F 0F380F 0F380F 306230 8BAC0F', '0D0603 FF9A3C B0602A FFD08A FFF1C9 FF3B1F E07A30 2A1408',
+           'E6E3DA 111111 555555 111111 111111 111111 444444 C9C5BA', '2B3320 E3D6A8 A9AD7C D9A441 C7E06A E8603C B8C79A 3D4A2C',
+           'F5D800 000000 3A3300 000000 005C1A B00000 2A2A00 D1B800'):   # the source's order: bg, text, labels, accent,
+    bg, fg, dim, acc, rx, tx, hlp, rule = [tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) for c in _h.split()]   # receive, transmit, help, rules
+    THEME_RGB.append([bg, fg, dim, acc, rx, hlp, rule, tx, _mix(bg, rx, 0.29), _mix(bg, tx, 0.29)])
+THEME_C = [[rgb(*c) for c in t] for t in THEME_RGB]
+
+
+def x40(c):                                # the ARCADE shadow's 40%, each 565 channel
+    return (c >> 1 & 0x7BEF) - (c >> 3 & 0x18E3) + (c >> 5 & 0x0020)
+
+
+def test_themes(cpu):                      # every theme's colours reach the screen; RX and TX tints; derived colours from bg; saved
+    import lcdshot
+    pal, y = rst_addr('_pal'), 14
+    for n, T in enumerate(THEME_C):
+        menu(cpu, 'THEME', ['UP'] if n else [])   # the menu open on THEME, in the new colours
+        cpu.run(1_000_000)
+        assert [peek16(cpu, pal + 2 * i) for i in range(8)] == T[:8], (THEMES[n], 'palette')
+        seen = {c for row in lcdshot.frame(cpu.lcd) for c in row}
+        assert {T[0], T[1], T[3], T[5]} <= seen, (THEMES[n], 'menu: bg, text, accent, help', seen)
+        keys(cpu, ['EXIT'])
+        cpu.run(1_000_000)
+        fb = lcdshot.frame(cpu.lcd)
+        seen = {c for row in fb for c in row}
+        assert fb[0][127] == T[0] and {T[1], T[2], T[3], T[6]} <= seen, (THEMES[n], 'home: bg, text, labels, accent, bar', seen)
+        # the ARCADE shadow under slot A's '1' (x 15) and B's dim digits: 40% of the way from the background
+        assert fb[y + 10][15] == x40(T[1]) - x40(T[0]) + T[0] & 0xFFFF, (THEMES[n], 'A shadow', hex(fb[y + 10][15]))
+        cpu.bk.busy = lambda f: f == 14652000
+        cpu.bk.dbm = lambda f: -82
+        cpu.run(1_000_000)
+        fb = lcdshot.frame(cpu.lcd)
+        assert fb[30][127] == T[8] and fb[y + 9][11] == T[4], (THEMES[n], 'RX: the tint, the digits in signal')
+        assert fb[61][0] == T[4] and fb[69][127] == T[8], (THEMES[n], 'RX: the meter')
+        cpu.bk.busy = lambda f: True       # noise under S9 squelch: halfway from the background to the accent
+        menu(cpu, 'SQUELCH', ['UP'] * 15 + ['EXIT'])
+        cpu.bk.dbm = lambda f: -110
+        cpu.run(1_000_000)
+        assert lcdshot.frame(cpu.lcd)[69][1] == (T[3] >> 1 & 0x7BEF) + (T[0] >> 1 & 0x7BEF), (THEMES[n], 'noise')
+        cpu.bk.busy = cpu.bk.dbm = None
+        menu(cpu, 'SQUELCH', ['DOWN'] * 15 + ['EXIT'])
+        cpu.key = 'PTT'
+        cpu.run(1_300_000)                 # the slot, the rows under it, the mic bar
+        fb = lcdshot.frame(cpu.lcd)
+        assert fb[30][127] == fb[69][127] == T[9] and fb[y + 9][11] == T[7], (THEMES[n], 'TX: the tint, the digits in transmit')
+        cpu.key = None
+        cpu.run(2_000_000)
+    cpu.run(3_000_000)                     # saved 2 s after the last change
+    assert cpu.ee.mem[0x1FCC] & 15 == 8 and cpu.ee.mem[0x1FC5] >> 2 & 3 == 0, cpu.ee.mem[0x1FC0:0x1FF0].hex()
+    cpu2 = boot(ee=bytearray(cpu.ee.mem))
+    assert [peek16(cpu2, pal + 2 * i) for i in range(8)] == THEME_C[8][:8], 'HIGH-VIS not read back'
+    ee = bytearray(cpu.ee.mem)             # a settings block from before 9 themes: NIGHT RED in 0x1FC5 bits 2-3
+    ee[0x1FC5] = ee[0x1FC5] & ~0x0C | 3 << 2
+    ee[0x1FCC] = 0
+    cpu2 = boot(ee=ee)
+    cfg = rst_addr('_cfg')
+    assert [peek16(cpu2, pal + 2 * i) for i in range(8)] == THEME_C[3][:8], 'an old block lost NIGHT RED'
+    assert cpu2.xram[cfg + 12] & 15 == 3 and cpu2.xram[cfg + 5] >> 2 & 3 == 0, 'not moved to 0x1FCC'
+    ee[0x1FC5] &= ~0x0C
+    ee[0x1FCC] = 0x0C                      # 12: out of range, CLASSIC
+    cpu2 = boot(ee=ee)
+    assert [peek16(cpu2, pal + 2 * i) for i in range(8)] == THEME_C[0][:8], 'THEME 12 not CLASSIC'
+    ee[0x1FCC] = 6                         # E-INK: the boot screen on its light background, not black
+    cpu2 = CPU(open(FW, 'rb').read(), ee)
+    splash = rst_addr('_splash')
+    assert cpu2.run(12_000_000, until=lambda: cpu2.pc == splash), 'no boot screen'
+    assert {c for row in lcdshot.frame(cpu2.lcd) for c in row} == {THEME_C[6][0]}, 'boot: the screen not cleared to the background'
+
+
 def test_dual_watch_waits_after_a_fade(cpu):   # a call on A fades for 0.2 s: no look at B then, so A comes straight back
     menu(cpu, 'DW', ['UP', 'EXIT'])        # on A (146.520), watch B (446.000)
     on = [True]
@@ -2431,7 +2510,7 @@ def test_remote_bytes_kept_in_redraw(cpu):   # uart1_isr keeps what lands while 
 
 def test_remote_up_one_step(cpu):          # a redraw slower than 200 ms ate both release bytes; the hold byte
     menu(cpu, 'REMOTE', ['UP', 'EXIT'])    # it left read late held UP past the 0.5 s repeat: THEME moved two
-    for item, row, vals in (('THEME', 'THEME', ['CLASSIC', 'AMBER', 'GREEN', 'RED']), ('BRIGHT', 'BRIGHTNESS', '12345')):
+    for item, row, vals in (('THEME', 'THEME', [t.split()[-1] for t in THEMES]), ('BRIGHT', 'BRIGHTNESS', '12345')):
         menu(cpu, item)
         press(cpu, 'MENU')                 # change its value
         got = []
@@ -3081,13 +3160,13 @@ def test_settings_survive_one_bad_value(cpu):   # one bad byte resets that setti
     menu(cpu, 'THEME', ['UP', 'UP', 'UP', 'EXIT'])   # night red
     cpu.run(3_000_000)                     # saved 2 s after the last change
     ee = bytearray(cpu.ee.mem)
-    assert ee[0x1FC4] >> 6 & 1 and ee[0x1FC5] >> 2 & 3 == 3, ee[0x1FC0:0x1FF0].hex()   # REMOTE bit 6, THEME bits 2-3
+    assert ee[0x1FC4] >> 6 & 1 and ee[0x1FCC] & 15 == 3, ee[0x1FC0:0x1FF0].hex()   # REMOTE bit 6, THEME 0x1FCC bits 0-3
     ee[0x1FC0 + 1] = 0x77                  # squelch 119: out of range
     cpu2 = boot(ee=ee)
     a = int([l.split()[1] for l in open(os.path.join(HERE, 'build', 'td-h3', 'fw.map')) if ' _remote ' in l][0], 16)
     assert cpu2.xram[a] == 1, 'REMOTE lost to one bad byte'
     cpu2.run(3_000_000)
-    assert not cpu2.ee.writes or cpu2.ee.mem[0x1FC5] >> 2 & 3 == 3, 'theme lost'
+    assert not cpu2.ee.writes or cpu2.ee.mem[0x1FCC] & 15 == 3, 'theme lost'
 
 
 def test_settings_bad_slot_mode(cpu):      # slot A's memory/frequency byte 2 (corrupt): reset, so V/M still switches
@@ -3705,6 +3784,7 @@ INDEPENDENT = [
     ("FM grid shows each page's preset numbers", test_fm_grid_numbers),
     ('dual watch switches and returns', test_dual_watch),
     ('slot tints: green while heard, red while transmitting, per theme', test_slot_tints),
+    ('THEME: all 9 themes reach the screen, tints, shadow and noise from the background, saved, old blocks kept', test_themes),
     ('tools/radio.py and tdh3 read the rows the firmware draws', test_tool_rows),
     ('a tinted slot\'s label mirrors plain, its letter inverse', test_tinted_label_reads),
     ('DIGITS ARCADE: shapes, shadow, label at the right, CLASSIC text to REMOTE, saved', partial(test_digits, style='ARCADE')),

@@ -63,7 +63,7 @@ See [Updating the firmware](Updating).
 - **Plays FM broadcast radio** with presets and seek.
 - **Has a flashlight** with four brightness levels (moonlight to high), strobe and SOS.
 
-![The four colour themes](img/themes.png)
+![The nine colour themes](img/themes.png)
 
 ## Start here
 

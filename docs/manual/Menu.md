@@ -112,7 +112,7 @@ for the second one; here `2-` after pressing **2**.
 |---|---|---|
 | 36 | LIGHT | How long the backlight stays on after a key: 10 s, 30 s (default) or ON (always). It stays on while a signal comes in or you talk. On a dark screen, the first key only lights it (PTT always transmits). When the light goes out, the screen switches off too, to save battery; it comes back with the light, showing what changed meanwhile. How bright it is: BRIGHTNESS. |
 | 37 | BRIGHTNESS | How bright the screen's backlight is: 1 (dimmest) to 5 (brightest, the default). The screen changes as you pick, so you can see it. A lower level saves battery and is easier on your eyes at night. LIGHT still decides how long it stays on. |
-| 38 | THEME | CLASSIC (default), NIGHT AMBER, GREEN, NIGHT RED (keeps your night vision). |
+| 38 | THEME | The screen's colours: CLASSIC (default), NIGHT AMBER, GREEN, NIGHT RED (keeps your night vision), POCKET (dark green on pale green, like an old handheld game), NIXIE (warm orange on near-black, like glowing number tubes), E-INK (black on off-white, like an e-reader), FIELD (khaki on olive) or HIGH-VIS (black on bright yellow, easy to read in sunshine). The screen changes as you pick, so you can see it. This manual describes CLASSIC's colours (green while hearing, red while transmitting); every theme has its own shades for those. |
 | 39 | DIGITS | How the big frequency numbers look: ARCADE (default), chunky with a soft shadow; LCD, like a digital clock; or CLASSIC, the plain look from before. With ARCADE and LCD, `VFO` or the memory number moves to the top right of the slot, next to the name. The screen changes as soon as you leave the menu. A computer watching over REMOTE (`tdh3 remote screen`) shows the frequency in the CLASSIC look. |
 | 40 | KEY BEEP | ON (default) or OFF. A soft click on key presses, and the sound at power-on. The radio's other sounds (errors, alerts) play either way. |
 | 41 | KEY LOCK | What holding **\*** locks: KEYS (default), the keypad only, so PTT and side key 1 still transmit; or KEYS+PTT, the keypad and both transmit keys, for a radio in a pocket or bag. The flashlight works either way. The padlock in the status bar is red with KEYS+PTT. |
@@ -121,9 +121,9 @@ for the second one; here `2-` after pressing **2**.
 | 44 | AUTO OFF | Put the radio to sleep after 30, 60 or 120 minutes with no key pressed, no signal heard and no scan running: the receiver, screen, backlight and flashlight go off. Any key wakes it (that key does nothing else). While it sleeps it hears nothing: no dual watch, priority or weather alert. The power switch is the volume knob, so this is the "off" a forgotten radio gets. OFF by default. |
 | 45 | BATT SAVE | While nothing is heard, the receiver naps between quick listens: OFF, SHORT, MIDDLE or LONG naps (0.12, 0.24, 0.48 s). Longer naps mean a longer battery but a slower catch: the first word of a call can be clipped. Starts at MIDDLE: about 5 days on a charge. |
 
-THEME (item 38), left to right: CLASSIC, NIGHT AMBER, GREEN, NIGHT RED.
+THEME (item 38), row by row: CLASSIC, NIGHT AMBER, GREEN; NIGHT RED, POCKET, NIXIE; E-INK, FIELD, HIGH-VIS.
 
-![The four themes](img/themes.png)
+![The nine themes](img/themes.png)
 
 DIGITS (item 39), left to right: ARCADE, LCD, CLASSIC.
 

@@ -152,7 +152,7 @@ def t_light():
 
 def t_theme():                              # each theme in turn: the menu and home in its colours, then back
     names = []
-    for i in range(4):
+    for i in range(9):
         r.home()
         item(MENU.index('THEME') + 1)
         r.key('MENU'); time.sleep(0.6)          # select, next theme, done
@@ -162,7 +162,7 @@ def t_theme():                              # each theme in turn: the menu and h
         shot('theme%d-menu' % i)
         r.key('VM'); time.sleep(2)
         shot('theme%d-home' % i)
-    check('THEME cycles back to where it was', r.is_home() and len(set(names)) == 4, ' | '.join(names))
+    check('THEME cycles back to where it was', r.is_home() and len(set(names)) == 9, ' | '.join(names))
 
 
 def t_heard():                              # LAST HEARD opens from the menu; V/M back to it, again home

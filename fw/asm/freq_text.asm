@@ -1,5 +1,5 @@
 ; asm-for: main.c freq_text
-; c-sha256: b5f728ad60dd23c4
+; c-sha256: 259823e487afc12e
 ; freq_text: a slot's frequency from buf + k in the DIGITS style: CLASSIC through lcd_text, ARCADE
 ; and LCD as fills (each shape a list of rectangles in main.c's tables), not mirrored: REMOTE gets
 ; CLASSIC's text.
@@ -308,9 +308,8 @@ advb:	cjne	a,#'.',00043$
 00043$:	mov	a,#16
 	ret
 
-; ink: R7:R2 = this pass's colour: pal[fc], for the shadow (o 1) at 40%:
-; (c >> 1 & 0x7BEF) - (c >> 3 & 0x18E3) + (c >> 5 & 0x0020), each channel x 0.406, none borrowing
-; from the next (each is c/2 - c/8)
+; ink: R7:R2 = this pass's colour: pal[fc], for the shadow (o 1) 40% of the way from the background:
+; x40(c) - x40(c_bg) + c_bg, every channel in range, so the 16-bit sum is exact
 ink:	mov	a,fp
 	add	a,acc
 	add	a,#_pal
@@ -318,14 +317,47 @@ ink:	mov	a,fp
 	clr	a
 	addc	a,#(_pal >> 8)
 	mov	dph,a
-	movx	a,@dptr
+	lcall	rd27
+	mov	a,fo
+	jz	00053$
+	lcall	x40
+	push	ar2
+	push	ar7			; x40(c)
+	mov	dptr,#_pal
+	lcall	rd27			; c_bg
+	push	ar2
+	push	ar7
+	lcall	x40
+	pop	ar1
+	pop	ar0			; r1:r0 = c_bg
+	clr	c
+	mov	a,r0
+	subb	a,r2
+	mov	r2,a
+	mov	a,r1
+	subb	a,r7
+	mov	r7,a			; c_bg - x40(c_bg)
+	pop	ar1
+	pop	ar0			; r1:r0 = x40(c)
+	mov	a,r2
+	add	a,r0
+	mov	r2,a
+	mov	a,r7
+	addc	a,r1
+	mov	r7,a
+00053$:	ret
+
+; rd27: R7:R2 = the 16 bits at DPTR
+rd27:	movx	a,@dptr
 	mov	r2,a
 	inc	dptr
 	movx	a,@dptr
 	mov	r7,a
-	mov	a,fo
-	jz	00053$
-	mov	a,r7
+	ret
+
+; x40: R7:R2 = (c >> 1 & 0x7BEF) - (c >> 3 & 0x18E3) + (c >> 5 & 0x0020) of c in R7:R2, each channel
+; x 0.406, none borrowing from the next (each is c/2 - c/8). Uses R0, R1, B.
+x40:	mov	a,r7
 	clr	c
 	rrc	a
 	mov	r1,a
@@ -359,14 +391,14 @@ ink:	mov	a,fp
 	subb	a,b
 	xch	a,r7
 	anl	a,#0x04			; c >> 5 & 0x20: c's bit 10
-	jz	00053$
+	jz	00054$
 	mov	a,#0x20
 	add	a,r2
 	mov	r2,a
 	clr	a
 	addc	a,r7
 	mov	r7,a
-00053$:	ret
+00054$:	ret
 
 ; rects: R7 rectangles from the code at DPTR, each x << 4 | w, y << 3 | h - 1, filled at x + o, y + o
 ; in pass o's colour; an ARCADE big digit's (a, big, not the point) are in shape units: x and w

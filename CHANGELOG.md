@@ -5,6 +5,9 @@ starts with its part of this list.
 
 ## Next release
 
+- New: five more colour themes in THEME (MENU 38): POCKET (dark green on pale green), NIXIE (warm
+  orange on near-black), E-INK (black on off-white), FIELD (khaki on olive) and HIGH-VIS (black on
+  bright yellow, for sunshine). Your theme stays as it was after the update.
 - BRIGHTNESS: each of the five levels now looks different. 3, 4 and 5 used to look the same; 1 is
   dimmer than before, for night use.
 - New: CALL ID (MENU 20) sends your ham callsign in Morse code when you let go of PTT, on 2 m and

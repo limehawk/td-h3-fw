@@ -48,7 +48,7 @@ void lcd_init(void) __reentrant
         cmd(*p++);
         for (uint8_t n = *p++; n; n--) SPI(*p++);   // inline: a call to spi() saves every register
     }
-    lcd_fill(0, 0, W, H, BLACK);
+    lcd_fill(0, 0, W, H, c_bg);            // the theme's background (main loads the theme first)
     cmd(0x29);                              // display on
     delay_ms(50);
 }

@@ -8,7 +8,7 @@
 // Our settings live in a small block the stock map leaves unnamed (0x1FC0-0x1FEF).
 #define CFG_ADDR 0x1FC0
 #define CFG_MAGIC 0xAD                      // 0xAC: POWER without MID; 0xAB: TAIL TONE a bit of 0x1FC4 (cfg_load moves both up); older blocks load defaults
-#define NTHEMES 4                           // Classic, Night amber, Green, Night red
+#define NTHEMES 9                           // Classic, Night amber, Green, Night red, Pocket, Nixie, E-ink, Field, High-vis
 typedef struct { uint32_t vfo; uint8_t mem, chn; } slot_t;    // A and B: a VFO or a memory channel
 // The settings block, 48 bytes at 0x1FC0. Small settings share bytes (SDCC fills a byte from bit 0);
 // every other field keeps its place. free_* bytes are unused.
@@ -17,13 +17,14 @@ typedef struct {
     uint8_t step:4, mic:4;                                              // 0x1FC2
     uint8_t power:2, shift:2, save:2, light:2;                          // 0x1FC3
     uint8_t narrow:1, att:1, dw:1, :1, beep:1, bt:1, remote:1, bell:1;   // 0x1FC4; bit 3: TAIL TONE OFF before 0xAC
-    uint8_t apo:2, theme:2, :3, klock:1;                                // 0x1FC5; klock: KEY LOCK stops PTT too; bits 4-6: the old single OFFSET, not read (old radios still hold it)
+    uint8_t apo:2, theme0:2, :3, klock:1;                               // 0x1FC5; klock: KEY LOCK stops PTT too; bits 4-6: the old single OFFSET, not read (old radios still hold it);
+                                                                        // theme0: THEME before it had 9 (cfg_load moves it to theme)
     uint8_t pause:3, resume:3, digits:2;                                // 0x1FC6; digits: DIGITS, D_*
     uint8_t tot;
     uint8_t bright:3, vmode:4, :1;          // 0x1FC8; vmode: each VFO's MOD_* (A bits 4:3, B 6:5), 0 = by band
     uint8_t comp:2, tail:2, nar6:1, sstep:2, :1;   // 0x1FC9, read as bk_opt by bk4819.c and radio.c (BKO_* in fw.h); sstep: SSB's
     uint8_t off[2];                         // 0x1FCA: OFFSET under 300 MHz, then from 300 MHz up (off_n)
-    uint8_t free_12;
+    uint8_t theme:4, :4;                    // 0x1FCC: THEME
     uint8_t act, prio, wx;
     uint8_t vox:4, voxd:3, :1;                                          // 0x1FD0: VOX 0 off or 1-9, VOX DELAY
     uint8_t txb, group;                     // txb: TX BANDS, bits HAM GMRS MURS FRS; group: bit g-1 = scan group g, 0 = scan list
@@ -227,7 +228,7 @@ static uint8_t slot_ok(const __xdata slot_t *x) __reentrant { return x->vfo >= 1
 enum { M_SQL, M_ATT, M_COMP, M_NAR, M_BW, M_MODE, M_STEP, M_RXT, M_POW, M_SHIFT, M_OFFS, M_TXT, M_TXB, M_TOT, M_TAIL, M_MIC, M_VOX, M_VOXD, M_DTMF, M_CALL,   // the menu's order
        M_GROUP, M_PAUSE, M_RESUME, M_DW, M_PRIO, M_GLINK, M_GRP, M_SCOPE, M_FF, M_FM, M_WXM, M_LH, M_NAME, M_TOVFO, M_DEL,
        M_LIGHT, M_BRIGHT, M_THEME, M_DIGITS, M_BEEP, M_KLOCK, M_BELL, M_WX, M_APO, M_SAVE, M_PC, M_REM, M_BT, M_FCAL, M_MCAL, M_BCAL, M_VER, M_N };
-static const __code char *const __code theme_s[NTHEMES] = {"CLASSIC", "NIGHT AMBER", "GREEN", "NIGHT RED"};
+static const __code char *const __code theme_s[NTHEMES] = {"CLASSIC", "NIGHT AMBER", "GREEN", "NIGHT RED", "POCKET", "NIXIE", "E-INK", "FIELD", "HIGH-VIS"};
 enum { D_ARC, D_LCD, D_CLASSIC };          // DIGITS: 0, a new radio's, is ARCADE
 static const __code char *const __code digits_s[] = {"ARCADE", "LCD", "CLASSIC"};
 static const __code char *const __code pow_s[] = {"ULTRA LOW", "LOW", "MID", "HIGH"};   // PWR_*: lowest to highest
@@ -273,7 +274,7 @@ static const __code item_t items[M_N] = {   // SQUELCH 0-9, then S1-S9 (10-18): 
     [M_BW] = {4, 2, 0, 0x01, bw_s}, [M_ATT] = {4, 2, 0, 0x11, off_on}, [M_DW] = {4, 2, 1, 0x21, off_on}, [M_TAIL] = {9, 3, 0, 0x22, tail_s},
     [M_MODE] = {8, 3, 0, 0x32, mode_s},   // the selected slot's: A bits 4:3, B 6:5 (item_get adds 2 for B)
     [M_BEEP] = {4, 2, 1, 0x41, off_on}, [M_BT] = {4, 2, 0, 0x51, off_on}, [M_REM] = {4, 2, 0, 0x61, off_on}, [M_BELL] = {4, 2, 0, 0x71, off_on},
-    [M_APO] = {5, 4, 0, 0x02, apo_s}, [M_THEME] = {5, NTHEMES, 0, 0x22, theme_s}, [M_KLOCK] = {5, 2, 0, 0x71, klock_s}, [M_VOX] = {16, 10, 0, 0x04, 0}, [M_VOXD] = {16, 5, 0, 0x43, voxd_s},
+    [M_APO] = {5, 4, 0, 0x02, apo_s}, [M_THEME] = {O(theme), NTHEMES, 0, 0x04, theme_s}, [M_KLOCK] = {5, 2, 0, 0x71, klock_s}, [M_VOX] = {16, 10, 0, 0x04, 0}, [M_VOXD] = {16, 5, 0, 0x43, voxd_s},
     [M_COMP] = {9, 4, 0, 0x02, comp_s}, [M_NAR] = {9, 2, 0, 0x41, nar_s},
     [M_PAUSE] = {6, 5, 4, 0x03, pause_s}, [M_RESUME] = {6, 6, 2, 0x33, resume_s}, [M_DIGITS] = {6, 3, D_ARC, 0x62, digits_s},
     [M_WX] = {O(wx), 8, 0, 0x08, 0},       // OFF, WX1-WX7: shown as its frequency (menu_value)
@@ -319,7 +320,8 @@ static void cfg_load(void)
     if (cfg.magic == 0xAB) { CFGB[9] |= CFGB[4] >> 1 & 4; CFGB[4] &= ~8; cfg.magic = 0xAC; }   // TAIL TONE gains REVERSE: OFF
                                             // (0x1FC4 bit 3) to tail's 1 (0x1FC9 bit 2); bytes, not bitfields: half the code
     if (cfg.magic == 0xAC) { cfg.power = pow_ac[cfg.power]; cfg.magic = CFG_MAGIC; }   // POWER gains MID, in order
-    if (cfg.magic != CFG_MAGIC) xset(&cfg, 0, sizeof cfg);   // defaults: all 0 (magic too, till the end), then what the checks put in
+    if (cfg.magic != CFG_MAGIC) xset(&cfg, 0, sizeof cfg);
+    if (cfg.theme0) { cfg.theme = cfg.theme0; cfg.theme0 = 0; }   // THEME from before it had 9   // defaults: all 0 (magic too, till the end), then what the checks put in
     for (i = 0; i < M_N; i++) if (items[i].n && (!cfg.magic || item_get(i) >= items[i].n)) item_set(i, items[i].def);
     FIX(cfg.act >= 2, act, 0); FIX(cfg.prio > 199, prio, 0); FIX((uint8_t)(cfg.fcal + 100) > 200, fcal, 0);
     FIX((uint8_t)(cfg.mcal + 40) > 80, mcal, 0); FIX((uint8_t)(cfg.bcal + 50) > 100, bcal, 0);   // +-n: one compare
@@ -335,15 +337,21 @@ static void cfg_load(void)
     }
 }
 
-// Themes; the panel is BGR, RGB() packs for it. bg, fg, dim, accent, signal, highlight, bar, and
-// the tints behind a slot being heard and one transmitting (draw_slot reads those two from here).
-#define T_RX 7
-#define T_TX 8
-static const __code uint16_t themes[NTHEMES][9] = {
-    {BLACK, WHITE, RGB(120, 120, 120), RGB(255, 176, 0), RGB(0, 220, 80), RGB(0, 200, 230), RGB(30, 30, 30), RGB(6, 64, 28), RGB(74, 12, 0)},
-    {BLACK, RGB(255, 176, 0), RGB(138, 90, 0), RGB(255, 176, 0), RGB(255, 204, 64), RGB(255, 208, 112), RGB(42, 24, 0), RGB(40, 26, 0), RGB(88, 44, 0)},
-    {BLACK, RGB(51, 255, 102), RGB(26, 138, 51), RGB(51, 255, 102), RGB(153, 255, 170), RGB(204, 255, 216), RGB(6, 32, 16), RGB(6, 48, 16), RGB(16, 84, 28)},
-    {BLACK, RGB(255, 24, 0), RGB(128, 8, 0), RGB(255, 24, 0), RGB(255, 64, 32), RGB(255, 104, 80), RGB(40, 0, 0), RGB(40, 0, 0), RGB(84, 0, 0)},   // keeps night vision
+// Themes; the panel is BGR, RGB() packs for it. bg, fg, dim, accent, signal, highlight, bar, transmit
+// (P_RED), and the tints behind a slot being heard and one transmitting (draw_slot reads those two
+// from here): the background 29% of the way to signal and to transmit.
+#define T_RX 8
+#define T_TX 9
+static const __code uint16_t themes[NTHEMES][10] = {
+    {BLACK, WHITE, RGB(120, 120, 120), RGB(255, 176, 0), RGB(0, 220, 80), RGB(0, 200, 230), RGB(30, 30, 30), RED, RGB(6, 64, 28), RGB(74, 12, 0)},
+    {BLACK, RGB(255, 176, 0), RGB(138, 90, 0), RGB(255, 176, 0), RGB(255, 204, 64), RGB(255, 208, 112), RGB(42, 24, 0), RED, RGB(40, 26, 0), RGB(88, 44, 0)},
+    {BLACK, RGB(51, 255, 102), RGB(26, 138, 51), RGB(51, 255, 102), RGB(153, 255, 170), RGB(204, 255, 216), RGB(6, 32, 16), RED, RGB(6, 48, 16), RGB(16, 84, 28)},
+    {BLACK, RGB(255, 24, 0), RGB(128, 8, 0), RGB(255, 24, 0), RGB(255, 64, 32), RGB(255, 104, 80), RGB(40, 0, 0), RED, RGB(40, 0, 0), RGB(84, 0, 0)},   // keeps night vision
+    {RGB(155, 188, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(15, 56, 15), RGB(15, 56, 15), RGB(48, 98, 48), RGB(139, 172, 15), RGB(15, 56, 15), RGB(114, 150, 15), RGB(114, 150, 15)},   // POCKET
+    {RGB(13, 6, 3), RGB(255, 154, 60), RGB(176, 96, 42), RGB(255, 208, 138), RGB(255, 241, 201), RGB(224, 122, 48), RGB(42, 20, 8), RGB(255, 59, 31), RGB(83, 74, 60), RGB(83, 21, 11)},   // NIXIE
+    {RGB(230, 227, 218), RGB(17, 17, 17), RGB(85, 85, 85), RGB(17, 17, 17), RGB(17, 17, 17), RGB(68, 68, 68), RGB(201, 197, 186), RGB(17, 17, 17), RGB(168, 166, 160), RGB(168, 166, 160)},   // E-INK
+    {RGB(43, 51, 32), RGB(227, 214, 168), RGB(169, 173, 124), RGB(217, 164, 65), RGB(199, 224, 106), RGB(184, 199, 154), RGB(61, 74, 44), RGB(232, 96, 60), RGB(88, 101, 53), RGB(98, 64, 40)},   // FIELD
+    {RGB(245, 216, 0), RGB(0, 0, 0), RGB(58, 51, 0), RGB(0, 0, 0), RGB(0, 92, 26), RGB(42, 42, 0), RGB(209, 184, 0), RGB(176, 0, 0), RGB(174, 180, 8), RGB(225, 153, 0)},   // HIGH-VIS
 };
 __xdata uint16_t pal[8];
 void draw_labels(const __code label_t *l, uint8_t n) __reentrant
@@ -360,12 +368,11 @@ static void tx_prefs(void)                  // the settings radio.c, bk4819.c an
     bk_vox = cfg.vox ? vox_thr[cfg.vox - 1] : 0;
 }
 
-uint16_t theme_c(uint8_t i) __reentrant { return ((const __code uint16_t *)themes)[(uint8_t)(cfg.theme * 9 + i)]; }   // colour i of the current theme (an 8-bit index: no int multiply)
+uint16_t theme_c(uint8_t i) __reentrant { return ((const __code uint16_t *)themes)[(uint8_t)(cfg.theme * 10 + i)]; }   // colour i of the current theme (an 8-bit index: no int multiply)
 
 void theme_apply(void)
 {
-    for (uint8_t i = 0; i < 7; i++) pal[i] = theme_c(i);
-    pal[P_RED] = RED;
+    for (uint8_t i = 0; i < 8; i++) pal[i] = theme_c(i);
 }
 
 uint32_t wx_freq(uint8_t n) __reentrant { return wx_f[n]; }   // a call is 40 bytes smaller than wx_f[n]
@@ -525,7 +532,7 @@ __xdata uint8_t tinted[2];           // the tint each slot's block is on (0: non
 // the frequency, a picture shows it in the 5x7 font, and the wire carries no more. Big digits from x 5,
 // 16 apart, the point 5; the two small digits below 1 kHz follow, bottom-aligned. All end on row y + 25.
 // ARCADE: the owner's 7x9 shapes, each pixel 2 wide, shape rows 2 and 6 1 tall and the rest 2
-// (14x16 at y + 9), over a shadow 1 px right and down at 40%; the point 3x3; small, the shapes at
+// (14x16 at y + 9), over a shadow 1 px right and down, 40% of the way from the background; the point 3x3; small, the shapes at
 // 1x, 8 apart. LCD: a clock's seven segments, 3 px strokes with mitred corners (14x18 at y + 8);
 // the point 3x3; small 7x11, 1 px strokes, 9 apart.
 // Each shape is a list of rectangles, two bytes each: x << 4 | w, y << 3 | h - 1.
@@ -559,6 +566,9 @@ void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant;
 // internal RAM, as the asm keeps it: SDCC's stack frames made this C too slow for a mirrored redraw
 static __data uint8_t d_x, d_y, d_units, r_x, r_w, r_y, r_h;   // the cell's top left; d_units: ARCADE's big shape units (x 2, rows by rowy)
 static __data uint16_t d_ink;
+// each 565 channel x 0.406, none borrowing from the next (each is c/2 - c/8); x40(c) - x40(bg) + bg
+// is 40% of the way from bg to c, every channel in range on a light background too
+static uint16_t x40(uint16_t c) __reentrant { return (c >> 1 & 0x7BEF) - (c >> 3 & 0x18E3) + (c >> 5 & 0x0020); }
 
 static void rects(const __code uint8_t *p, uint8_t n) __reentrant   // n rectangles from p
 {
@@ -583,9 +593,9 @@ void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant
     lcd_fill(x, t, (big ? 105 : 122) - x, (big ? 18 : 11) - a, c_bg);
     for (; c = *s; s++) {
         d_units = 0;
-        for (o = a; o != 0xFF; o--) {       // ARCADE: o 1 the shadow, 1 right and down, at 40% (each channel x 0.406); o 0 the character
+        for (o = a; o != 0xFF; o--) {       // ARCADE: o 1 the shadow, 1 right and down; o 0 the character
             d_ink = pal[fc];
-            if (o) d_ink = (d_ink >> 1 & 0x7BEF) - (d_ink >> 3 & 0x18E3) + (d_ink >> 5 & 0x0020);
+            if (o) d_ink = x40(d_ink) - x40(c_bg) + c_bg;   // 40% of the way from the background
             d_x = x + o; d_y = t + o;
             if (c == '.') rects(dots + 2 - 2 * a, 1);
             else if ((uint8_t)(c - '0') < 10) {   // a space, or anything else: the cleared cell
@@ -737,12 +747,12 @@ void draw_meter(void) __reentrant
         while (m) { len += 8; m >>= 1; }
         s = tots[cfg.tot];
         m = secs(&t_tx);
-        if (s) { s -= m; if (s <= 10) m_fg = RED; } else s = m;
+        if (s) { s -= m; if (s <= 10) m_fg = pal[P_RED]; } else s = m;
         cat(buf, "   ");
         u2s(buf + 3, s, 3);
         buf[6] = 's'; buf[7] = buf[8] = 0;  // "   116s"; no left text: the bar from x 0
         a = 0;
-        m_col = RED;
+        m_col = pal[P_RED];
     } else {
         // S9 = -93 dBm, 6 dB per S-unit, read the usual way: S7, S9, S9+20. The bar spans -130..-50
         // dBm: green with the squelch open, the accent at half brightness on noise, so noise never
@@ -761,7 +771,7 @@ void draw_meter(void) __reentrant
             pad_to(num(cat(buf + 8, "S9+"), s), 13);
         } else { buf[8] = 'S'; buf[9] = '0' + (dbm < -147 ? 0 : (uint8_t)(dbm + 147) / 6); pad_to(buf + 10, 13); }   // S0-S9
         if (!open) m_fg = c_dim;
-        m_col = open ? c_ok : c_acc >> 1 & 0x7BEF;   // noise: the accent at half brightness (each 565 field halved)
+        m_col = open ? c_ok : (c_acc >> 1 & 0x7BEF) + (c_bg >> 1 & 0x7BEF);   // noise: halfway from the background to the accent (each 565 field halved)
     }
     // The bar is 9 rows, the text's 8 under one more, so the letters (blank row at their foot) sit
     // centred; "S9+11" at x 1-30 and "-102dBm" at x 86-127 (each glyph's blank column on its right).
@@ -2292,11 +2302,11 @@ void main(void)
     lit = 0xFF;
     ptt_ok = 0;                             // XDATA outlives a software reset (tdh3 flash's restart): PTT held through it stays off the air
     menu = 0xFF;
-    lcd_init();                             // backlight stays off until there is a picture: no white flash
     cfg_load();
     tx_prefs();
     theme_apply();
-    backlight(bright_duty[cfg.bright]);    // lit for the boot animation: lcd_init left the panel black
+    lcd_init();                             // backlight stays off until there is a picture: no white flash
+    backlight(bright_duty[cfg.bright]);    // lit for the boot animation: lcd_init left the panel the theme's background
     splash();
     bk_init();
     fm_off();

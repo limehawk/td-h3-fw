@@ -40,7 +40,7 @@ CALLOUTS = {
 PLAIN = ['memory', 'menuedit', 'menudigit', 'saveask', 'replace', 'deletelist', 'deleteask', 'chgroups', 'glink',
          'chname', 'weather', 'lastheard', 'flashlight', 'remote', 'version', 'notallowed', 'repeater', 'dtmfask',
          'ptthold', 'vox', 'fmauto', 'callid']
-THEMES = 4          # MENU, THEME: the four side by side make themes.png
+THEMES = 9          # MENU, THEME: the nine in rows of three make themes.png
 DIGITS = 3          # MENU, DIGITS: ARCADE, LCD and CLASSIC side by side make digits.png
 
 
@@ -337,10 +337,10 @@ def annotate():
         img.paste(src.resize((128 * k, 128 * k), Image.NEAREST), (pad, pad))
         img.save(os.path.join(OUT, name + '.png'), optimize=True)
         print('docs/manual/img/%s.png' % name)
-    img = Image.new('RGB', (THEMES * (128 * 2 + pad) + pad, 128 * 2 + 2 * pad), (28, 28, 28))
+    img = Image.new('RGB', (3 * (128 * 2 + pad) + pad, (THEMES + 2) // 3 * (128 * 2 + pad) + pad), (28, 28, 28))
     for n in range(THEMES):
         src = Image.open(os.path.join(RAW, 'theme%d.png' % n)).convert('RGB')
-        img.paste(src.resize((128 * 2, 128 * 2), Image.NEAREST), (pad + n * (128 * 2 + pad), pad))
+        img.paste(src.resize((128 * 2, 128 * 2), Image.NEAREST), (pad + n % 3 * (128 * 2 + pad), pad + n // 3 * (128 * 2 + pad)))
     img.save(os.path.join(OUT, 'themes.png'), optimize=True)
     print('docs/manual/img/themes.png')
     img = Image.new('RGB', (DIGITS * (128 * 2 + pad) + pad, 128 * 2 + 2 * pad), (28, 28, 28))

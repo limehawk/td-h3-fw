@@ -46,7 +46,7 @@ Both slots are laid out the same way, under a status bar. The meter sits between
    a key down on the other radio gives one digit. Or the tone a station is using (`HEARD 100.0 6:copy`).
 8. **Tuning step** for UP/DOWN in frequency mode (`25K` = 25 kHz; `0.05K` = 50 Hz in USB).
 9. **Signal meter**: one bar across the screen, filling to the right as the signal gets stronger.
-    Dim amber while it's just noise (in the theme's own colour: dim red in NIGHT RED); green once the
+    Dim amber while it's just noise (in the theme's own colour, halfway to the background: dim red in NIGHT RED); green once the
     squelch opens on a real signal, however strong, and then the rest of the bar takes the same dark
     green as the slot you're hearing, which runs right up to the bar with no dark line between. With
     the squelch at S1-S9 it stays dim until the signal reaches that S-unit, and a thin white line marks
@@ -74,8 +74,8 @@ Both slots are laid out the same way, under a status bar. The meter sits between
     You can also tell from the slots themselves: the slot you're **hearing** gets a **dark green**
     background (the whole block, from its letter down to its tones), and the slot you're
     **transmitting** on a **dark red** one. With dual watch that's whichever slot the call is on.
-    The other themes use a dark shade of their own colour; NIGHT RED stays all red, dim while
-    receiving and brighter while transmitting.
+    The other themes use a shade of their own colours, between the background and the text; NIGHT
+    RED stays all red, dim while receiving and brighter while transmitting.
 13. **Battery**: percent and an icon that fills with the charge, red at 20% and below. The percent
     follows how a lithium-ion pack really drains (it sits near 7.6 V for most of its charge), so it
     goes down evenly: 8.4 V is 100%, about 7.6 V is 40%, and 0% is 6.8 V, where `LOW BATTERY` warns.
