@@ -1464,7 +1464,7 @@ static void menu_change(int8_t d) __reentrant
         return;
     }
     if (M_ACT(menu)) { load_ch(); open_menu(); }   // V/M from a list: back to the menu, ch the slot's again
-    else draw_menu();                       // THEME: the title and help lines take the new colours too (no clear)
+    else { if (menu == M_THEME) lcd_clear(); draw_menu(); }   // THEME: a new background, so the gaps between rows too
 }
 
 // ---------- actions ----------

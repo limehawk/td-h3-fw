@@ -94,7 +94,7 @@ def t_version():
 def t_home():
     s = r.home()
     shot('home')
-    a, b = s.get((27, 0), ''), s.get((86, 0), '')
+    a, b = (r.label_at(s, y) for y in SLOT_Y.values())
     check('home: both slots drawn', r.is_home(s) and a and b, '%s / %s' % (a, b))
     bat = s.get((0, 92), '').strip()
     check('home: status bar has the battery %', bat.endswith('%'), bat)

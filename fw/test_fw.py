@@ -1066,8 +1066,10 @@ def test_themes(cpu):                      # every theme's colours reach the scr
         menu(cpu, 'THEME', ['UP'] if n else [])   # the menu open on THEME, in the new colours
         cpu.run(1_000_000)
         assert [peek16(cpu, pal + 2 * i) for i in range(8)] == T[:8], (THEMES[n], 'palette')
-        seen = {c for row in lcdshot.frame(cpu.lcd) for c in row}
+        fb = lcdshot.frame(cpu.lcd)
+        seen = {c for row in fb for c in row}
         assert {T[0], T[1], T[3], T[5]} <= seen, (THEMES[n], 'menu: bg, text, accent, help', seen)
+        assert fb[26][60] == T[0], (THEMES[n], 'menu: the gap between rows in the new background', hex(fb[26][60]))
         keys(cpu, ['EXIT'])
         cpu.run(1_000_000)
         fb = lcdshot.frame(cpu.lcd)
