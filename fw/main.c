@@ -1677,7 +1677,10 @@ static void on_key(uint8_t k) __reentrant
         return;
     }
     click = cfg.beep && k < K_PTT;   // played after the key's work: see main()
-    if (peek) { unpeek(); dirty = 1; }   // (K_SIDE2 has returned)
+    // A key ends a look (K_SIDE2 has returned), but opening the menu and moving about in it don't: a
+    // call dual watch found plays on. MENU on an item, or a change, goes back to the selected slot first.
+    if (peek == PEEK_WX || peek && (menu == 0xFF ? k != K_MENU || saving || entry_n || scanning
+                                                 : medit || !(UPDOWN(k) || DIGIT(k) || k == K_EXIT))) { unpeek(); dirty = 1; }
 
     if (menu != 0xFF) {
         if (lng) return;
@@ -2350,7 +2353,7 @@ void main(void)
         else if (!t_note) stamp1(&t_note);
         else if (note != low_s && secs(&t_note) >= 3 && ptt_ok) { note = 0; dirty = 1; }   // PTT HELD stays till let go
 
-        if (!tx) {                          // in the menu too, but no looks: the menu changes this slot's channel
+        if (!tx) {                          // in the menu too: dual watch, priority and weather looks as well
             saver();
             if (!asleep) {
                 dtmf_poll();
@@ -2363,7 +2366,7 @@ void main(void)
                     else { tone_try = h; tone_n = 1; }
                 }
                 if (scanning) scan();
-                if (menu == 0xFF && !entry_n && !saving) peeks();
+                if (!entry_n && !saving) peeks();
             }
         }
 

@@ -973,6 +973,26 @@ def test_dual_watch(cpu):
     menu(cpu, 'DW', ['UP', 'EXIT'])        # back to OFF
 
 
+def test_menu_keeps_dual_watch(cpu):      # a call dual watch found plays on through MENU and moving about the menu
+    menu(cpu, 'DW', ['UP', 'EXIT'])        # on A (146.520), watch B (446.000)
+    cpu.bk.busy = lambda f: f == 44600000
+    cpu.run(3_000_000)
+    assert freq(cpu) == 44600000 and audio(cpu), 'dual watch not on the call on B'
+    keys(cpu, ['MENU'])
+    cpu.run(1_000_000)
+    assert freq(cpu) == 44600000 and audio(cpu), 'MENU cut the call on B off'
+    keys(cpu, ['DOWN', 'DOWN', 'UP'])
+    cpu.run(1_000_000)
+    assert freq(cpu) == 44600000 and audio(cpu), 'moving about the menu cut the call on B off'
+    keys(cpu, ['MENU'])                    # a setting to change: back on A, the slot it changes
+    cpu.run(300_000)
+    assert freq(cpu) == 14652000, 'a change in the menu while on B'
+    keys(cpu, ['EXIT', 'EXIT'])
+    cpu.run(1_000_000)
+    cpu.bk.busy = None
+    menu(cpu, 'DW', ['UP', 'EXIT'])        # back to OFF
+
+
 def rgb(r, g, b):                          # fw.h's RGB(): BGR565
     return (b & 0xF8) << 8 | (g & 0xFC) << 3 | r >> 3
 
@@ -3884,6 +3904,7 @@ INDEPENDENT = [
     ('AM: gain off in steps on strong signals, wide filter, AM AGC, no de-emphasis', test_am_gain),
     ('55 Hz squelch tail shuts the audio', test_squelch_tail),
     ('the receiver keeps on in the menu', test_menu_keeps_receiving),
+    ('dual watch keeps on in the menu', test_menu_keeps_dual_watch),
     ('S-meter squelch S1-S9', test_smeter_squelch),
     ('PTT works with the keypad locked', test_ptt_works_locked),
     ('no fixed text runs off the screen', test_no_clipped_text),
