@@ -243,9 +243,10 @@ static const __code char *const __code save_s[] = {"OFF", "SHORT", "MIDDLE", "LO
 static const __code char *const __code tot_s[] = {"OFF", "030 s", "060 s", "120 s", "180 s"};
 static const __code char *const __code lightv_s[] = {"10 s", "30 s", "ON"};
 // BRIGHTNESS 1-5 as backlight PWM duty (of 200). 5 is stored as 0, so blocks from before it read full;
-// the list wraps, so it still reads 1-5 in order. Roughly doubling steps; level 1 not yet seen on glass.
+// the list wraps, so it still reads 1-5 in order. The panel looks full from about 70 up (3, 4 and 5 at
+// 70, 120, 200 looked the same), so 1-4 sit under that, about 1.5x apart; stock's dim levels are 40-55.
 static const __code char *const __code bright_s[] = {"5", "1", "2", "3", "4"};
-static const __code uint8_t bright_duty[] = {200, 20, 40, 70, 120};
+static const __code uint8_t bright_duty[] = {200, 10, 20, 30, 45};
 static const __code char *const __code apo_s[] = {"OFF", "30 min", "60 min", "120 min"};
 static const __code char *const __code off_on[] = {"OFF", "ON"};
 static const __code char *const __code comp_s[] = {"OFF", "RX", "TX", "BOTH"};

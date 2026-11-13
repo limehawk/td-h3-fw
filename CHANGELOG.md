@@ -5,6 +5,8 @@ starts with its part of this list.
 
 ## Next release
 
+- BRIGHTNESS: each of the five levels now looks different. 3, 4 and 5 used to look the same; 1 is
+  dimmer than before, for night use.
 - New: CALL ID (MENU 20) sends your ham callsign in Morse code when you let go of PTT, on 2 m and
   70 cm only, the first time after you switch on and then at most every 10 minutes. It stays off
   until you type a callsign.
