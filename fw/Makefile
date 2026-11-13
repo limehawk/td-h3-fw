@@ -1,6 +1,7 @@
 # make          -> build/td-h3.bin   (TX limited to the bands in radio.c)
 # make rxonly   -> build/td-h3-rx.bin (no transmit at all: flash this one first)
 # make test     -> build both and run test_fw.py (T="scan fm" for just those tests), then the budget
+#                  (rebuilding the all-C build/td-h3-c.bin it measures the asm against)
 # make budget   -> tools/budget.py: free space, reserve and price of each scarce resource
 SDCC_HOME ?= $(wildcard ../.toolchain/sdcc-*)
 SDCC := $(if $(SDCC_HOME),$(SDCC_HOME)/bin/,)sdcc
@@ -66,11 +67,11 @@ build/$(OUT).bin: $(SRC) $(LINK:%=asm/%.asm) $(if $(LINK),build/asm.inc) fw.h hw
 PY := $(shell uv python find pypy3.11 2>/dev/null || echo python3)
 test: all rxonly
 	$(PY) test_fw.py $(T)
-	$(if $(T)$(NOBUDGET),,@python3 ../tools/budget.py)
+	$(if $(T)$(NOBUDGET),,@$(MAKE) -s cref >/dev/null && python3 ../tools/budget.py)
 
 # What each scarce resource has left and what a byte of it is worth (DEVELOPING.md, Hardware budget).
-# The stack figure comes from the last full make test.
-budget: all rxonly
+# The stack figure comes from the last full make test; cref keeps the ASM=1 saving current.
+budget: all rxonly cref
 	python3 ../tools/budget.py
 
 # Manual screenshots from the real firmware (docs/manual/img), then the Forgejo wiki copy of docs/manual.
