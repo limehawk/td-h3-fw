@@ -33,7 +33,7 @@ var sync = []byte{'S', 0xA5, 0x5A}
 type text struct {
 	x, y, scale int
 	s           string
-	lit         bool // inverse video, the background brighter than the text: the selected slot's letter, a list's cursor
+	inv         bool // the background brighter than the text; lit (sc.lit) is the minority way round
 }
 
 // screen is what the radio's panel shows, rebuilt from the mirrored draws.
@@ -93,8 +93,8 @@ func (sc *screen) draw(x, y, scale int, s string, fg, bg uint16) {
 			}
 		}
 	}
-	t := text{x, y, scale, s[:n], luma(bg) > luma(fg)} // a tinted slot's text is bright on dark: not lit
-	for i, o := range sc.texts {                       // same row, same size, on the character grid: overlay, don't drop
+	t := text{x, y, scale, s[:n], luma(bg) > luma(fg)}
+	for i, o := range sc.texts { // same row, same size, on the character grid: overlay, don't drop
 		if o.y == y && o.scale == scale && (x-o.x)%cw == 0 && x >= o.x && x < o.x+cw*len(o.s) {
 			at := (x - o.x) / cw
 			r := []byte(o.s)
@@ -172,7 +172,7 @@ func (sc *screen) Text() string {
 		if x.scale > 1 {
 			size = fmt.Sprintf("  (x%d)", x.scale)
 		}
-		if x.lit {
+		if sc.lit(x) {
 			size += "  (lit)"
 		}
 		s := strings.NewReplacer("\x7f", "▲", "\x80", "▼").Replace(strings.TrimRight(x.s, " ")) // the font's arrows
@@ -421,11 +421,23 @@ func (r *rig) sure(sc *screen, ok func(*screen) bool) (*screen, error) {
 	return r.look()
 }
 
+// lit: inverse video against the theme, the selected slot's letter or a list's cursor. Most text runs
+// the theme's way round (light on dark, or dark on light on a light theme); lit text runs the other.
+func (sc *screen) lit(t text) bool {
+	n := 0
+	for _, o := range sc.texts {
+		if o.inv {
+			n++
+		}
+	}
+	return t.inv != (2*n > len(sc.texts))
+}
+
 // at is the text drawn at (y, x) and whether it is lit.
 func (sc *screen) at(y, x int) (string, bool) {
 	for _, t := range sc.texts {
 		if t.y == y && t.x == x {
-			return strings.TrimRight(t.s, " "), t.lit
+			return strings.TrimRight(t.s, " "), sc.lit(t)
 		}
 	}
 	return "", false

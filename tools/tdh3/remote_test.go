@@ -190,3 +190,24 @@ func TestTuneReadsKeysFromTheStream(t *testing.T) {
 		t.Fatalf("%d full redraws asked for", sim.syncs)
 	}
 }
+
+// A light theme (E-INK): text is dark on light, so the cursor is the light-on-dark row.
+func TestLitOnALightTheme(t *testing.T) {
+	var s []byte
+	s = append(s, 't', 0, 0, 1, 0x00, 0x00, 0xE7, 0x3C) // the title
+	s = append(s, "DISPLAY & SOUND 38/52\x00"...)
+	s = append(s, 't', 0, 45, 1, 0x00, 0x00, 0xE7, 0x3C) // a row
+	s = append(s, "LIGHT\x00"...)
+	s = append(s, 't', 0, 60, 1, 0xE7, 0x3C, 0x00, 0x00) // the cursor
+	s = append(s, "THEME\x00"...)
+	sc := &screen{}
+	if err := sc.apply(append(append([]byte{}, sync...), s...)); err != nil {
+		t.Fatal(err)
+	}
+	if _, lit := sc.at(0, 0); lit {
+		t.Fatal("the title lit")
+	}
+	if _, lit := sc.at(60, 0); !lit {
+		t.Fatal("the cursor not lit")
+	}
+}

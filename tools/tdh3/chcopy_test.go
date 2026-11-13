@@ -119,4 +119,3 @@ func TestLoadImageChecksSizeAndIdent(t *testing.T) {
 		}
 	}
 }
-
