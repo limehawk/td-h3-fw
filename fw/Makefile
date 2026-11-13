@@ -53,7 +53,7 @@ build/asm.inc: $(SRC) fw.h hw.h ../tools/asmcheck.py
 
 build/$(OUT).bin: $(SRC) $(LINK:%=asm/%.asm) $(if $(LINK),build/asm.inc) fw.h hw.h build/version build/$(OUT).asm Makefile   # Makefile: new flags rebuild everything
 	@mkdir -p $(O)
-	@for f in $(SRC); do $(SDCC) $(CFLAGS) -c $$f -o $(O)/ || exit 1; done
+	@printf '%s\n' $(SRC) | xargs -P 0 -I @ $(SDCC) $(CFLAGS) -c @ -o $(O)/   # all at once: one sdcc per file
 	@for f in $(LINK); do $(AS) -plosgffw $(O)/$$f.rel asm/$$f.asm || exit 1; done
 	$(SDCC) $(CFLAGS) $(addprefix $(O)/,$(SRC:.c=.rel) $(LINK:=.rel)) -o $(O)/fw.ihx
 	@grep -Eq '00000000 +l_XINIT' $(O)/fw.map || { echo "initialized XDATA found (see XINIT in $(O)/fw.map): use plain assignments"; exit 1; }
