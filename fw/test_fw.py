@@ -1961,6 +1961,24 @@ def test_wx_alert(cpu):
     assert not any(red in row for row in fb[12:]), 'the alert screen left red on the home screen'   # (the battery's red, above)
 
 
+def test_wx_alert_in_menu(cpu):            # the menu open: the alert takes the screen, any key stops it, home again
+    import lcdshot
+    menu(cpu, 'WX', ['UP', 'EXIT'])        # 162.400
+    keys(cpu, ['MENU'])
+    cpu.run(1_000_000)
+    cpu.bk.alert = lambda f: f == 16240000
+    cpu.run(9_000_000)
+    red = rgb(240, 40, 40)
+    assert freq(cpu) == 16240000, 'no weather alert with the menu open'
+    assert any(red in row for row in lcdshot.frame(cpu.lcd)[12:]), 'the alert did not take the screen from the menu'
+    cpu.bk.alert = None
+    press(cpu, 'EXIT')                     # any key stops it
+    cpu.run(2_000_000)
+    fb = lcdshot.frame(cpu.lcd)
+    assert freq(cpu) == 14652000 and not any(red in row for row in fb[12:]), 'not back home after the alert'
+    assert len({c for row in fb[20:60] for c in row}) > 1, 'a blank screen after the alert'
+
+
 def test_wx_alert_in_weather_mode(cpu):     # weather mode on the WX ALERT channel: the alarm and amber blink as anywhere,
     menu(cpu, 'WX', ['UP', 'EXIT'])        # once per alert tone (it ran silent there: no looks in weather mode)
     cpu.bk.dbm = lambda f: -80 if f == 16240000 else -120   # WX1 strongest: weather mode on 162.400
@@ -3851,6 +3869,7 @@ INDEPENDENT = [
     ('no scan with the squelch open (SQL 0, monitor)', test_scan_refused_squelch_open),
     ('VFO scan outside the bands: +-1 MHz, or between A and B', test_vfo_scan_outside_bands),
     ('NOAA 1050 Hz alert', test_wx_alert),
+    ('NOAA 1050 Hz alert with the menu open', test_wx_alert_in_menu),
     ('NOAA 1050 Hz alert in weather mode: alarm and blink, once per tone', test_wx_alert_in_weather_mode),
     ('NOAA alert with monitor on and at squelch 0', test_wx_alert_squelch_open),
     ('NOAA alert from the FM radio', test_wx_alert_from_fm),

@@ -20,8 +20,10 @@ A change counts the moment you make it (and is saved two seconds after your last
 never loses it. An open menu goes back to the radio after 20 seconds untouched.
 
 The radio keeps listening while the menu is open: a call plays through the speaker as usual, and the
-green light shows it. Dual watch and the priority channel wait until you leave the menu. Opening a
-tool (a `>` item) quiets the speaker until you're back in the list.
+green light shows it. Dual watch and the priority channel keep working too: a call on the other slot
+plays on while you move about the menu. If you change a setting during such a call, the radio goes
+back to the selected slot first, so the change lands there. A weather alert closes the menu to show
+itself. Opening a tool (a `>` item) quiets the speaker until you're back in the list.
 
 To go straight to an item, type its number from the table below: **1** then **2** opens item 12.
 Items 6-9 open as soon as you type the digit. For items 1-5, type the one digit and wait a second

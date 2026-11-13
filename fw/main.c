@@ -2370,6 +2370,7 @@ void main(void)
             }
         }
 
+        if (alert) menu = 0xFF;             // a weather alert takes the screen from the menu (dirty: peek_at)
         if (menu == 0xFF) {
             if (dirty) {
                 if (fast) draw_slot(cfg.act); else draw_main();
