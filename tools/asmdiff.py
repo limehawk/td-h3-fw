@@ -42,6 +42,8 @@ class Image:
         for m in re.findall(r'^\S*/(\w+)\.rel\s', mp[mp.index('Files Linked'):], re.M):   # only what this image linked:
             self._rst(os.path.join(d, m + '.rst'), m)                                      # a build keeps stale listings
         self.cpu = test_fw.boot(path)
+        scan = self.code['_key_scan']           # snapshot at the top of a key scan: no BK4819 or LCD transfer half done,
+        assert self.cpu.run(3_000_000, until=lambda: self.cpu.pc == scan)   # whose chip-side state reset() can't restore
         self.cpu.uart_baud = None                # any speed: REMOTE's bytes are kept whatever the port's rate
         self.save()
 

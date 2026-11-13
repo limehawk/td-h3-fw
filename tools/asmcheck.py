@@ -39,7 +39,7 @@ CONSTS = {
     'CHAN_RX': 'offsetof(chan_t, rx)', 'CHAN_TX': 'offsetof(chan_t, tx)', 'CHAN_RXT': 'offsetof(chan_t, rx_tone)',
     'CHAN_TXT': 'offsetof(chan_t, tx_tone)', 'CHAN_MODE': 'offsetof(chan_t, mode)', 'CHAN_NARROW': 'offsetof(chan_t, narrow)',
     'CHAN_POWER': 'offsetof(chan_t, power)', 'CHAN_NAME': 'offsetof(chan_t, name)', 'CHAN_SIZE': 'sizeof(chan_t)',
-    'MOD_USB': 'MOD_USB', 'WORDS': 'WORDS', 'D_CLASSIC': 'D_CLASSIC', 'PWR_HIGH': 'PWR_HIGH', 'PWR_ULP': 'PWR_ULP', 'DTMF_RUN': 'DTMF_RUN',
+    'MOD_USB': 'MOD_USB', 'D_CLASSIC': 'D_CLASSIC', 'PWR_HIGH': 'PWR_HIGH', 'PWR_ULP': 'PWR_ULP', 'DTMF_RUN': 'DTMF_RUN',
 }
 # cfg_t bitfields: NAME = its byte, NAME_BIT = its lowest bit, NAME_MASK = its bits in that byte,
 # NAME_ACC = the lowest bit's address in ACC (sdas takes no acc.<symbol>)

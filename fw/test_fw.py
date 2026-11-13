@@ -2441,7 +2441,7 @@ def test_remote_up_one_step(cpu):          # a redraw slower than 200 ms ate bot
 DIGITS = ['ARCADE', 'LCD', 'CLASSIC']
 
 
-def test_digits(cpu, style):               # DIGITS: the look's pixels in slot A, the label's place, REMOTE's words, saved
+def test_digits(cpu, style):               # DIGITS: the look's pixels in slot A, the label's place, REMOTE's text, saved
     import lcdshot
     n, cfg, y = DIGITS.index(style), rst_addr('_cfg'), 14
     assert cpu.xram[cfg + 6] >> 6 == 0, 'a new radio (settings FF) not on ARCADE'
@@ -2465,7 +2465,8 @@ def test_digits(cpu, style):               # DIGITS: the look's pixels in slot A
         assert big and big[3] == '146.520' and big[6] == 2, big
         assert t.get((y + 13, 0), ('',) * 4)[3] == 'VFO  ', t
         return
-    assert big and big[3] == '146.520' and big[6] == 255, ('the frequency not sent in words', big)
+    assert big and big[3] == '146.520' and big[6] == 2, ('REMOTE not sent the frequency as CLASSIC draws it', big)
+    assert not any(r[0] == 'f' and r[2] >= y + 8 and r[2] <= y + 25 and r[1] < 105 for r in remote_records(cpu.uart_out)), 'digit fills mirrored'
     assert any(r[3] == 'VFO' and ry == y and x + 6 * 3 == 128 for (ry, x), r in t.items()), ('the label not at the name row\'s right end', t)
     assert all(px(x, yy) == bg for x in range(5) for yy in range(y + 8, y + 27)), 'something left of the digits'
     if n == 0:                             # ARCADE: '1' at x 5 is shape columns 3-4 (x 11-14), rows y+9 to y+24, its shadow 1 right and down
@@ -3702,8 +3703,8 @@ INDEPENDENT = [
     ('slot tints: green while heard, red while transmitting, per theme', test_slot_tints),
     ('tools/radio.py and tdh3 read the rows the firmware draws', test_tool_rows),
     ('a tinted slot\'s label mirrors plain, its letter inverse', test_tinted_label_reads),
-    ('DIGITS ARCADE: shapes, shadow, label at the right, words to REMOTE, saved', partial(test_digits, style='ARCADE')),
-    ('DIGITS LCD: clock segments, label at the right, words to REMOTE, saved', partial(test_digits, style='LCD')),
+    ('DIGITS ARCADE: shapes, shadow, label at the right, CLASSIC text to REMOTE, saved', partial(test_digits, style='ARCADE')),
+    ('DIGITS LCD: clock segments, label at the right, CLASSIC text to REMOTE, saved', partial(test_digits, style='LCD')),
     ('DIGITS CLASSIC: the 5x7 font at 2x and the label as before, saved', partial(test_digits, style='CLASSIC')),
     ('meter: one full-width bar, the reading inside, the squelch tick', test_meter),
     ('dual watch: a wrong-tone carrier is not held', test_dual_watch_wrong_tone),

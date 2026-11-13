@@ -79,7 +79,6 @@ void remote_tick(void);                     // main loop: lets the mirror lapse 
 extern uint8_t remote_voice;
 void remote_fill(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t c) __reentrant;
 void remote_text(uint8_t x, uint8_t y, const char *s, uint8_t scale, uint16_t fg, uint16_t bg) __reentrant;
-#define WORDS 0xFF                          // remote_text's scale for words alone, no pixels: what fills nearby draw (DIGITS)
 void remote_puts(const __xdata char *s) __reentrant;
 void remote_end(void);                     // 'E': the screen REMOTE asked for is complete
 void remote_poll(void) __reentrant;

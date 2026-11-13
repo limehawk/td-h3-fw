@@ -1,7 +1,8 @@
 ; asm-for: main.c freq_text
-; c-sha256: a821fb4450db3c60
+; c-sha256: b5f728ad60dd23c4
 ; freq_text: a slot's frequency from buf + k in the DIGITS style: CLASSIC through lcd_text, ARCADE
-; and LCD as fills (each shape a list of rectangles in main.c's tables), then their words to REMOTE.
+; and LCD as fills (each shape a list of rectangles in main.c's tables), not mirrored: REMOTE gets
+; CLASSIC's text.
 ; main.c has the C original.
 ; void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant
 ; k in DPL, y at SP-2 and fc at SP-3 on entry. Every register, B and DPTR are the caller's to lose.
@@ -51,8 +52,7 @@ _freq_text:
 	movx	a,@dptr
 	anl	a,#CFG_DIGITS_MASK
 	mov	r6,a
-	cjne	a,#(D_CLASSIC << CFG_DIGITS_BIT),00010$
-; CLASSIC: lcd_text(big ? 32 + 12 * k : 116, y + (big ? 9 : 17), buf + k, big + 1, fc); return;
+; CLASSIC's place: x = big ? 32 + 12 * k : 116 (r3), y + (big ? 9 : 17) (r4 the 9 or 17)
 	mov	r3,#116
 	mov	r4,#17
 	mov	a,r5
@@ -63,7 +63,10 @@ _freq_text:
 	add	a,#32
 	mov	r3,a
 	mov	r4,#9
-00001$:	mov	a,sp
+00001$:	mov	a,r6
+	cjne	a,#(D_CLASSIC << CFG_DIGITS_BIT),00010$
+; CLASSIC: lcd_text(x, y + (big ? 9 : 17), buf + k, big + 1, fc); return;
+	mov	a,sp
 	add	a,#-3
 	mov	r0,a
 	mov	a,@r0
@@ -113,6 +116,46 @@ _freq_text:
 	mov	fy,a
 	dec	r0
 	mov	fp,@r0			; fc
+; if (m = mirror) remote_text(CLASSIC's x and y, buf + k, big + 1, pal[fc], c_bg); mirror = 0; m kept on the stack
+	inc	r0
+	mov	a,@r0
+	add	a,r4
+	mov	r4,a
+	mov	dptr,#_mirror
+	movx	a,@dptr
+	push	acc
+	jz	00009$
+	mov	dptr,#_pal
+	movx	a,@dptr
+	push	acc
+	inc	dptr
+	movx	a,@dptr
+	push	acc			; c_bg
+	mov	fo,#0
+	lcall	ink
+	push	ar2
+	push	ar7			; pal[fc]
+	mov	a,fbig
+	inc	a
+	push	acc			; scale
+	mov	a,fs
+	add	a,#_buf
+	push	acc
+	clr	a
+	addc	a,#(_buf >> 8)
+	push	acc
+	mov	a,#GPTR_XDATA
+	push	acc			; buf + k
+	push	ar4
+	mov	dpl,r3
+	lcall	_remote_text
+	mov	a,sp
+	add	a,#-9
+	mov	sp,a
+	mov	dptr,#_mirror
+	clr	a
+	movx	@dptr,a
+00009$:
 ; x = 5; for (o = 0; o < k && o < 7; o++) x += buf[o] == '.' ? 5 : 16;   r3 = x, r2 = o
 	mov	r3,#5
 	mov	r2,#0
@@ -130,9 +173,37 @@ _freq_text:
 	mov	r3,a
 	sjmp	00014$
 00017$:	mov	fx,r3
+; the cells from this one on, in one fill (one REMOTE record): to x 104 (the last big digit's
+; shadow) or 121 (the small ones'); ARCADE's 2 rows shorter, and its shadow's:
+; lcd_fill(x, t, (big ? 105 : 122) - x, (big ? 18 : 11) - a, c_bg)
+	mov	dptr,#_pal
+	movx	a,@dptr
+	push	acc
+	inc	dptr
+	movx	a,@dptr
+	push	acc
+	mov	r2,#11
+	mov	r4,#122
+	mov	a,fbig
+	jz	00022$
+	mov	r2,#18
+	mov	r4,#105
+00022$:	mov	a,r2
+	clr	c
+	subb	a,fa
+	push	acc			; rows
+	mov	a,r4
+	clr	c
+	subb	a,r3
+	push	acc			; width
+	push	fy
+	mov	dpl,r3
+	lcall	_lcd_fill
+	mov	a,sp
+	add	a,#-5
+	mov	sp,a
 
-; for (; c = buf[s]; s++): the cell (ARCADE's 2 rows shorter, and its shadow's):
-; lcd_fill(x, t, w + a, (big ? 18 : 11) - a, c_bg), w = big ? c == '.' ? 3 : 14 : 7
+; for (; c = buf[s]; s++)
 00020$:	mov	a,fs
 	add	a,#_buf
 	mov	dpl,a
@@ -143,34 +214,6 @@ _freq_text:
 	jnz	00021$
 	ljmp	00040$
 00021$:	mov	fc,a
-	mov	dptr,#_pal
-	movx	a,@dptr
-	push	acc
-	inc	dptr
-	movx	a,@dptr
-	push	acc
-	mov	r2,#11
-	mov	a,fbig
-	jz	00022$
-	mov	r2,#18
-00022$:	mov	a,r2
-	clr	c
-	subb	a,fa
-	push	acc			; (big ? 18 : 11) - a rows
-	mov	a,#7
-	mov	r2,fbig
-	cjne	r2,#1,00023$
-	mov	a,fc
-	lcall	advb
-	add	a,#-2			; big: the advance less the gap
-00023$:	add	a,fa
-	push	acc			; w + a
-	push	fy
-	mov	dpl,fx
-	lcall	_lcd_fill
-	mov	a,sp
-	add	a,#-5
-	mov	sp,a
 	mov	fo,fa			; ARCADE: the shadow first
 
 ; a pass: the point (dots, or dots + 2 for LCD); a digit; anything else nothing
@@ -182,7 +225,7 @@ _freq_text:
 	mov	dptr,#_dots
 00030$:	mov	r7,#1
 	lcall	rects
-; the next pass while o > 0; then x moves on: big ? w + 2 : 9 - a
+; the next pass while o > 0; then x moves on: small 9 - a; big 16, the point 5
 00031$:	mov	a,fo
 	jz	00034$
 	dec	fo
@@ -252,49 +295,11 @@ _freq_text:
 00037$:	pop	acc
 	sjmp	00036$
 
-; if (mirror) remote_text(big ? 32 : 116, y + (big ? 9 : 17), buf + (big ? 0 : 20), WORDS, pal[fc], c_bg)
-00040$:	mov	dptr,#_mirror
-	movx	a,@dptr
-	jz	00042$
-	mov	dptr,#_pal
-	movx	a,@dptr
-	push	acc
-	inc	dptr
-	movx	a,@dptr
-	push	acc			; c_bg
-	mov	fo,#0			; (none drawn: o from before)
-	lcall	ink			; pal[fc]
-	push	ar2
-	push	ar7
-	mov	a,#WORDS
-	push	acc
-	mov	r2,#0
-	mov	r3,#32
-	mov	r4,#1
-	mov	a,fbig
-	jnz	00041$
-	mov	r2,#20
-	mov	r3,#116
-	mov	r4,#2
-00041$:	mov	a,r2
-	add	a,#_buf
-	push	acc
-	clr	a
-	addc	a,#(_buf >> 8)
-	push	acc
-	mov	a,#GPTR_XDATA
-	push	acc			; buf or buf + 20
-	mov	a,fy
-	add	a,r4
-	clr	c
-	subb	a,fa
-	push	acc			; t + 1 - a = y + 9, or t + 2 - a = y + 17
-	mov	dpl,r3
-	lcall	_remote_text
-	mov	a,sp
-	add	a,#-9
-	mov	sp,a
-00042$:	ret
+; mirror = m
+00040$:	pop	acc
+	mov	dptr,#_mirror
+	movx	@dptr,a
+	ret
 
 ; advb: A = the big character in A's advance: 16, the point 5
 advb:	cjne	a,#'.',00043$

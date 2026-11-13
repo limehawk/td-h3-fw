@@ -522,8 +522,8 @@ void right(__xdata char *p, const __code char *a, const __code char *b) __reentr
 __xdata uint8_t tinted[2];           // the tint each slot's block is on (0: none), so going back to bg fills it too
 uint8_t small;                       // bit i: slot i shows its 10 Hz digits
 // DIGITS: how the slots' frequencies look. CLASSIC is the 5x7 font at 2x (lcd_text). ARCADE and LCD
-// draw each character as fills, which REMOTE mirrors, then send the frequency in words (scale
-// WORDS: no pixels) where CLASSIC's text sits, so a computer still reads it. Big digits from x 5,
+// draw each character as fills, not mirrored: REMOTE gets CLASSIC's text instead, so a computer reads
+// the frequency, a picture shows it in the 5x7 font, and the wire carries no more. Big digits from x 5,
 // 16 apart, the point 5; the two small digits below 1 kHz follow, bottom-aligned. All end on row y + 25.
 // ARCADE: the owner's 7x9 shapes, each pixel 2 wide, shape rows 2 and 6 1 tall and the rest 2
 // (14x16 at y + 9), over a shadow 1 px right and down at 40%; the point 3x3; small, the shapes at
@@ -557,29 +557,33 @@ const __code uint8_t dots[] = {0x03, 0x6A, 0x03, 0x7A};   // the point, 3x3 on t
 // asm/freq_text.asm; this C is the reference (make CFUN=freq_text builds it)
 void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant;
 #ifdef C_FREQ_TEXT
-static __xdata uint8_t d_x, d_y, d_units;  // the cell's top left; d_units: ARCADE's big shape units (x 2, rows by rowy)
-static __xdata uint16_t d_ink;
+// internal RAM, as the asm keeps it: SDCC's stack frames made this C too slow for a mirrored redraw
+static __data uint8_t d_x, d_y, d_units, r_x, r_w, r_y, r_h;   // the cell's top left; d_units: ARCADE's big shape units (x 2, rows by rowy)
+static __data uint16_t d_ink;
 
 static void rects(const __code uint8_t *p, uint8_t n) __reentrant   // n rectangles from p
 {
     for (; n; n--) {
-        uint8_t x = *p >> 4, w = *p++ & 15, y = *p >> 3, h = (*p++ & 7) + 1;
-        if (d_units) { x += x; w += w; h = rowy[y + h] - rowy[y]; y = rowy[y]; }
-        lcd_fill(d_x + x, d_y + y, w, h, d_ink);
+        r_x = *p >> 4; r_w = *p++ & 15; r_y = *p >> 3; r_h = (*p++ & 7) + 1;
+        if (d_units) { r_x += r_x; r_w += r_w; r_h = rowy[r_y + r_h] - rowy[r_y]; r_y = rowy[r_y]; }
+        lcd_fill(d_x + r_x, d_y + r_y, r_w, r_h, d_ink);
     }
 }
 
 void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant
 {
     __xdata char *s = buf + k;
-    uint8_t big = k < 7, a = cfg.digits == D_ARC, x = 5, c, o, t;
+    uint8_t big = k < 7, a = cfg.digits == D_ARC, x = 5, c, o, t, m = mirror;
     if (cfg.digits == D_CLASSIC) { lcd_text(big ? 32 + 12 * k : 116, y + (big ? 9 : 17), s, big + 1, fc); return; }
+    if (m) remote_text(big ? 32 + 12 * k : 116, y + (big ? 9 : 17), s, big + 1, pal[fc], c_bg);
+    mirror = 0;
     for (o = 0; o < k && o < 7; o++) x += buf[o] == '.' ? 5 : 16;
     t = y + (big ? 8 : 15) + a;             // the top row: ARCADE's a row lower, its shadow ending where LCD does
+    // the cells from this one on, in one fill: to x 104 (the last big digit's
+    // shadow) or 121 (the small ones'); ARCADE's 2 rows shorter, and its shadow's
+    lcd_fill(x, t, (big ? 105 : 122) - x, (big ? 18 : 11) - a, c_bg);
     for (; c = *s; s++) {
-        uint8_t w = !big ? 7 : c == '.' ? 3 : 14;
-        d_units = 0; d_x = x; d_y = t; d_ink = c_bg;
-        lcd_fill(x, t, w + a, (big ? 18 : 11) - a, d_ink);   // the cell (ARCADE's: 2 rows shorter, and its shadow's)
+        d_units = 0;
         for (o = a; o != 0xFF; o--) {       // ARCADE: o 1 the shadow, 1 right and down, at 40% (each channel x 0.406); o 0 the character
             d_ink = pal[fc];
             if (o) d_ink = (d_ink >> 1 & 0x7BEF) - (d_ink >> 3 & 0x18E3) + (d_ink >> 5 & 0x0020);
@@ -591,9 +595,9 @@ void freq_text(uint8_t k, uint8_t y, uint8_t fc) __reentrant
                 else for (uint8_t m = seg7[d], j = 0; m; m >>= 1, j++) if (m & 1) rects(seg_r + (big ? 6 * j : 42 + 2 * j), big ? 3 : 1);
             }
         }
-        x += big ? w + 2 : 9 - a;
+        x += !big ? 9 - a : c == '.' ? 5 : 16;
     }
-    if (mirror) remote_text(big ? 32 : 116, y + (big ? 9 : 17), buf + (big ? 0 : 20), WORDS, pal[fc], c_bg);
+    mirror = m;
 }
 #endif
 

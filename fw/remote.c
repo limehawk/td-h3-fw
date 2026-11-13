@@ -6,8 +6,6 @@
 //
 //   radio -> computer   'f' x y w h c16             fill
 //                       't' x y scale fg16 bg16 text NUL
-//                                                   scale 255 (WORDS): the words alone, no pixels: the
-//                                                   fills around it draw them (DIGITS ARCADE and LCD)
 //                       'S' A5 5A                    sync: answers 'S', then the screen redraws
 //                       'q' text '\n'               status: answers 'Q' (main loop only); ends in the version
 //                       'E'                          the redraw after 'S' is complete (home and menu)
