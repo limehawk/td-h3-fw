@@ -218,13 +218,8 @@ def t_note():                               # a refusal on the bottom line goes 
     restore(state)
 
 def meter_mid(s):                           # the meter's middle, x 43-72: a station's receive timer ("0:42"), or ''
-    cells = [' '] * 5                       # the bar's edge can split it into two runs of text
-    for (y, x), t in s.items():
-        if y == 62 and 43 <= x < 73:
-            for i, c in enumerate(t.split('  (')[0]):
-                if (x - 43) // 6 + i < 5:
-                    cells[(x - 43) // 6 + i] = c
-    return ''.join(cells).strip()
+    runs = sorted((x, t.split('  (')[0]) for (y, x), t in s.items() if y == 62 and 43 <= x < 73)
+    return ''.join(t for _, t in runs).replace(' ', '')   # the bar's edge can split it into two runs; no spaces in a timer
 
 
 def t_times():                              # a station heard: its timer in the meter; quiet again, the slot's last heard
