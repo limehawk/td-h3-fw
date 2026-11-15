@@ -55,7 +55,7 @@ PC LINK looks like this on the radio, and REMOTE like this once it's on:
 | Command | What it does | Radio needs |
 |---|---|---|
 | `tdh3 flash` | Puts on the firmware this flasher carries. `--rx` for the receive-only build; `--yes` waits for the radio without asking (for scripts); `--force` flashes a test build that isn't a release. Typing just `tdh3` does the same. | Hold **PTT** when it asks |
-| `tdh3 update` | Downloads the newest flasher, checks its signature, replaces itself, then flashes. `--no-flash` stops before the flash. | Internet |
+| `tdh3 update` | Downloads the newest flasher, checks its signature, replaces itself, then flashes. `--rx` flashes the receive-only build; `--no-flash` stops before the flash. | Internet |
 | `tdh3 firmware flash FILE.bin` | Flashes a firmware file you have. `--force` for a test build. | Hold **PTT** when it asks |
 | `tdh3 firmware extract FOLDER` | Saves the firmware this flasher carries as `.bin` files in that folder, the full build and the receive-only one. Leave out the folder to use the current one. | Nothing |
 

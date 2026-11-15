@@ -15,6 +15,8 @@ starts with its part of this list.
 - A key pressed from the computer (REMOTE) during a slow screen update is no longer lost.
 - The up and down arrows and the warning triangle are redrawn as clean, even triangles with a one-pixel
   tip, on the radio and in `tdh3 remote screen`.
+- `tdh3 update --rx` flashes the receive-only build after it replaces the flasher, the same as
+  `tdh3 flash --rx`.
 
 ## 0.68.0
 

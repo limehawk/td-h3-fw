@@ -260,22 +260,37 @@ func init() {
 }
 
 func updateCmd(port *string) *cobra.Command {
-	var noFlash bool
+	var noFlash, rx bool
 	c := &cobra.Command{
 		Use:   "update",
 		Short: "Replace this flasher with the newest release's, then flash the firmware it carries",
 		Long: "Asks GitHub for the newest release and downloads this computer's flasher from it. Its\n" +
 			"signed checksum is checked before anything is replaced, so a damaged or tampered download\n" +
 			"is refused and this flasher keeps working. Then it runs the new flasher's flash, the same\n" +
-			"as tdh3 flash. --no-flash stops after replacing the flasher.",
+			"as tdh3 flash. --rx flashes the receive-only build, as tdh3 flash --rx. --no-flash stops\n" +
+			"after replacing the flasher.",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error { return runUpdate(*port, noFlash) },
+		RunE: func(cmd *cobra.Command, args []string) error { return runUpdate(*port, noFlash, rx) },
 	}
 	c.Flags().BoolVar(&noFlash, "no-flash", false, "only replace the flasher; don't flash the radio")
+	c.Flags().BoolVar(&rx, "rx", false, "flash the receive-only build (td-h3-fw-*-rx.bin)")
+	c.MarkFlagsMutuallyExclusive("no-flash", "rx")
 	return c
 }
 
-func runUpdate(port string, noFlash bool) error {
+// flashArgs is the new flasher's command line for the flash that follows an update.
+func flashArgs(port string, rx bool) []string {
+	args := []string{"flash"}
+	if port != "" {
+		args = append(args, "-p", port)
+	}
+	if rx {
+		args = append(args, "--rx")
+	}
+	return args
+}
+
+func runUpdate(port string, noFlash, rx bool) error {
 	name, err := assetName(runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return err
@@ -317,10 +332,7 @@ func runUpdate(port string, noFlash bool) error {
 	if noFlash {
 		return nil
 	}
-	args := []string{"flash"}
-	if port != "" {
-		args = append(args, "-p", port)
-	}
+	args := flashArgs(port, rx)
 	cmd := exec.Command(exe, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	sig := make(chan os.Signal, 1) // Ctrl-C is the new flasher's to handle: this one waits for it
@@ -329,7 +341,7 @@ func runUpdate(port string, noFlash bool) error {
 	if err := cmd.Run(); err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
-			return errors.New("flashing didn't finish: run tdh3 flash to try again")
+			return fmt.Errorf("flashing didn't finish: run tdh3 %s to try again", strings.Join(args, " "))
 		}
 		return err
 	}

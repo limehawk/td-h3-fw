@@ -59,6 +59,35 @@ func TestNewer(t *testing.T) {
 	}
 }
 
+// The flash after an update gets the port and --rx, as tdh3 flash would.
+func TestFlashArgs(t *testing.T) {
+	for _, c := range []struct {
+		port string
+		rx   bool
+		want string
+	}{
+		{"", false, "flash"},
+		{"COM4", false, "flash -p COM4"},
+		{"", true, "flash --rx"},
+		{"/dev/ttyUSB1", true, "flash -p /dev/ttyUSB1 --rx"},
+	} {
+		if got := strings.Join(flashArgs(c.port, c.rx), " "); got != c.want {
+			t.Errorf("flashArgs(%q, %v) = %q; want %q", c.port, c.rx, got, c.want)
+		}
+	}
+}
+
+// --rx says which build to flash, so it can't go with --no-flash.
+func TestUpdateRxNoFlash(t *testing.T) {
+	port := ""
+	c := updateCmd(&port)
+	c.SetArgs([]string{"--rx", "--no-flash"})
+	c.SilenceUsage, c.SilenceErrors = true, true
+	if err := c.Execute(); err == nil || !strings.Contains(err.Error(), "no-flash") {
+		t.Fatalf("update --rx --no-flash: %v; want a refusal", err)
+	}
+}
+
 // serveRelease serves a latest release with these files.
 func serveRelease(t *testing.T, files map[string][]byte) *httptest.Server {
 	var srv *httptest.Server

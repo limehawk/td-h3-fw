@@ -10,6 +10,7 @@
 | Flash new firmware | Radio on with REMOTE on: open the flasher, then press and hold **PTT** when it says so; let go at **flash mode** |
 | Flash with the radio off (or REMOTE off) | `tdh3 flash`, then switch the radio off, hold **PTT** and switch it on, let go after 2 s |
 | Flash the receive-only build | `tdh3 flash --rx` |
+| Update to the newest receive-only build | `tdh3 update --rx` |
 | Flash some other image | `tdh3 firmware flash FILE` |
 | See the version before flashing | Set **MENU**, **4** **7** (REMOTE) to ON and leave the radio on |
 | The flasher keeps saying **plug the radio's USB-C cable into the computer** | Check the cable carries data; on a TD-H3 Plus it never finds one: this firmware is for the TD-H3 only |
@@ -181,6 +182,7 @@ it again. It needs the internet.
 5. The new flasher takes the old one's place, under the same name, and flashes the firmware it
    carries. From here it's [Flash](#flash), step 3: press and hold **PTT** when it says so.
 
+`tdh3 update --rx` flashes the receive-only build instead, as `tdh3 flash --rx` does.
 `tdh3 update --no-flash` only replaces the flasher; flash later with `tdh3 flash`. With several
 radio cables, `-p` picks one, as for flashing: `tdh3 -p COM4 update`.
 
