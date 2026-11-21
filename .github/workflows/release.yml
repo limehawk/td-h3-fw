@@ -26,7 +26,7 @@ jobs:
           echo "3395722e3f8a31ce6a14c75fc419f586a3573b939f85efee5c88cdd35820a240  /tmp/sdcc.tar.bz2" | sha256sum -c
           mkdir -p .toolchain && tar xjf /tmp/sdcc.tar.bz2 -C .toolchain
 
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d  # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a  # v5.2.10
         with:
           install_args: go
 
