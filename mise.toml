@@ -4,4 +4,4 @@
 [tools]
 go = "1.27.4"         # tools/tdh3 (go.mod: go 1.27)
 uv = "0.13.9"         # installs PyPy for make test
-trufflehog = "3.100.0" # the secret scan the git hooks run
+trufflehog = "3.100.1" # the secret scan the git hooks run
