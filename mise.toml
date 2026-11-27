@@ -3,5 +3,5 @@
 # SDCC and PyPy aren't here: mise has no SDCC, and PyPy comes from uv (the workflow pins both).
 [tools]
 go = "1.27.4"         # tools/tdh3 (go.mod: go 1.27)
-uv = "0.13.9"         # installs PyPy for make test
+uv = "0.13.10"         # installs PyPy for make test
 trufflehog = "3.100.1" # the secret scan the git hooks run
